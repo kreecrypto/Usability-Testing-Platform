@@ -1,0 +1,27 @@
+name: Design System QA
+
+on:
+  pull_request:
+    paths:
+      - 'docs/design-system/**'
+      - 'src/styles/**'
+      - 'scripts/check-design-system.mjs'
+      - 'package.json'
+      - '.github/workflows/design-system-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  design-system-qa:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify design-system coverage and tokens
+        run: node scripts/check-design-system.mjs
