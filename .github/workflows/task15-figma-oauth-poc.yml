@@ -1,0 +1,37 @@
+name: Task 15 Figma OAuth + Embed PoC
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/lib/figma/oauth.ts'
+      - 'src/lib/figma/version-pin.ts'
+      - 'src/app/figma-poc/**'
+      - 'src/app/api/integrations/figma/**'
+      - 'tests/figma-oauth.test.ts'
+      - '.github/workflows/task15-figma-oauth-poc.yml'
+      - '.env.example'
+  pull_request:
+    paths:
+      - 'src/lib/figma/oauth.ts'
+      - 'src/lib/figma/version-pin.ts'
+      - 'src/app/figma-poc/**'
+      - 'src/app/api/integrations/figma/**'
+      - 'tests/figma-oauth.test.ts'
+      - '.github/workflows/task15-figma-oauth-poc.yml'
+      - '.env.example'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  figma-oauth-poc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.20.0'
+      - name: Verify Task 15 OAuth and embed contracts
+        run: node --test tests/figma-oauth.test.ts
