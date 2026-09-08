@@ -1,3 +1,6 @@
+@import "../styles/tokens.css";
+@import "./high-fi/high-fi.css";
+
 :root {
   --bg: #f6f7f9;
   --surface: #ffffff;
