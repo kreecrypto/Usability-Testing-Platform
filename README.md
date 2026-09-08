@@ -74,3 +74,7 @@ Copy `.env.example` to `.env.local` and add development credentials when integra
 ## Source of truth
 
 Product planning and execution order are maintained in the Notion **Usability Testing Platform — Master Plan**. GitHub is the source of truth for implementation and technical documentation.
+
+## Low-fidelity wireframes (Task 12)
+
+Open `public/wireframes/index.html` directly in a browser, or `/wireframes/` with the app running. The standalone review artifact includes 48 screens and 170 selectable states with desktop/mobile layouts. See [wireframe guide](docs/wireframes.md) and [verification notes](docs/wireframes-qa.md).
