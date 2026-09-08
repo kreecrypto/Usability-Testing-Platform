@@ -56,44 +56,101 @@ jobs:
           );
           SQL
 
-      - name: Apply committed migration
+      - name: Apply all committed migrations in order
         run: |
-          migration="$(find supabase/migrations -maxdepth 1 -type f -name '*_initial_v1_schema.sql' -print -quit)"
-          test -n "$migration"
-          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$migration"
+          mapfile -t migrations < <(find supabase/migrations -maxdepth 1 -type f -name '*.sql' | sort)
+          test "${#migrations[@]}" -gt 0
+          for migration in "${migrations[@]}"; do
+            echo "Applying $migration"
+            psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$migration"
+          done
 
       - name: Verify required tables and RLS
         run: |
           count="$(psql -h 127.0.0.1 -U postgres -d postgres -Atc "select count(*) from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname='public' and c.relkind='r' and c.relname in ('users','workspaces','workspace_members','projects','tests','test_versions','tasks','participants','sessions','task_sessions','events','answers','findings','finding_evidence','retests') and c.relrowsecurity;")"
           test "$count" = "15"
 
-      - name: Verify event dedupe indexes
+      - name: Seed canonical event context
         run: |
           psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
-          insert into auth.users (id) values ('00000000-0000-0000-0000-000000000001');
-          insert into public.users (id) values ('00000000-0000-0000-0000-000000000001');
-          insert into public.workspaces (id, name, slug, owner_user_id)
-            values ('10000000-0000-0000-0000-000000000001', 'QA', 'qa', '00000000-0000-0000-0000-000000000001');
+          insert into auth.users (id) values
+            ('00000000-0000-0000-0000-000000000001'),
+            ('00000000-0000-0000-0000-000000000002');
+
+          insert into public.users (id) values
+            ('00000000-0000-0000-0000-000000000001'),
+            ('00000000-0000-0000-0000-000000000002');
+
+          insert into public.workspaces (id, name, slug, owner_user_id) values
+            ('10000000-0000-0000-0000-000000000001', 'QA A', 'qa-a', '00000000-0000-0000-0000-000000000001'),
+            ('10000000-0000-0000-0000-000000000002', 'QA B', 'qa-b', '00000000-0000-0000-0000-000000000002');
+
           insert into public.projects (id, workspace_id, name)
             values ('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'QA Project');
+
           insert into public.tests (id, workspace_id, project_id, title)
             values ('30000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', 'QA Test');
+
           insert into public.test_versions (id, workspace_id, test_id, version_no)
             values ('40000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', 1);
+
+          insert into public.tasks (id, workspace_id, test_version_id, ordinal, title)
+            values ('45000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', 1, 'QA Task');
+
           insert into public.participants (id, workspace_id, test_id, anonymous_key)
             values ('50000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000099');
-          insert into public.sessions (id, workspace_id, test_version_id, participant_id, consent_version, consented_at)
-            values ('60000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001', 'v1', now());
-          insert into public.events (event_id, workspace_id, session_id, idempotency_key, event_name, event_layer, source, occurred_at, sequence)
-            values ('70000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', 'idem-1', 'session_started', 'raw', 'runner', now(), 1);
+
+          insert into public.sessions (id, workspace_id, test_id, test_version_id, participant_id, consent_version, consented_at)
+            values ('60000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001', 'v1', now());
+
+          insert into public.events (
+            event_id, workspace_id, session_id, participant_id, test_id, test_version_id,
+            task_id, screen_id, idempotency_key, event_name, event_layer, source,
+            schema_version, occurred_at, sequence
+          ) values (
+            '70000000-0000-0000-0000-000000000001',
+            '10000000-0000-0000-0000-000000000001',
+            '60000000-0000-0000-0000-000000000001',
+            '50000000-0000-0000-0000-000000000001',
+            '30000000-0000-0000-0000-000000000001',
+            '40000000-0000-0000-0000-000000000001',
+            '45000000-0000-0000-0000-000000000001',
+            'screen-a',
+            'idem-1',
+            'session_started',
+            'raw',
+            'runner',
+            2,
+            now(),
+            1
+          );
           SQL
 
-          if psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "insert into public.events (event_id, workspace_id, session_id, idempotency_key, event_name, event_layer, source, occurred_at, sequence) values ('70000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', 'idem-1', 'session_started', 'raw', 'runner', now(), 2);"; then
+      - name: Verify numeric schema version contract
+        run: |
+          test "$(psql -h 127.0.0.1 -U postgres -d postgres -Atc "select event_schema_version from public.test_versions where id='40000000-0000-0000-0000-000000000001';")" = "2"
+          test "$(psql -h 127.0.0.1 -U postgres -d postgres -Atc "select schema_version from public.events where event_id='70000000-0000-0000-0000-000000000001';")" = "2"
+
+      - name: Verify event dedupe indexes
+        run: |
+          if psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "insert into public.events (event_id, workspace_id, session_id, participant_id, test_id, test_version_id, task_id, idempotency_key, event_name, event_layer, source, schema_version, occurred_at, sequence) values ('70000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', '45000000-0000-0000-0000-000000000001', 'idem-1', 'session_started', 'raw', 'runner', 2, now(), 2);"; then
             echo "duplicate idempotency key unexpectedly succeeded"
             exit 1
           fi
 
-          if psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "insert into public.events (event_id, workspace_id, session_id, idempotency_key, event_name, event_layer, source, occurred_at, sequence) values ('70000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', 'idem-2', 'screen_view', 'raw', 'runner', now(), 1);"; then
+          if psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "insert into public.events (event_id, workspace_id, session_id, participant_id, test_id, test_version_id, task_id, idempotency_key, event_name, event_layer, source, schema_version, occurred_at, sequence) values ('70000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', '45000000-0000-0000-0000-000000000001', 'idem-2', 'screen_view', 'raw', 'runner', 2, now(), 1);"; then
             echo "duplicate raw sequence unexpectedly succeeded"
+            exit 1
+          fi
+
+      - name: Verify cross-workspace writes are rejected structurally
+        run: |
+          if psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "insert into public.tests (workspace_id, project_id, title) values ('10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000001', 'Cross Tenant Test');"; then
+            echo "cross-workspace project/test relation unexpectedly succeeded"
+            exit 1
+          fi
+
+          if psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "insert into public.events (event_id, workspace_id, session_id, participant_id, test_id, test_version_id, task_id, idempotency_key, event_name, event_layer, source, schema_version, occurred_at, sequence) values ('70000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', '45000000-0000-0000-0000-000000000001', 'cross-tenant', 'screen_view', 'raw', 'runner', 2, now(), 2);"; then
+            echo "cross-workspace event/session relation unexpectedly succeeded"
             exit 1
           fi
