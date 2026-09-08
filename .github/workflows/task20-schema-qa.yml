@@ -9,11 +9,6 @@ on:
       - "docs/database-schema.md"
       - ".github/workflows/task20-schema-qa.yml"
   pull_request:
-    paths:
-      - "supabase/migrations/**"
-      - "tests/database-schema.test.ts"
-      - "docs/database-schema.md"
-      - ".github/workflows/task20-schema-qa.yml"
   workflow_dispatch:
 
 permissions:
