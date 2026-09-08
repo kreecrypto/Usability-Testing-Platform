@@ -23,5 +23,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Verify design-system coverage and tokens
-        run: node scripts/check-design-system.mjs
+      - name: Verify screen and state inventory
+        run: node scripts/check-design-system.mjs inventory
+      - name: Verify semantic tokens
+        run: node scripts/check-design-system.mjs tokens
+      - name: Verify DS-02 through DS-08 baseline
+        run: node scripts/check-design-system.mjs baseline
+      - name: Verify accessibility matrix
+        run: node scripts/check-design-system.mjs accessibility
