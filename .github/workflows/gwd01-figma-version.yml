@@ -1,0 +1,24 @@
+name: GWD-01 Figma version pin
+
+on:
+  pull_request:
+    paths:
+      - 'src/lib/figma/version-pin.ts'
+      - 'tests/figma-version-pin.test.ts'
+      - 'docs/figma-version-pin.md'
+      - '.github/workflows/gwd01-figma-version.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  version-pin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.20.0'
+      - name: Verify immutable Figma version contract
+        run: node --test tests/figma-version-pin.test.ts
