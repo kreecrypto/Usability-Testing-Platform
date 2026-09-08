@@ -1,12 +1,22 @@
 name: GWD-01 Figma version pin
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/lib/figma/version-pin.ts'
+      - 'tests/figma-version-pin.test.ts'
+      - 'docs/figma-version-pin.md'
+      - '.github/workflows/gwd01-figma-version.yml'
+      - 'tsconfig.json'
   pull_request:
     paths:
       - 'src/lib/figma/version-pin.ts'
       - 'tests/figma-version-pin.test.ts'
       - 'docs/figma-version-pin.md'
       - '.github/workflows/gwd01-figma-version.yml'
+      - 'tsconfig.json'
   workflow_dispatch:
 
 permissions:
