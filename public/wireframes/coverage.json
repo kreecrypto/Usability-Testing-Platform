@@ -1,0 +1,700 @@
+[
+  {
+    "id": "S01",
+    "batch": "A",
+    "name": "Login",
+    "flow": "Entry",
+    "action": "Sign in",
+    "target": "S03",
+    "states": [
+      "Default",
+      "Loading",
+      "Auth Error"
+    ],
+    "note": "บัญชีเดิมเข้า Home; บัญชีที่ยังไม่มี Workspace ไป S02 หลังยืนยันตัวตน ไม่มีข้อมูลจริงถูกส่งจาก Wireframe"
+  },
+  {
+    "id": "S02",
+    "batch": "A",
+    "name": "Create Workspace",
+    "flow": "Entry",
+    "action": "Create workspace",
+    "target": "S03",
+    "states": [
+      "Default",
+      "Validation",
+      "Submit Loading",
+      "Error"
+    ],
+    "note": "ชื่อ Workspace จำเป็น; รักษาค่าที่กรอกไว้เมื่อส่งไม่สำเร็จ"
+  },
+  {
+    "id": "S03",
+    "batch": "A",
+    "name": "Home",
+    "flow": "R1",
+    "action": "Create project",
+    "target": "S05",
+    "states": [
+      "Default",
+      "Empty",
+      "Loading",
+      "Error"
+    ],
+    "note": "Empty state เริ่มสร้าง Project ได้; เรียงงานล่าสุดเหนือผลลัพธ์ ไม่แสดงตัวเลขศูนย์แทนข้อมูลที่โหลดไม่สำเร็จ"
+  },
+  {
+    "id": "S04",
+    "batch": "A",
+    "name": "Projects Index",
+    "flow": "R1",
+    "action": "Create project",
+    "target": "S05",
+    "states": [
+      "Default",
+      "Empty",
+      "Search/Filter",
+      "Loading",
+      "Error"
+    ],
+    "note": "ค้นหาภายใน Workspace; ไม่พบผลลัพธ์ต้องมี Clear search โดยไม่สร้าง Project ใหม่"
+  },
+  {
+    "id": "S05",
+    "batch": "A",
+    "name": "Create Project",
+    "flow": "R1",
+    "action": "Create project",
+    "target": "S06",
+    "states": [
+      "Default",
+      "Validation",
+      "Loading",
+      "Error"
+    ],
+    "note": "ชื่อจำเป็น คำอธิบายเลือกกรอกได้; Cancel กลับ Projects"
+  },
+  {
+    "id": "S06",
+    "batch": "A",
+    "name": "Project Overview",
+    "flow": "R1/R2/R8",
+    "action": "Create test",
+    "target": "S08",
+    "states": [
+      "Default",
+      "Empty Tests",
+      "Empty Findings",
+      "Loading"
+    ],
+    "note": "Test กับ Finding มี empty state แยกกัน; สรุปผลต้องเลือก Published version"
+  },
+  {
+    "id": "S07",
+    "batch": "A",
+    "name": "Tests Index",
+    "flow": "R2",
+    "action": "Create test",
+    "target": "S08",
+    "states": [
+      "Draft",
+      "Published",
+      "Closed",
+      "Empty",
+      "Loading"
+    ],
+    "note": "Filter แยก Draft, Published, Closed; เปิด Draft ไป Build ส่วน Published ไป Results"
+  },
+  {
+    "id": "S08",
+    "batch": "A",
+    "name": "Create Test",
+    "flow": "R2",
+    "action": "Create draft",
+    "target": "S09",
+    "states": [
+      "Test-type selection",
+      "Validation",
+      "Loading"
+    ],
+    "note": "V1 เปิดเฉพาะ Prototype test; สร้าง Draft ก่อนนำเข้า Figma"
+  },
+  {
+    "id": "S09",
+    "batch": "A",
+    "name": "Test Build Workspace",
+    "flow": "R3/R4",
+    "action": "Review validation",
+    "target": "S16",
+    "states": [
+      "Draft",
+      "Incomplete",
+      "Validating",
+      "Ready",
+      "Permission Restricted"
+    ],
+    "note": "สามส่วน: ลำดับ Test, Editor, Validation. Product Viewer อ่านอย่างเดียว ไม่เปิดปุ่มแก้ไข"
+  },
+  {
+    "id": "S10",
+    "batch": "B",
+    "name": "Figma Connect / Import",
+    "flow": "R3",
+    "action": "Check access",
+    "target": "S11",
+    "states": [
+      "Empty",
+      "URL Entered",
+      "Connecting",
+      "Invalid URL",
+      "Auth Error"
+    ],
+    "note": "ไม่เดา URL ที่ผิด; แสดงตำแหน่งแก้ไขและ retry หลัง reconnect โดยรักษา URL"
+  },
+  {
+    "id": "S11",
+    "batch": "B",
+    "name": "Figma Access Preflight",
+    "flow": "R3/R6",
+    "action": "Select start point",
+    "target": "S12",
+    "states": [
+      "Pass",
+      "Private/Login Required",
+      "Password",
+      "Provider Error"
+    ],
+    "note": "Publish ถูกบล็อกเมื่อ anonymous access ไม่ผ่าน; ปัญหา provider แยกจาก usability failure"
+  },
+  {
+    "id": "S12",
+    "batch": "B",
+    "name": "Prototype / Start Point",
+    "flow": "R3",
+    "action": "Save start point",
+    "target": "S13",
+    "states": [
+      "Frame Selected",
+      "Loading",
+      "Missing Start",
+      "Unsupported"
+    ],
+    "note": "เลือก start frame ตาม canonical frame ID; Unsupported ห้ามใช้ thumbnail หลอกว่าใช้งานได้"
+  },
+  {
+    "id": "S13",
+    "batch": "B",
+    "name": "Task Editor",
+    "flow": "R4",
+    "action": "Save task",
+    "target": "S14",
+    "states": [
+      "Default",
+      "Validation Error",
+      "Multiple Tasks",
+      "Reorder"
+    ],
+    "note": "Task Scenario ไม่เผย Expected Path; reorder มีปุ่ม keyboard แทน drag-only"
+  },
+  {
+    "id": "S14",
+    "batch": "B",
+    "name": "Success / Failure Rules",
+    "flow": "R4",
+    "action": "Save rules",
+    "target": "S15",
+    "states": [
+      "Direct Rule",
+      "Failure Rule",
+      "Timeout",
+      "Missing Rule",
+      "Conflict"
+    ],
+    "note": "Success/Failure frame ซ้ำกันเป็น conflict; first terminal outcome wins; Expected Path เป็นข้อมูลฝั่ง researcher เท่านั้น"
+  },
+  {
+    "id": "S15",
+    "batch": "B",
+    "name": "Question Editor",
+    "flow": "R4",
+    "action": "Save feedback",
+    "target": "S16",
+    "states": [
+      "SEQ",
+      "Open Feedback",
+      "Optional/Required",
+      "Validation"
+    ],
+    "note": "SEQ sample scale v1 = 1 difficult → 7 easy; Open feedback restricted; Consent/Thank-you copy อยู่ใน Build flow"
+  },
+  {
+    "id": "S16",
+    "batch": "B",
+    "name": "Build Validation Summary",
+    "flow": "R4/R6",
+    "action": "Preview draft",
+    "target": "S17",
+    "states": [
+      "Pass",
+      "Warning",
+      "Publish Blocked"
+    ],
+    "note": "ทุก error เชื่อมจุดแก้; Warning ไม่ปิดกั้นจนกว่าเป็น required configuration; Publish ไม่ข้าม Gate"
+  },
+  {
+    "id": "S17",
+    "batch": "C",
+    "name": "Preview Setup",
+    "flow": "R5",
+    "action": "Start preview",
+    "target": "S18",
+    "states": [
+      "Ready",
+      "Invalid Draft",
+      "Provider Blocked"
+    ],
+    "note": "Preview ใช้ Draft และไม่เข้า production Results; ถ้า provider blocked ให้กลับแก้ prototype"
+  },
+  {
+    "id": "S18",
+    "batch": "C",
+    "name": "Preview Runner",
+    "flow": "R5",
+    "action": "Simulate task end",
+    "target": "P06",
+    "states": [
+      "Running",
+      "Success Simulation",
+      "Error",
+      "Exit Preview"
+    ],
+    "note": "Preview banner อยู่ตลอด; จำลอง outcome ได้เฉพาะ researcher; exit กลับ Build"
+  },
+  {
+    "id": "S19",
+    "batch": "C",
+    "name": "Publish Checklist",
+    "flow": "R6",
+    "action": "Publish version",
+    "target": "S20",
+    "states": [
+      "Pass",
+      "Checking",
+      "Blocked",
+      "Version Changed"
+    ],
+    "note": "ต้องผ่าน access, pin Figma version, consent, frozen rules/config. Version Changed ต้อง rerun checklist; snapshot เดิมไม่ถูกแก้"
+  },
+  {
+    "id": "S20",
+    "batch": "C",
+    "name": "Share / Published",
+    "flow": "R6",
+    "action": "View results",
+    "target": "S22",
+    "states": [
+      "Published",
+      "Copy Link",
+      "Closed",
+      "Republish/New Version"
+    ],
+    "note": "Copy link เป็นตัวอย่างเท่านั้น; ปิด test แล้วห้ามสร้าง session ใหม่; Retest สร้าง Draft ใหม่"
+  },
+  {
+    "id": "S21",
+    "batch": "D",
+    "name": "Results Index",
+    "flow": "R7",
+    "action": "Open study results",
+    "target": "S22",
+    "states": [
+      "Default",
+      "Empty",
+      "Loading",
+      "Filter"
+    ],
+    "note": "เลือก study และ version ก่อนอ่านผล; ไม่รวมต่าง version โดยปริยาย"
+  },
+  {
+    "id": "S22",
+    "batch": "D",
+    "name": "Results Overview",
+    "flow": "R7",
+    "action": "Inspect task",
+    "target": "S23",
+    "states": [
+      "Ready",
+      "No Data",
+      "Partial Data",
+      "Technical-blocked Warning"
+    ],
+    "note": "No data แสดง — ไม่ใช่ 0%; sample sizes และ technical blocked คงอยู่; sample fixture ไม่ใช่ข้อมูลผู้ใช้"
+  },
+  {
+    "id": "S23",
+    "batch": "D",
+    "name": "Task Detail",
+    "flow": "R7",
+    "action": "Inspect paths",
+    "target": "S24",
+    "states": [
+      "Ready",
+      "Low Sample",
+      "No Eligible Sessions"
+    ],
+    "note": "เวลา headline มาจาก successful tasks เท่านั้น; no eligible = —; outcome รวม 22 ไม่รวม technical2"
+  },
+  {
+    "id": "S24",
+    "batch": "D",
+    "name": "Path Analysis",
+    "flow": "R7",
+    "action": "Inspect heatmap",
+    "target": "S25",
+    "states": [
+      "Expected vs Actual",
+      "No Path Data",
+      "Unsupported Evidence"
+    ],
+    "note": "Path จาก ordered canonical screen_view; ไม่สมมติ browser back เป็น raw Figma event; missing evidence แสดง unsupported"
+  },
+  {
+    "id": "S25",
+    "batch": "D",
+    "name": "Heatmap",
+    "flow": "R7",
+    "action": "Inspect sessions",
+    "target": "S26",
+    "states": [
+      "Ready",
+      "No Clicks",
+      "Unsupported Provider/Transform",
+      "Filtered"
+    ],
+    "note": "พิกัดอ้างอิง canonical frame เดียวกัน; ไม่ overlay เมื่อ transform unsupported; grayscale dots เป็น placeholder"
+  },
+  {
+    "id": "S26",
+    "batch": "D",
+    "name": "Sessions List",
+    "flow": "R7",
+    "action": "Open session",
+    "target": "S27",
+    "states": [
+      "Ready",
+      "Empty",
+      "Restricted",
+      "Filter"
+    ],
+    "note": "Viewer ถูกจำกัด raw/session identifiers; technical outcome filter แยกจาก failures"
+  },
+  {
+    "id": "S27",
+    "batch": "D",
+    "name": "Session Detail",
+    "flow": "R7",
+    "action": "Create finding",
+    "target": "S29",
+    "states": [
+      "Timeline",
+      "Redacted Fields",
+      "Evidence Deleted",
+      "Technical Blocked"
+    ],
+    "note": "PII/feedback ตามสิทธิ์; evidence deleted ไม่คง snapshot; technical session ไม่ถูกเรียกว่า failed"
+  },
+  {
+    "id": "S28",
+    "batch": "E",
+    "name": "Findings List",
+    "flow": "R8",
+    "action": "Create finding",
+    "target": "S29",
+    "states": [
+      "Open",
+      "Empty",
+      "Resolved",
+      "Filter"
+    ],
+    "note": "Finding เป็น researcher interpretation พร้อม evidence; technical blocks แยก operation ไม่ปน UX severity"
+  },
+  {
+    "id": "S29",
+    "batch": "E",
+    "name": "Finding Detail / Editor",
+    "flow": "R8",
+    "action": "Save finding",
+    "target": "S28",
+    "states": [
+      "Create",
+      "Edit",
+      "Evidence Linked",
+      "Evidence Deleted"
+    ],
+    "note": "Evidence link ผูก testVersion/task/screen; deleted แสดง unavailable; ไม่ใช้ feedback ที่ถูกลบสร้าง snapshot"
+  },
+  {
+    "id": "S30",
+    "batch": "E",
+    "name": "Retest Comparison",
+    "flow": "R9/R10",
+    "action": "Create retest draft",
+    "target": "S09",
+    "states": [
+      "Ready",
+      "No Baseline",
+      "Low Sample",
+      "Technical-blocked Context"
+    ],
+    "note": "delta completion ใช้ percentage points; ไม่อ้าง significance; baseline/retest version+N+blocked ต้องเห็น"
+  },
+  {
+    "id": "S31",
+    "batch": "G",
+    "name": "Participants / Sessions Index",
+    "flow": "Privacy Ops",
+    "action": "Review deletion scope",
+    "target": "S32",
+    "states": [
+      "Default",
+      "Restricted",
+      "Empty",
+      "Search"
+    ],
+    "note": "จำกัดข้อมูลอยู่ใน Test/Workspace; ใช้ opaque ID ไม่เก็บ fingerprint; Product Viewer ไม่เห็น identifiers"
+  },
+  {
+    "id": "S32",
+    "batch": "G",
+    "name": "Delete Data Workflow",
+    "flow": "Privacy Ops",
+    "action": "Confirm deletion (demo)",
+    "target": "S32",
+    "states": [
+      "Confirm Scope",
+      "Processing",
+      "Complete",
+      "Error"
+    ],
+    "note": "ยืนยันขอบเขตก่อนลบ; derived/cache ต้อง recompute; error ไม่แจ้ง complete; Wireframe ไม่มีการลบข้อมูลจริง"
+  },
+  {
+    "id": "S33",
+    "batch": "G",
+    "name": "Workspace Settings",
+    "flow": "Settings",
+    "action": "Save workspace",
+    "target": "S33",
+    "states": [
+      "Default",
+      "Permission Denied"
+    ],
+    "note": "Admin authorization ต่างจาก Researcher persona; non-admin restricted ที่ UI และ API ใน implementation"
+  },
+  {
+    "id": "S34",
+    "batch": "G",
+    "name": "Members & Roles",
+    "flow": "Settings",
+    "action": "Invite member (demo)",
+    "target": "S34",
+    "states": [
+      "Default",
+      "Invite/Edit",
+      "Restricted"
+    ],
+    "note": "Owner/Admin จัดการสิทธิ์; Product Viewer read-only และไม่เห็น raw identifiers"
+  },
+  {
+    "id": "S35",
+    "batch": "G",
+    "name": "Integrations / Figma",
+    "flow": "Settings",
+    "action": "Connect Figma (demo)",
+    "target": "S35",
+    "states": [
+      "Disconnected",
+      "Connecting",
+      "Connected",
+      "Error"
+    ],
+    "note": "Connection ไม่เท่ากับ participant access; recheck ต่อ test; OAuth/config implementation แยก task"
+  },
+  {
+    "id": "S36",
+    "batch": "G",
+    "name": "Privacy & Retention",
+    "flow": "Settings",
+    "action": "Review policy change",
+    "target": "S36",
+    "states": [
+      "Default 90d",
+      "Change Pending",
+      "Validation",
+      "Restricted"
+    ],
+    "note": "90 วันหลัง session completion; แสดง proposed change แต่ policy config future capability ต้องไม่อ้างว่า backend ทำแล้ว"
+  },
+  {
+    "id": "P01",
+    "batch": "F",
+    "name": "Access Check",
+    "flow": "P1",
+    "action": "Continue",
+    "target": "P02",
+    "states": [
+      "Valid",
+      "Loading"
+    ],
+    "note": "ตรวจ published token/version/availability ก่อนสร้าง task session; valid access ไม่ใช่ consent"
+  },
+  {
+    "id": "P02",
+    "batch": "F",
+    "name": "Consent",
+    "flow": "P2",
+    "action": "ยินยอมและเริ่ม",
+    "target": "P03",
+    "states": [
+      "Default",
+      "Accepting",
+      "Declined"
+    ],
+    "note": "Accept ก่อน behavioral tracking; Decline จบโดยไม่สร้าง eligible task; binding consent v1/testVersion v1"
+  },
+  {
+    "id": "P03",
+    "batch": "F",
+    "name": "Task Intro",
+    "flow": "P3",
+    "action": "เริ่มงาน",
+    "target": "P04",
+    "states": [
+      "Default",
+      "Multi-task Progress"
+    ],
+    "note": "ไม่เปิดเผย target หรือ path; เริ่มเวลาเมื่อกด Start Task ไม่ใช่ตอนอ่าน"
+  },
+  {
+    "id": "P04",
+    "batch": "F",
+    "name": "Prototype Runner",
+    "flow": "P4/P5",
+    "action": "หยุดทำงานนี้",
+    "target": "P05",
+    "states": [
+      "Running",
+      "Buffering",
+      "Provider Loading"
+    ],
+    "note": "Chrome เล็กกว่า prototype; ไม่มี expected path/success labels; การจำลองจบงานอยู่ใน review toolbar เท่านั้น"
+  },
+  {
+    "id": "P05",
+    "batch": "F",
+    "name": "Give Up Confirmation",
+    "flow": "P5",
+    "action": "ยืนยันหยุดงานนี้",
+    "target": "P06",
+    "states": [
+      "Confirm",
+      "Cancel"
+    ],
+    "note": "Confirm สร้าง give_up เมื่อ task active เท่านั้น; Cancel กลับ runner เดิม เวลาไม่ reset"
+  },
+  {
+    "id": "P06",
+    "batch": "F",
+    "name": "Post-task Feedback",
+    "flow": "P6",
+    "action": "ส่งความคิดเห็น",
+    "target": "P07",
+    "states": [
+      "SEQ",
+      "Open Feedback",
+      "Validation"
+    ],
+    "note": "Technical blocked ไป P10 ไม่บังคับ SEQ; ข้อมูลส่วนตัวใน open feedback ถือเป็น restricted"
+  },
+  {
+    "id": "P07",
+    "batch": "F",
+    "name": "Next Task Transition",
+    "flow": "P7",
+    "action": "ดูงานถัดไป",
+    "target": "P03",
+    "states": [
+      "Ready",
+      "Loading"
+    ],
+    "note": "ไป Task Intro ใหม่ก่อนเริ่มเวลา; ถ้าไม่มีงานแล้วไป Complete; demo toolbar เลือกจบ study ได้"
+  },
+  {
+    "id": "P08",
+    "batch": "F",
+    "name": "Complete / Thank You",
+    "flow": "P8",
+    "action": "ดูรหัสอ้างอิง",
+    "target": "P08",
+    "states": [
+      "Complete"
+    ],
+    "note": "จบ session เพียงครั้งเดียว; ไม่มี researcher navigation; opaque reference ใช้ติดต่อขอลบข้อมูล"
+  },
+  {
+    "id": "P09",
+    "batch": "F",
+    "name": "Invalid / Closed Link",
+    "flow": "Exception",
+    "action": "ดูคำแนะนำ",
+    "target": "P09",
+    "states": [
+      "Invalid",
+      "Expired",
+      "Closed"
+    ],
+    "note": "ไม่สร้าง usability session; ไม่มีปุ่มไป consent เมื่อ test unavailable"
+  },
+  {
+    "id": "P10",
+    "batch": "F",
+    "name": "Technical Blocked",
+    "flow": "Exception",
+    "action": "ดูขั้นตอนถัดไป",
+    "target": "P10",
+    "states": [
+      "Login Required",
+      "Password",
+      "Permission",
+      "Provider Error"
+    ],
+    "note": "Operational error ไม่ใช่ task failure; retry ไม่เปิด terminal task เดิมซ้ำ; ไม่บังคับ usability SEQ"
+  },
+  {
+    "id": "P11",
+    "batch": "F",
+    "name": "Timeout",
+    "flow": "Exception",
+    "action": "ไปให้ความคิดเห็น",
+    "target": "P06",
+    "states": [
+      "Timed Out",
+      "Continue per config"
+    ],
+    "note": "เวลาเป็นไปตาม rule; terminal เกิดครั้งเดียว; Continue ไป feedback/next ตาม study config"
+  },
+  {
+    "id": "P12",
+    "batch": "F",
+    "name": "Recovery / Resume",
+    "flow": "Exception",
+    "action": "ลองเชื่อมต่ออีกครั้ง",
+    "target": "P12",
+    "states": [
+      "Reconnect",
+      "Resume Success",
+      "Resume Failed"
+    ],
+    "note": "Restore session/task/version เดิมใน recovery window; ไม่สรุป abandon ทันทีเมื่อ network หลุด"
+  }
+]
