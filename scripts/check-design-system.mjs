@@ -111,7 +111,7 @@ run('baseline', () => {
 
 run('accessibility', () => {
   const accessibilitySignals = [
-    'Focus Visible',
+    'focus-visible',
     'keyboard',
     'color alone',
     'Loading',
