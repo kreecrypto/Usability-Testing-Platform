@@ -1,0 +1,64 @@
+name: GWD-11 Build QA
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gwd11-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pinned Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Verify pinned runtime and dependency declarations
+        run: |
+          test "$(node --version)" = "v$(cat .nvmrc)"
+          node - <<'NODE'
+          const pkg = require('./package.json');
+          const bad = [];
+          for (const group of ['dependencies', 'devDependencies']) {
+            for (const [name, version] of Object.entries(pkg[group] || {})) {
+              if (/^(latest|next|\*|\^|~)/.test(version)) bad.push(`${group}.${name}=${version}`);
+            }
+          }
+          if (bad.length) {
+            console.error(`Floating versions are forbidden:\n${bad.join('\n')}`);
+            process.exit(1);
+          }
+          if (pkg.engines?.node !== '>=20.9.0') {
+            console.error(`Unexpected Node engine: ${pkg.engines?.node}`);
+            process.exit(1);
+          }
+          NODE
+
+      - name: Install from committed lockfile
+        run: npm ci --no-audit --no-fund
+
+      - name: Build
+        run: npm run build
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Verify lockfile stayed deterministic
+        run: git diff --exit-code -- package-lock.json
