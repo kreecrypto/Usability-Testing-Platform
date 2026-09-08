@@ -49,13 +49,25 @@ const pageSignals = [
   'ScreenContent',
   'ParticipantContent',
   'StateNotice',
-  'Technical Blocked',
   'Heatmap',
   'Retest comparison',
-  'Give Up Confirmation',
 ];
 for (const signal of pageSignals) {
   if (!page.includes(signal)) fail(`high-fi page missing signal: ${signal}`);
+}
+
+// Participant-only screens are data-driven from screen-component-map.json. Verify
+// their canonical IDs/names in the map and separately verify that the high-fi page
+// renders ParticipantContent from screenMap.screens. Literal names do not need to
+// be duplicated in page.tsx, otherwise this check creates false negatives.
+const requiredMappedParticipantScreens = [
+  ['P05', 'Give Up Confirmation'],
+  ['P10', 'Technical Blocked'],
+];
+for (const [id, name] of requiredMappedParticipantScreens) {
+  const screen = map.screens.find((candidate) => candidate.id === id);
+  if (!screen) fail(`missing canonical participant screen ${id}`);
+  else if (screen.name !== name) fail(`${id} expected name ${name}, got ${screen.name}`);
 }
 
 const cssSignals = [
@@ -103,6 +115,7 @@ if (!page.includes('no production-data claim')) {
 if (!process.exitCode) {
   console.log(`PASS high-fi inventory: ${screenCount} screens / ${stateCount} states`);
   console.log('PASS researcher + participant renderer signals');
+  console.log('PASS canonical participant screens: P05 Give Up Confirmation / P10 Technical Blocked');
   console.log('PASS desktop/mobile responsive signals');
   console.log('PASS focus, disabled, loading, empty, error, restricted and reduced-motion signals');
   console.log('PASS Task 14 review-artifact boundary');
