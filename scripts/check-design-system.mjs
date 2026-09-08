@@ -91,7 +91,7 @@ for (const section of baselineSections) {
 }
 
 const accessibilitySignals = [
-  'Focus Visible',
+  'focus-visible',
   'keyboard',
   'color alone',
   'Loading',
