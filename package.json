@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "check:design-system": "node scripts/check-design-system.mjs"
+    "check:design-system": "node scripts/check-design-system.mjs",
+    "check:high-fi": "node scripts/check-high-fi.mjs"
   },
   "dependencies": {
     "next": "latest",
