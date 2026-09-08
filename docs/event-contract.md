@@ -1,81 +1,173 @@
 # Event Tracking Contract
 
-## Goals
+## Contract status
 
-The event contract is the canonical interface between Participant Runner, Event Collector and Analytics.
+**Canonical contract: v2**
+
+This document is the single engineering contract between Participant Runner, prototype adapters, Event Collector, rule engine and Analytics.
+
+The contract intentionally separates **raw canonical events** from **derived events** so analytics can always be recomputed from immutable primary evidence.
+
+## Core invariants
 
 Events must be:
 
-- ordered by client timestamp and ingest timestamp
+- attributable to an exact session and published test version
 - idempotent
 - versioned
-- attributable to a session and test version
+- ordered deterministically
+- immutable after acceptance
 - reproducible for analytics
 
-## Required envelope
+`time_on_task` and `time_on_screen` are **metrics, not events**.
 
-```ts
-interface TrackingEvent {
-  schemaVersion: 1;
-  eventId: string;
-  idempotencyKey: string;
-  eventType: EventType;
-  timestamp: string;
-  sessionId: string;
-  participantId: string;
-  testId: string;
-  testVersionId: string;
-  taskId?: string;
-  screenId?: string;
-  sequence: number;
-  metadata?: Record<string, unknown>;
-}
-```
+## Timestamp semantics
 
-## Lifecycle events
+Every primary event carries:
+
+- `occurredAt` — when the interaction/lifecycle transition happened at the source, RFC 3339 UTC
+- `sequence` — monotonically increasing integer within a session for raw canonical events
+
+After ingestion the collector adds:
+
+- `receivedAt` — server-side timestamp when the event was accepted
+
+Ordering rule for raw events:
+
+1. `sequence`
+2. `occurredAt`
+3. `receivedAt` only as a diagnostic tiebreaker
+
+Participant input must never be trusted to set `receivedAt`.
+
+## Raw canonical events
+
+Raw means the first normalized, immutable evidence accepted by our platform. Provider-native events may be adapted into these names before persistence.
+
+### Session lifecycle
 
 ```text
 session_started
 session_completed
 session_abandoned
+session_technical_blocked
+```
 
+### Task lifecycle / explicit terminal actions
+
+```text
 task_started
-task_success
-task_failed
 task_give_up
 task_timeout
 task_abandoned
+task_technical_blocked
 ```
 
-## Navigation events
+### Prototype / interaction evidence
 
 ```text
 screen_view
-frame_change
-back
-forward
-```
-
-## Interaction events
-
-```text
-click
-tap
-misclick
-rage_click
+pointer_interaction
 scroll
 ```
 
-## Question events
+`scroll` is emitted only when the active prototype provider can supply trustworthy canonical scroll evidence. Provider capability is defined separately in the capability matrix.
+
+### Question evidence
 
 ```text
 question_viewed
 question_answered
 ```
 
-## Coordinate contract
+## Derived events
 
-Click/tap events should store normalized coordinates so heatmaps remain valid across viewport sizes.
+Derived events are produced after raw ingestion and must never replace or mutate raw evidence.
+
+```text
+task_success
+task_failed
+misclick
+rage_click
+backtrack
+```
+
+Every derived event must include:
+
+- `derivedFromEventIds`
+- `ruleVersion`
+- `source = rules_engine | analytics`
+
+### Success classification
+
+`task_success` carries one of:
+
+```text
+success_direct
+success_indirect
+```
+
+Direct vs indirect success is determined by a versioned task-success rule, not by a separate client event name.
+
+## Terminal task outcomes
+
+A started task has at most one canonical terminal outcome:
+
+```text
+success_direct
+success_indirect
+failed
+give_up
+timeout
+abandoned
+technical_blocked
+```
+
+Mapping:
+
+| Outcome | Canonical evidence |
+| --- | --- |
+| `success_direct` | derived `task_success` |
+| `success_indirect` | derived `task_success` |
+| `failed` | derived `task_failed` |
+| `give_up` | raw `task_give_up` |
+| `timeout` | raw `task_timeout` |
+| `abandoned` | raw `task_abandoned` |
+| `technical_blocked` | raw `task_technical_blocked` |
+
+`technical_blocked` is an operational outcome, not a usability failure. It is excluded from usability-rate denominators.
+
+Once a canonical terminal outcome is assigned, duplicate or later terminal signals must not change it unless an explicit correction workflow is implemented.
+
+## Required raw envelope
+
+```ts
+interface RawTrackingEvent {
+  schemaVersion: 2;
+  eventId: string;
+  idempotencyKey: string;
+  eventLayer: "raw";
+  source: "runner" | "prototype_adapter" | "system";
+  eventType: RawEventType;
+  occurredAt: string;
+  sequence: number;
+  sessionId: string;
+  participantId: string;
+  testId: string;
+  testVersionId: string;
+  taskId?: string;
+  screenId?: string;
+  metadata?: Record<string, unknown>;
+}
+```
+
+The persisted accepted record additionally contains collector-assigned `receivedAt`.
+
+## Pointer / coordinate contract
+
+`pointer_interaction` is the provider-neutral interaction event used as the primary input for heatmaps and misclick analysis.
+
+At minimum, usable coordinate evidence should support normalized coordinates:
 
 ```ts
 interface PointMetadata {
@@ -92,11 +184,15 @@ interface PointMetadata {
 }
 ```
 
-Do not derive heatmaps from raw CSS pixels alone.
+Provider-specific fields such as Figma handled state, target node, scrolling frame and offset belong in adapter metadata and are finalized by GWD-03/GWD-05.
 
-## Navigation contract
+Do not derive heatmaps from raw browser CSS pixels alone.
 
-Frame/screen transitions should carry:
+## Screen / path contract
+
+`screen_view` is the provider-neutral canonical screen/frame transition event.
+
+It should carry enough metadata to preserve:
 
 ```text
 previousScreenId
@@ -104,34 +200,33 @@ currentScreenId
 navigationSource
 ```
 
-This is used to reconstruct actual paths and detect detours/backtracking.
+Backtracking is derived from the ordered `screen_view` sequence. `back` / `forward` are therefore not required as universal canonical raw event types.
 
-## Terminal task rules
+## Time metrics
 
-A task has exactly one canonical terminal outcome per session:
+There are no `time_on_task` or `time_on_screen` events.
+
+### Task duration
 
 ```text
-success_direct
-success_indirect
-failed
-give_up
-timeout
-abandoned
+first canonical task terminal occurredAt - task_started.occurredAt
 ```
 
-Later duplicated terminal events must not change the canonical result unless an explicit correction workflow is implemented.
+### Screen duration
 
-## Derived events
+```text
+next screen_view.occurredAt - current screen_view.occurredAt
+```
 
-`misclick`, `rage_click` and `backtrack` may be derived after ingestion.
+For the final screen, use the first relevant task/session terminal timestamp.
 
-Keep raw interaction events immutable. Derived events must record the rule version that produced them.
+Idle-adjusted time, if introduced, must be a separately versioned derived metric and cannot mutate raw timestamps.
 
 ## Retry and idempotency
 
-Participant Runner should buffer events and upload batches.
+Each raw event needs stable `eventId` and `idempotencyKey` values. Retrying a batch must not create another accepted primary event or increment analytics twice.
 
-Each event needs a stable `eventId` / `idempotencyKey`. Retrying a batch must not increment analytics twice.
+The database must enforce uniqueness for the canonical event identity in addition to collector-side checks.
 
 ## Privacy
 
