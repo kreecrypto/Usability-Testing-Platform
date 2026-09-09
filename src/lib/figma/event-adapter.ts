@@ -72,11 +72,6 @@ function requiredString(value: unknown, field: string): string {
   return value.trim();
 }
 
-function optionalString(value: unknown, field: string): string | undefined {
-  if (value === undefined || value === null) return undefined;
-  return requiredString(value, field);
-}
-
 function requiredBoolean(value: unknown, field: string): boolean {
   if (typeof value !== "boolean") {
     throw new FigmaAdapterValidationError(field, `${field} must be boolean`);
@@ -84,8 +79,7 @@ function requiredBoolean(value: unknown, field: string): boolean {
   return value;
 }
 
-function optionalPoint(value: unknown, field: string): Readonly<{ x: number; y: number }> | undefined {
-  if (value === undefined || value === null) return undefined;
+function requiredPoint(value: unknown, field: string): Readonly<{ x: number; y: number }> {
   const point = requiredRecord(value, field);
   if (typeof point.x !== "number" || !Number.isFinite(point.x)) {
     throw new FigmaAdapterValidationError(`${field}.x`, `${field}.x must be finite`);
@@ -96,8 +90,7 @@ function optionalPoint(value: unknown, field: string): Readonly<{ x: number; y: 
   return Object.freeze({ x: point.x, y: point.y });
 }
 
-function optionalStateMappings(value: unknown): Readonly<Record<string, string>> | undefined {
-  if (value === undefined || value === null) return undefined;
+function requiredStateMappings(value: unknown): Readonly<Record<string, string>> {
   const record = requiredRecord(value, "stateMappings");
   const output: Record<string, string> = {};
   for (const [key, mapping] of Object.entries(record)) {
@@ -186,20 +179,20 @@ export function adaptFigmaEmbedEvent(
   if (providerEventType === "MOUSE_PRESS_OR_RELEASE") {
     const presentedNodeId = requiredString(data.presentedNodeId, "presentedNodeId");
     const handled = requiredBoolean(data.handled, "handled");
-    const targetNodeId = optionalString(data.targetNodeId, "targetNodeId");
-    const nearestScrollingFrameId = optionalString(
-      data.nearestScrollingFrameId,
-      "nearestScrollingFrameId",
-    );
-    const targetNodeMousePosition = optionalPoint(
+    const targetNodeId = requiredString(data.targetNodeId, "targetNodeId");
+    const targetNodeMousePosition = requiredPoint(
       data.targetNodeMousePosition,
       "targetNodeMousePosition",
     );
-    const nearestScrollingFrameMousePosition = optionalPoint(
+    const nearestScrollingFrameId = requiredString(
+      data.nearestScrollingFrameId,
+      "nearestScrollingFrameId",
+    );
+    const nearestScrollingFrameMousePosition = requiredPoint(
       data.nearestScrollingFrameMousePosition,
       "nearestScrollingFrameMousePosition",
     );
-    const nearestScrollingFrameOffset = optionalPoint(
+    const nearestScrollingFrameOffset = requiredPoint(
       data.nearestScrollingFrameOffset,
       "nearestScrollingFrameOffset",
     );
@@ -212,13 +205,11 @@ export function adaptFigmaEmbedEvent(
         providerEventType,
         presentedNodeId,
         handled,
-        ...(targetNodeId ? { targetNodeId } : {}),
-        ...(targetNodeMousePosition ? { targetNodeMousePosition } : {}),
-        ...(nearestScrollingFrameId ? { nearestScrollingFrameId } : {}),
-        ...(nearestScrollingFrameMousePosition
-          ? { nearestScrollingFrameMousePosition }
-          : {}),
-        ...(nearestScrollingFrameOffset ? { nearestScrollingFrameOffset } : {}),
+        targetNodeId,
+        targetNodeMousePosition,
+        nearestScrollingFrameId,
+        nearestScrollingFrameMousePosition,
+        nearestScrollingFrameOffset,
       },
       presentedNodeId,
     );
@@ -227,7 +218,7 @@ export function adaptFigmaEmbedEvent(
   if (providerEventType === "PRESENTED_NODE_CHANGED") {
     const presentedNodeId = requiredString(data.presentedNodeId, "presentedNodeId");
     const isStoredInHistory = requiredBoolean(data.isStoredInHistory, "isStoredInHistory");
-    const stateMappings = optionalStateMappings(data.stateMappings);
+    const stateMappings = requiredStateMappings(data.stateMappings);
 
     return trackingEvent(
       context,
@@ -239,7 +230,7 @@ export function adaptFigmaEmbedEvent(
         currentScreenId: presentedNodeId,
         navigationSource: "figma_presented_node_changed",
         isStoredInHistory,
-        ...(stateMappings ? { stateMappings } : {}),
+        stateMappings,
       },
       presentedNodeId,
     );
