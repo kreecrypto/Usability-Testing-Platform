@@ -55,6 +55,10 @@ export function parseFigmaNodeIdentifier(
  * tokens, or Figma REST metadata. Query parameters supplied by the prototype
  * link are preserved after validation, while parsed node/start identifiers are
  * exposed in canonical colon form for downstream mapping.
+ *
+ * `client-id` is deliberately removed from researcher-supplied links. Live
+ * Embed API mode must add the deployment-controlled Figma app client id later
+ * in the trusted preflight boundary.
  */
 export function parsePublicFigmaPrototypeUrl(
   input: string,
@@ -99,6 +103,7 @@ export function parsePublicFigmaPrototypeUrl(
 
   url.hostname = "embed.figma.com";
   url.searchParams.set("embed-host", required(embedHost, "embedHost"));
+  url.searchParams.delete("client-id");
   url.hash = "";
 
   return Object.freeze({
