@@ -1,3 +1,5 @@
+import { parseFunnelDefinition, type FunnelDefinition } from "../analytics/funnel.ts";
+
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export type PublishPreviewTask = Readonly<{
@@ -22,6 +24,7 @@ export type PublishPreview = Readonly<{
   embedUrl: string;
   fileKey: string;
   startNodeId: string;
+  funnelConfig: FunnelDefinition | null;
   tasks: readonly PublishPreviewTask[];
 }>;
 
@@ -52,6 +55,7 @@ type VersionRow = Readonly<{
   figma_file_key: string | null;
   figma_start_node_id: string | null;
   prototype_mapping: Record<string, unknown>;
+  funnel_config: unknown;
 }>;
 
 type TaskRow = Readonly<{
@@ -87,6 +91,17 @@ function mappingStrings(mapping: Record<string, unknown>): {
     !mapping.fileKey.trim()
   ) return null;
   return { sourceUrl: mapping.sourceUrl, embedUrl: mapping.embedUrl, fileKey: mapping.fileKey };
+}
+
+function cleanFunnelScreenIds(value: readonly string[]): string[] {
+  const cleaned = value.map((item) => item.trim());
+  if (cleaned.length < 2 || cleaned.some((item) => !item)) {
+    throw new PublishVersioningError("not_publishable", 400, "funnel_requires_at_least_two_screens");
+  }
+  if (new Set(cleaned).size !== cleaned.length) {
+    throw new PublishVersioningError("not_publishable", 400, "funnel_screen_ids_must_be_unique");
+  }
+  return cleaned;
 }
 
 export function createPublishVersioningStore(options: {
@@ -128,7 +143,7 @@ export function createPublishVersioningStore(options: {
         const parsed = JSON.parse(text) as Record<string, unknown>;
         if (typeof parsed.message === "string") message = parsed.message;
       } catch { /* generic */ }
-      if (/required|publishable|task/i.test(message)) {
+      if (/required|publishable|task|funnel/i.test(message)) {
         throw new PublishVersioningError("not_publishable", 409, message);
       }
       throw new PublishVersioningError("data_request_failed", 502, message);
@@ -141,7 +156,7 @@ export function createPublishVersioningStore(options: {
     const params = new URLSearchParams({
       test_id: `eq.${testId}`,
       lifecycle_status: "in.(draft,published)",
-      select: "id,test_id,version_no,lifecycle_status,figma_file_key,figma_start_node_id,prototype_mapping",
+      select: "id,test_id,version_no,lifecycle_status,figma_file_key,figma_start_node_id,prototype_mapping,funnel_config",
       order: "version_no.desc",
       limit: "1",
     });
@@ -185,8 +200,19 @@ export function createPublishVersioningStore(options: {
       embedUrl: mapping.embedUrl,
       fileKey: mapping.fileKey,
       startNodeId: version.figma_start_node_id,
+      funnelConfig: parseFunnelDefinition(version.funnel_config),
       tasks: Object.freeze(tasks),
     });
+  }
+
+  async function saveFunnel(testId: string, screenIds: readonly string[]): Promise<PublishPreview> {
+    testId = requiredTestId(testId);
+    const cleaned = cleanFunnelScreenIds(screenIds);
+    await request<string>("/rest/v1/rpc/save_draft_funnel_config", {
+      method: "POST",
+      body: JSON.stringify({ p_test_id: testId, p_screen_ids: cleaned }),
+    });
+    return preview(testId);
   }
 
   async function publish(testId: string): Promise<PublishPreview> {
@@ -207,5 +233,5 @@ export function createPublishVersioningStore(options: {
     return preview(testId);
   }
 
-  return Object.freeze({ preview, publish, createDraftFromPublished });
+  return Object.freeze({ preview, saveFunnel, publish, createDraftFromPublished });
 }
