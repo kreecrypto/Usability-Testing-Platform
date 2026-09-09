@@ -1,0 +1,258 @@
+name: Task 21 Authorization QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+      - "tests/task21-authorization.test.ts"
+      - "docs/roles-permissions.md"
+      - ".github/workflows/task21-authorization-qa.yml"
+      - ".github/workflows/task20-schema-qa.yml"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  authorization-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pinned Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Run authorization contract tests
+        run: npm test
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Create Supabase auth and role fixture
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          create schema if not exists auth;
+
+          do $$ begin
+            create role anon nologin;
+          exception when duplicate_object then null;
+          end $$;
+
+          do $$ begin
+            create role authenticated nologin;
+          exception when duplicate_object then null;
+          end $$;
+
+          do $$ begin
+            create role service_role nologin bypassrls;
+          exception when duplicate_object then null;
+          end $$;
+
+          create table if not exists auth.users (
+            id uuid primary key
+          );
+
+          create or replace function auth.uid()
+          returns uuid
+          language sql
+          stable
+          as $$
+            select (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')::uuid;
+          $$;
+
+          grant usage on schema auth to anon, authenticated, service_role;
+          grant execute on function auth.uid() to anon, authenticated, service_role;
+          SQL
+
+      - name: Apply migrations
+        run: |
+          mapfile -t migrations < <(find supabase/migrations -maxdepth 1 -type f -name '*.sql' | sort)
+          test "${#migrations[@]}" -gt 0
+          for migration in "${migrations[@]}"; do
+            echo "Applying $migration"
+            psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$migration"
+          done
+
+      - name: Verify RLS, policies, and grants
+        run: |
+          rls_count="$(psql -h 127.0.0.1 -U postgres -d postgres -Atc "select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and c.relname in ('users','workspaces','workspace_members','projects','tests','test_versions','tasks','participants','sessions','task_sessions','events','answers','findings','finding_evidence','retests') and c.relrowsecurity;")"
+          test "$rls_count" = "15"
+
+          policy_count="$(psql -h 127.0.0.1 -U postgres -d postgres -Atc "select count(*) from pg_policies where schemaname='public';")"
+          test "$policy_count" = "44"
+
+          test "$(psql -h 127.0.0.1 -U postgres -d postgres -Atc "select has_table_privilege('anon','public.projects','select');")" = "f"
+          test "$(psql -h 127.0.0.1 -U postgres -d postgres -Atc "select has_table_privilege('authenticated','public.events','insert');")" = "f"
+          test "$(psql -h 127.0.0.1 -U postgres -d postgres -Atc "select has_table_privilege('service_role','public.events','insert');")" = "t"
+
+      - name: Seed authorization matrix
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          insert into auth.users (id) values
+            ('00000000-0000-0000-0000-000000000001'),
+            ('00000000-0000-0000-0000-000000000002'),
+            ('00000000-0000-0000-0000-000000000003'),
+            ('00000000-0000-0000-0000-000000000004'),
+            ('00000000-0000-0000-0000-000000000005');
+
+          insert into public.users (id) values
+            ('00000000-0000-0000-0000-000000000001'),
+            ('00000000-0000-0000-0000-000000000002'),
+            ('00000000-0000-0000-0000-000000000003'),
+            ('00000000-0000-0000-0000-000000000004'),
+            ('00000000-0000-0000-0000-000000000005');
+
+          insert into public.workspaces (id, name, slug, owner_user_id) values
+            ('10000000-0000-0000-0000-000000000001', 'Workspace A', 'workspace-a', '00000000-0000-0000-0000-000000000001'),
+            ('10000000-0000-0000-0000-000000000002', 'Workspace B', 'workspace-b', '00000000-0000-0000-0000-000000000004');
+
+          insert into public.workspace_members (workspace_id, user_id, system_role, product_persona) values
+            ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'owner', 'researcher'),
+            ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002', 'member', 'product_viewer'),
+            ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000003', 'member', 'designer'),
+            ('10000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000004', 'owner', 'researcher');
+
+          insert into public.projects (id, workspace_id, name, created_by) values
+            ('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'Project A', '00000000-0000-0000-0000-000000000001'),
+            ('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', 'Project B', '00000000-0000-0000-0000-000000000004');
+
+          insert into public.tests (id, workspace_id, project_id, title, created_by) values
+            ('30000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', 'Test A', '00000000-0000-0000-0000-000000000001'),
+            ('30000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000002', 'Test B', '00000000-0000-0000-0000-000000000004');
+
+          insert into public.participants (id, workspace_id, test_id, anonymous_key) values
+            ('50000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000011'),
+            ('50000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000002', '50000000-0000-0000-0000-000000000022');
+          SQL
+
+      - name: Researcher is isolated to own workspace
+        run: |
+          own="$(psql -h 127.0.0.1 -U postgres -d postgres -Atq <<'SQL'
+          begin;
+          set local role authenticated;
+          set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-000000000001"}';
+          select count(*) from public.projects where workspace_id='10000000-0000-0000-0000-000000000001';
+          rollback;
+          SQL
+          )"
+          test "$own" = "1"
+
+          other="$(psql -h 127.0.0.1 -U postgres -d postgres -Atq <<'SQL'
+          begin;
+          set local role authenticated;
+          set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-000000000001"}';
+          select count(*) from public.projects where workspace_id='10000000-0000-0000-0000-000000000002';
+          rollback;
+          SQL
+          )"
+          test "$other" = "0"
+
+      - name: Designer can write inside own workspace
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          begin;
+          set local role authenticated;
+          set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-000000000003"}';
+          insert into public.projects (workspace_id, name, created_by)
+          values ('10000000-0000-0000-0000-000000000001', 'Designer Project', '00000000-0000-0000-0000-000000000003');
+          rollback;
+          SQL
+
+      - name: Product Viewer can read but cannot write
+        run: |
+          visible="$(psql -h 127.0.0.1 -U postgres -d postgres -Atq <<'SQL'
+          begin;
+          set local role authenticated;
+          set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-000000000002"}';
+          select count(*) from public.projects where workspace_id='10000000-0000-0000-0000-000000000001';
+          rollback;
+          SQL
+          )"
+          test "$visible" = "1"
+
+          if psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          begin;
+          set local role authenticated;
+          set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-000000000002"}';
+          insert into public.projects (workspace_id, name, created_by)
+          values ('10000000-0000-0000-0000-000000000001', 'Viewer Must Fail', '00000000-0000-0000-0000-000000000002');
+          rollback;
+          SQL
+          then
+            echo "Product Viewer write unexpectedly succeeded"
+            exit 1
+          fi
+
+      - name: Product Viewer cannot read sensitive participant rows
+        run: |
+          viewer_count="$(psql -h 127.0.0.1 -U postgres -d postgres -Atq <<'SQL'
+          begin;
+          set local role authenticated;
+          set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-000000000002"}';
+          select count(*) from public.participants;
+          rollback;
+          SQL
+          )"
+          test "$viewer_count" = "0"
+
+          researcher_count="$(psql -h 127.0.0.1 -U postgres -d postgres -Atq <<'SQL'
+          begin;
+          set local role authenticated;
+          set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-000000000001"}';
+          select count(*) from public.participants;
+          rollback;
+          SQL
+          )"
+          test "$researcher_count" = "1"
+
+      - name: Non-member has no workspace access
+        run: |
+          count="$(psql -h 127.0.0.1 -U postgres -d postgres -Atq <<'SQL'
+          begin;
+          set local role authenticated;
+          set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-000000000005"}';
+          select count(*) from public.projects;
+          rollback;
+          SQL
+          )"
+          test "$count" = "0"
+
+      - name: Anonymous role has no direct researcher table access
+        run: |
+          if psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          begin;
+          set local role anon;
+          select count(*) from public.projects;
+          rollback;
+          SQL
+          then
+            echo "anon direct researcher-table read unexpectedly succeeded"
+            exit 1
+          fi
