@@ -11,7 +11,9 @@ test("health check is bounded, non-cacheable and fails closed", async () => {
   assert.match(source, /AbortSignal\.timeout\(3000\)/);
   assert.match(source, /status: healthy \? 200 : 503/);
   assert.match(source, /cache-control.*no-store/i);
-  assert.match(source, /dependencies: \{ supabase \}/);
+  assert.match(source, /storage\/v1\/bucket/);
+  assert.match(source, /dependencies: \{ supabaseDatabase, supabaseStorage \}/);
+  assert.match(source, /supabaseDatabase === "ok" && supabaseStorage === "ok"/);
   assert.doesNotMatch(source, /secretKey[^\n]*Response\.json/);
 });
 
@@ -25,8 +27,10 @@ test("structured logging provides correlation without payload or secret fields",
   assert.doesNotMatch(source, /apikey:/i);
 });
 
-test("undefined R2 storage remains an explicit source gap", async () => {
+test("Supabase Storage readiness does not invent a bucket contract", async () => {
   const docs = await readFile(docsPath, "utf8");
-  assert.match(docs, /SOURCE GAP/);
-  assert.match(docs, /does \*\*not\*\* invent or provision storage/);
+  assert.match(docs, /Supabase Storage/);
+  assert.match(docs, /empty bucket list is valid readiness/i);
+  assert.match(docs, /No Storage bucket is provisioned until a V1 task introduces a real file\/blob artifact requirement/i);
+  assert.doesNotMatch(docs, /Cloudflare R2/i);
 });
