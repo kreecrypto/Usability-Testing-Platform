@@ -42,9 +42,9 @@ Create a focused workflow for UX teams:
 
 - Frontend: Next.js + React + TypeScript
 - Main database / auth: Supabase PostgreSQL
-- Event collector: Cloudflare Worker
-- Event aggregation: worker-based pipeline
-- Storage: Cloudflare R2
+- Event collector: Vercel Next.js route handler
+- Event aggregation: Supabase/PostgreSQL-derived analytics pipeline
+- Storage: Supabase-backed application data stores
 - Hosting: Vercel
 - Prototype integration: Figma Embed / OAuth
 
@@ -73,7 +73,7 @@ Copy `.env.example` to `.env.local` and add development credentials when integra
 
 ## Source of truth
 
-Product planning and execution order are maintained in the Notion **Usability Testing Platform — Master Plan**. GitHub is the source of truth for implementation and technical documentation.
+Product planning and execution order are maintained in the Google Sheet **Usability Testing Platform — Task List**. GitHub is the source of truth for implementation and technical documentation.
 
 ## Low-fidelity wireframes (Task 12)
 
