@@ -6,14 +6,19 @@ import { parsePublicFigmaPrototypeUrl } from "@/lib/figma/public-embed";
 
 type Props = Readonly<{
   initialUrl?: string;
+  embedApiClientId?: string;
 }>;
 
-function resolve(value: string) {
+function resolve(value: string, embedApiClientId?: string) {
   const trimmed = value.trim();
   if (!trimmed) return { embedUrl: null, error: null };
   try {
     return {
-      embedUrl: parsePublicFigmaPrototypeUrl(trimmed).embedUrl,
+      embedUrl: parsePublicFigmaPrototypeUrl(
+        trimmed,
+        "ut-platform-v1",
+        embedApiClientId,
+      ).embedUrl,
       error: null,
     };
   } catch (error) {
@@ -24,10 +29,17 @@ function resolve(value: string) {
   }
 }
 
-export function PublicFigmaEmbedProof({ initialUrl = "" }: Props) {
+export function PublicFigmaEmbedProof({
+  initialUrl = "",
+  embedApiClientId,
+}: Props) {
   const [value, setValue] = useState(initialUrl);
   const [submittedValue, setSubmittedValue] = useState(initialUrl);
-  const result = useMemo(() => resolve(submittedValue), [submittedValue]);
+  const result = useMemo(
+    () => resolve(submittedValue, embedApiClientId),
+    [submittedValue, embedApiClientId],
+  );
+  const embedApiEnabled = Boolean(embedApiClientId?.trim());
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -41,7 +53,13 @@ export function PublicFigmaEmbedProof({ initialUrl = "" }: Props) {
         <h2 style={{ fontSize: 22 }}>Paste public prototype URL</h2>
         <p style={{ maxWidth: 760, marginBottom: 14 }}>
           V1 supports public Figma prototype links only. No Figma OAuth login, client secret,
-          access token, or REST call is required for this proof.
+          access token, or REST call is required for the basic embed.
+        </p>
+        <p style={{ maxWidth: 760, marginBottom: 14 }}>
+          Embed API event mode: <strong>{embedApiEnabled ? "Configured" : "Not configured"}</strong>.
+          {embedApiEnabled
+            ? " UTP pins its configured Figma app client id; client ids pasted in prototype URLs are ignored."
+            : " The prototype can still be previewed, but live Figma Embed API events remain disabled."}
         </p>
         <form onSubmit={onSubmit}>
           <label htmlFor="figma-public-prototype-url" style={{ display: "block", fontWeight: 700 }}>
