@@ -75,6 +75,20 @@ function requiredNodeIds(value: unknown, field: string): readonly string[] {
   return Object.freeze(canonical);
 }
 
+function validateDisjointTerminalTargets(
+  successNodeIds: readonly string[],
+  failureNodeIds: readonly string[],
+): void {
+  const success = new Set(successNodeIds);
+  const conflicts = failureNodeIds.filter((nodeId) => success.has(nodeId));
+  if (conflicts.length > 0) {
+    throw new FrameMappingValidationError(
+      "failureNodeIds",
+      `success and failure targets conflict: ${conflicts.join(", ")}`,
+    );
+  }
+}
+
 export function buildPrototypeFrameMapping(input: {
   prototypeUrl: unknown;
   startNodeId?: unknown;
@@ -104,14 +118,18 @@ export function buildPrototypeFrameMapping(input: {
     );
   }
 
+  const successNodeIds = requiredNodeIds(input.successNodeIds, "successNodeIds");
+  const failureNodeIds = requiredNodeIds(input.failureNodeIds, "failureNodeIds");
+  validateDisjointTerminalTargets(successNodeIds, failureNodeIds);
+
   return Object.freeze({
     version: 1,
     source: "explicit_node_ids",
     prototypeUrl,
     fileKey: prototype.fileKey,
     startNodeId,
-    successNodeIds: requiredNodeIds(input.successNodeIds, "successNodeIds"),
-    failureNodeIds: requiredNodeIds(input.failureNodeIds, "failureNodeIds"),
+    successNodeIds,
+    failureNodeIds,
   });
 }
 

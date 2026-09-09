@@ -3,7 +3,7 @@ import {
   jsonResponse,
   readJsonObject,
 } from "../../../../../lib/project-test-api.ts";
-import { bearerAccessToken } from "../../../../../lib/project-test-crud.ts";
+import { accessTokenFromRequest, publicSupabaseConfig } from "../../../../../lib/auth/session.ts";
 import {
   createPrototypeFrameMappingPersistence,
   FrameMappingProviderError,
@@ -20,7 +20,7 @@ function errorResponse(error: unknown): Response {
     return jsonResponse({ error: error.code }, error.status);
   }
   if (error instanceof FrameMappingValidationError) {
-    return jsonResponse({ error: "invalid_input", field: error.field }, 400);
+    return jsonResponse({ error: "invalid_input", field: error.field, message: error.message }, 400);
   }
   if (error instanceof FrameMappingProviderError) {
     if (error.status === 401) return jsonResponse({ error: "authentication_required" }, 401);
@@ -38,18 +38,15 @@ function errorResponse(error: unknown): Response {
 
 export async function PATCH(request: Request, context: Context): Promise<Response> {
   try {
-    const accessToken = bearerAccessToken(request);
+    const accessToken = accessTokenFromRequest(request);
     if (!accessToken) throw new CrudHttpError(401, "authentication_required");
 
-    const supabaseUrl = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anonKey = process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!supabaseUrl || !anonKey) throw new CrudHttpError(503, "data_service_not_configured");
-
+    const config = publicSupabaseConfig();
     const { taskId } = await context.params;
     const body = await readJsonObject(request);
     const store = createPrototypeFrameMappingPersistence({
-      supabaseUrl,
-      anonKey,
+      supabaseUrl: config.url,
+      anonKey: config.key,
       accessToken,
     });
 
