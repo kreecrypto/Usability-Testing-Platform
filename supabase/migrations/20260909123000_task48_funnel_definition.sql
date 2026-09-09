@@ -42,12 +42,16 @@ begin
   into v_clean
   from unnest(p_screen_ids) with ordinality as item(value, ordinal);
 
-  if exists (select 1 from unnest(v_clean) as value where value is null or value = '') then
+  if exists (
+    select 1
+    from unnest(v_clean) as item(value)
+    where value is null or value = ''
+  ) then
     raise exception 'funnel_screen_id_required' using errcode = '22023';
   end if;
 
-  if (select count(*) from unnest(v_clean) as value)
-     <> (select count(distinct value) from unnest(v_clean) as value) then
+  if (select count(*) from unnest(v_clean) as item(value))
+     <> (select count(distinct value) from unnest(v_clean) as item(value)) then
     raise exception 'funnel_screen_ids_must_be_unique' using errcode = '22023';
   end if;
 
