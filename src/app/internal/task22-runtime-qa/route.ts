@@ -93,6 +93,10 @@ export async function GET(request: Request) {
     }
     userIdHolder.id = createdUser.id;
 
+    await restInsert("users", {
+      id: createdUser.id,
+      display_name: "Task 22 Runtime QA",
+    });
     await restInsert("workspaces", {
       id: ids.workspaceId,
       name: "Task 22 Runtime QA",
@@ -201,6 +205,7 @@ export async function GET(request: Request) {
     await restDelete("projects", `id=eq.${ids.projectId}`);
     await restDelete("workspaces", `id=eq.${ids.workspaceId}`);
     if (userIdHolder.id) {
+      await restDelete("users", `id=eq.${userIdHolder.id}`);
       await fetch(`${supabaseUrl}/auth/v1/admin/users/${userIdHolder.id}`, {
         method: "DELETE",
         headers: authHeaders,
