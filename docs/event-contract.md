@@ -226,7 +226,9 @@ Idle-adjusted time, if introduced, must be a separately versioned derived metric
 
 Each raw event needs stable `eventId` and `idempotencyKey` values. Retrying a batch must not create another accepted primary event or increment analytics twice.
 
-The database must enforce uniqueness for the canonical event identity in addition to collector-side checks.
+The collector accepts `{ "events": [...] }` batches of canonical raw events. The batch is validated before persistence starts; malformed events reject the full request so clients can correct the payload without a partial-write ambiguity. Duplicate `(sessionId, idempotencyKey)` entries inside the same batch are reported as duplicates and are not persisted twice.
+
+The database must enforce uniqueness for the canonical event identity in addition to collector-side checks. Supabase persistence uses the `(session_id, idempotency_key)` uniqueness gate during insert so separate HTTP retries also suppress duplicates.
 
 ## Privacy
 

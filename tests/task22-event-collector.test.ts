@@ -174,7 +174,7 @@ test("Supabase persister resolves trusted workspace from session before insertin
   assert.equal(calls.length, 2);
   assert.match(calls[0].url, /\/rest\/v1\/sessions\?/);
   assert.equal((calls[0].init?.headers as Record<string, string>).apikey, secret);
-  assert.match(calls[1].url, /\/rest\/v1\/events$/);
+  assert.match(calls[1].url, /\/rest\/v1\/events\?on_conflict=session_id%2Cidempotency_key&select=event_id%2Cidempotency_key$/);
 
   const stored = JSON.parse(String(calls[1].init?.body)) as Record<string, unknown>;
   assert.equal(stored.workspace_id, "70000000-0000-4000-8000-000000000001");
