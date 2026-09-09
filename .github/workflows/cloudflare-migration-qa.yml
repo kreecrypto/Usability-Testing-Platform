@@ -1,0 +1,53 @@
+name: Cloudflare Migration QA
+
+on:
+  push:
+    branches: [migration/cloudflare-runtime]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-migration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  workers-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pinned Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install repository dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Existing UTP QA gate
+        run: npm run qa
+
+      - name: vinext compatibility check
+        run: npx --yes vinext@1.0.0-beta.9 check
+
+      - name: Generate Cloudflare target in isolated workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          workdir="$RUNNER_TEMP/utp-cloudflare"
+          mkdir -p "$workdir"
+          cp -a . "$workdir/"
+          cd "$workdir"
+          npx --yes vinext@1.0.0-beta.9 init --platform=cloudflare --skip-check
+          test -f wrangler.jsonc
+          test -f vite.config.ts -o -f vite.config.js -o -f vite.config.mts -o -f vite.config.mjs
+          npm run build:vinext
+
+      - name: Confirm migration did not mutate committed source
+        run: git diff --exit-code
