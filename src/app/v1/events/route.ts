@@ -2,6 +2,8 @@ import {
   createEventCollectorHandler,
   type PersistAcceptedEvent,
 } from "../../../lib/collector/event-collector.ts";
+import { createReliableEventPersister } from "../../../lib/collector/reliable-event-persistence.ts";
+import { createSupabaseDeadLetterRecorder } from "../../../lib/collector/supabase-event-dead-letter.ts";
 import { createSupabaseEventPersister } from "../../../lib/collector/supabase-event-persistence.ts";
 
 export const runtime = "nodejs";
@@ -15,14 +17,17 @@ const persist: PersistAcceptedEvent = async (event) => {
     throw new Error("collector_not_configured");
   }
 
-  const persistToSupabase = createSupabaseEventPersister({
-    supabaseUrl,
-    secretKey,
+  const persistReliably = createReliableEventPersister({
+    persist: createSupabaseEventPersister({ supabaseUrl, secretKey }),
+    recordDeadLetter: createSupabaseDeadLetterRecorder({ supabaseUrl, secretKey }),
+    maxAttempts: 3,
   });
-  await persistToSupabase(event);
+
+  return persistReliably(event);
 };
 
-const handler = createEventCollectorHandler({ persist });
+// Reliable persistence owns the bounded retry loop so exhaustion is recorded once in the DLQ.
+const handler = createEventCollectorHandler({ persist, maxPersistenceAttempts: 1 });
 
 export const POST = handler;
 export const GET = handler;
