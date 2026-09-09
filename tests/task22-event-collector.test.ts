@@ -6,7 +6,11 @@ import {
   validateRawTrackingEvent,
   type PersistAcceptedEvent,
 } from "../src/lib/collector/event-collector.ts";
-import type { RawTrackingEvent } from "../src/lib/tracking/events.ts";
+import { createSupabaseEventPersister } from "../src/lib/collector/supabase-event-persistence.ts";
+import type {
+  AcceptedTrackingEvent,
+  RawTrackingEvent,
+} from "../src/lib/tracking/events.ts";
 
 const validEvent: RawTrackingEvent = {
   schemaVersion: 2,
@@ -120,7 +124,7 @@ test("invalid JSON, content type, route, and method fail explicitly", async () =
 });
 
 test("persistence failures return generic 503 without leaking credential or raw provider error", async () => {
-  const secret = "SUPABASE_SERVICE_ROLE_DO_NOT_LEAK";
+  const secret = "SUPABASE_SECRET_DO_NOT_LEAK";
   const handler = createEventCollectorHandler({
     persist: async () => {
       throw new Error(`database failed with token ${secret}`);
@@ -133,4 +137,80 @@ test("persistence failures return generic 503 without leaking credential or raw 
   assert.equal(body.includes(secret), false);
   assert.equal(body.includes("database failed"), false);
   assert.deepEqual(JSON.parse(body), { error: "ingestion_unavailable" });
+});
+
+test("Supabase persister resolves trusted workspace from session before inserting event", async () => {
+  const calls: Array<{ url: string; init?: RequestInit }> = [];
+  const secret = "sb_secret_server_only";
+  const acceptedEvent: AcceptedTrackingEvent<RawTrackingEvent> = {
+    ...validEvent,
+    eventId: "60000000-0000-4000-8000-000000000001",
+    receivedAt: "2026-09-08T17:10:05.000Z",
+  };
+
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const url = String(input);
+    calls.push({ url, init });
+    if (url.includes("/rest/v1/sessions?")) {
+      return Response.json([
+        {
+          workspace_id: "70000000-0000-4000-8000-000000000001",
+          participant_id: acceptedEvent.participantId,
+          test_id: acceptedEvent.testId,
+          test_version_id: acceptedEvent.testVersionId,
+        },
+      ]);
+    }
+    return new Response(null, { status: 201 });
+  };
+
+  const persist = createSupabaseEventPersister({
+    supabaseUrl: "https://example.supabase.co",
+    secretKey: secret,
+    fetchImpl,
+  });
+  await persist(acceptedEvent);
+
+  assert.equal(calls.length, 2);
+  assert.match(calls[0].url, /\/rest\/v1\/sessions\?/);
+  assert.equal((calls[0].init?.headers as Record<string, string>).apikey, secret);
+  assert.match(calls[1].url, /\/rest\/v1\/events$/);
+
+  const stored = JSON.parse(String(calls[1].init?.body)) as Record<string, unknown>;
+  assert.equal(stored.workspace_id, "70000000-0000-4000-8000-000000000001");
+  assert.equal(stored.session_id, acceptedEvent.sessionId);
+  assert.equal(stored.participant_id, acceptedEvent.participantId);
+  assert.equal(stored.test_id, acceptedEvent.testId);
+  assert.equal(stored.test_version_id, acceptedEvent.testVersionId);
+  assert.equal(stored.event_id, acceptedEvent.eventId);
+});
+
+test("Supabase persister rejects participant/test/version spoofing before event insert", async () => {
+  let calls = 0;
+  const acceptedEvent: AcceptedTrackingEvent<RawTrackingEvent> = {
+    ...validEvent,
+    eventId: "60000000-0000-4000-8000-000000000002",
+    receivedAt: "2026-09-08T17:10:05.000Z",
+  };
+
+  const fetchImpl: typeof fetch = async () => {
+    calls += 1;
+    return Response.json([
+      {
+        workspace_id: "70000000-0000-4000-8000-000000000001",
+        participant_id: "20000000-0000-4000-8000-000000000099",
+        test_id: acceptedEvent.testId,
+        test_version_id: acceptedEvent.testVersionId,
+      },
+    ]);
+  };
+
+  const persist = createSupabaseEventPersister({
+    supabaseUrl: "https://example.supabase.co",
+    secretKey: "sb_secret_server_only",
+    fetchImpl,
+  });
+
+  await assert.rejects(() => persist(acceptedEvent), /session_context_mismatch/);
+  assert.equal(calls, 1);
 });
