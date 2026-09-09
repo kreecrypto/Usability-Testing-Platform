@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { createFigmaInteractionEventBridge } from "../../../lib/figma/event-bridge.ts";
 import {
   createBrowserLocalStorageOutboxStorage,
@@ -11,6 +11,8 @@ import {
 import { createRunnerLifecycle } from "../../../lib/tracking/lifecycle.ts";
 import type { RawTrackingEvent } from "../../../lib/tracking/events.ts";
 import styles from "./participant-runner.module.css";
+
+import { remainingTaskTime, belongsToTest } from "../../../lib/runner/recovery.ts";
 
 const CONSENT_VERSION = "utp-privacy-v1";
 
@@ -157,6 +159,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
   const [providerReady, setProviderReady] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const runtimeRef = useRef<Runtime | null>(null);
+  const taskStartedAtRef = useRef<string | null>(null);
   const initialCredentialRef = useRef<IngestionCredential | null>(null);
 
   const currentTask = snapshot?.tasks[taskIndex] ?? null;
@@ -191,6 +194,8 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     const sequence = Math.max(state?.lastSequence ?? 0, maxPendingSequence(pending));
     const pendingStarted = pending.some((event) => event.eventType === "session_started");
     const latestTaskState = state?.taskStates.at(-1) ?? null;
+
+    taskStartedAtRef.current = latestTaskState?.startedAt ?? pending.findLast((event) => event.eventType === "task_started")?.occurredAt ?? null;
 
     const outbox = createEventOutbox({
       storage,
@@ -279,8 +284,8 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     }
   }, [currentTask, fetchState, moveAfterTerminal, taskIndex]);
 
-  const inferStageFromState = useCallback(async (state: SessionState) => {
-    if (!snapshot) return;
+  const inferStageFromState = useCallback(async (state: SessionState, testSnapshot = snapshot) => {
+    if (!testSnapshot) return;
     setSessionState(state);
     if (state.status === "completed") {
       setStage("complete");
@@ -298,7 +303,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
 
     const active = state.taskStates.find((task) => task.outcome === null);
     if (active) {
-      const index = snapshot.tasks.findIndex((task) => task.id === active.taskId);
+      const index = testSnapshot.tasks.findIndex((task) => task.id === active.taskId);
       if (index >= 0) {
         setTaskIndex(index);
         setStage("runner");
@@ -307,8 +312,8 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     }
 
     let terminalIndex = -1;
-    for (let index = 0; index < snapshot.tasks.length; index += 1) {
-      const taskState = state.taskStates.find((item) => item.taskId === snapshot.tasks[index].id);
+    for (let index = 0; index < testSnapshot.tasks.length; index += 1) {
+      const taskState = state.taskStates.find((item) => item.taskId === testSnapshot.tasks[index].id);
       if (taskState?.outcome) terminalIndex = index;
       else break;
     }
@@ -321,8 +326,13 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     setStage("task-intro");
   }, [moveAfterTerminal, snapshot]);
 
+  const restoreInitialState = useEffectEvent((state: SessionState, loaded: TestSnapshot) => inferStageFromState(state, loaded));
+
   useEffect(() => {
     let cancelled = false;
+    runtimeRef.current = null;
+    initialCredentialRef.current = null;
+    taskStartedAtRef.current = null;
     void (async () => {
       if (!browserSupported()) {
         if (!cancelled) {
@@ -338,7 +348,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
         setSnapshot(body.test);
         const existing = await fetchState();
         if (cancelled) return;
-        if (!existing) {
+        if (!existing || !belongsToTest(existing.context, body.test)) {
           setStage("consent");
           return;
         }
@@ -346,13 +356,13 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
         await configureRuntime(existing.context, existing.state);
         try { await deliver(); } catch { return; }
         const refreshed = await fetchState();
-        if (refreshed && !cancelled) await inferStageFromState(refreshed.state);
+        if (refreshed && !cancelled) await restoreInitialState(refreshed.state, body.test);
       } catch {
         if (!cancelled) setStage("invalid");
       }
     })();
     return () => { cancelled = true; };
-  }, [configureRuntime, deliver, fetchState, inferStageFromState, testVersionId]);
+  }, [configureRuntime, deliver, fetchState, testVersionId]);
 
   useEffect(() => {
     const onOnline = () => {
@@ -409,7 +419,9 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
   }, [currentTask, deliver, snapshot, stage, syncTerminalState]);
 
   useEffect(() => {
-    if (stage !== "runner" || !currentTask?.timeoutSeconds || currentTask.timeoutSeconds <= 0) return;
+    if ((stage !== "runner" && stage !== "give-up-confirm") || !currentTask?.timeoutSeconds || currentTask.timeoutSeconds <= 0) return;
+    const remaining = remainingTaskTime(taskStartedAtRef.current, currentTask.timeoutSeconds, Date.now());
+    if (remaining === null) return;
     const timeout = window.setTimeout(() => {
       const runtime = runtimeRef.current;
       if (!runtime || runtime.lifecycle.getState().activeTaskTerminal) return;
@@ -424,7 +436,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
           setStage("recovery");
         }
       })();
-    }, currentTask.timeoutSeconds * 1000);
+    }, remaining);
     return () => window.clearTimeout(timeout);
   }, [currentTask, deliver, fetchState, stage]);
 
@@ -469,7 +481,8 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     setWorking(true);
     setProviderReady(false);
     try {
-      await runtimeRef.current.lifecycle.startTask({ id: currentTask.id });
+      const started = await runtimeRef.current.lifecycle.startTask({ id: currentTask.id });
+      if (started) taskStartedAtRef.current = started.occurredAt;
       await deliver();
       if (!snapshot?.prototype.liveEmbedUrl) {
         setTechnicalReason("Live Figma Embed API tracking is not configured for this origin. The study is technically blocked rather than recorded with incomplete evidence.");
