@@ -54,9 +54,11 @@ A minimal test runtime that:
 
 Vercel Next.js route-handler boundary responsible for:
 
-- validating event payloads
+- validating single-event and batch event payloads
 - rejecting malformed or unauthorized payloads
 - assigning server-owned receipt metadata
+- retrying transient persistence failures with a bounded policy
+- suppressing duplicate same-batch idempotency keys before a second write
 - passing accepted events to Supabase persistence
 - protecting database credentials from participant clients
 
@@ -171,7 +173,7 @@ Editing a published test creates a new draft/version. Historical sessions always
 
 V1 cannot ship unless:
 
-1. Event ingestion does not silently lose or duplicate accepted events.
+1. Event ingestion does not silently lose or duplicate accepted events; retries use stable `eventId`/`idempotencyKey` and the database uniqueness gate.
 2. Task terminal-state classification is deterministic.
 3. Dashboard metrics can be recomputed from raw events.
 4. Participant Runner works on the supported mobile/desktop matrix.

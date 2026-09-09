@@ -27,9 +27,11 @@ export type CollectorValidationResult =
   | { ok: true; event: RawTrackingEvent }
   | { ok: false; errors: CollectorValidationError[] };
 
+export type PersistAcceptedEventResult = "accepted" | "duplicate";
+
 export type PersistAcceptedEvent = (
   event: AcceptedTrackingEvent<RawTrackingEvent>,
-) => Promise<void>;
+) => Promise<PersistAcceptedEventResult | void>;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -158,6 +160,83 @@ export function validateRawTrackingEvent(input: unknown): CollectorValidationRes
   return { ok: true, event: input as unknown as RawTrackingEvent };
 }
 
+type CollectorPayload =
+  | { ok: true; events: RawTrackingEvent[]; mode: "single" | "batch" }
+  | { ok: false; errors: CollectorValidationError[] };
+
+function parseCollectorPayload(body: unknown): CollectorPayload {
+  if (isRecord(body) && Array.isArray(body.events)) {
+    if (body.events.length === 0) {
+      return {
+        ok: false,
+        errors: [
+          {
+            field: "events",
+            code: "empty_batch",
+            message: "events must contain at least one event",
+          },
+        ],
+      };
+    }
+
+    if (body.events.length > 100) {
+      return {
+        ok: false,
+        errors: [
+          {
+            field: "events",
+            code: "batch_too_large",
+            message: "events must contain at most 100 events",
+          },
+        ],
+      };
+    }
+
+    const events: RawTrackingEvent[] = [];
+    const errors: CollectorValidationError[] = [];
+
+    body.events.forEach((event, index) => {
+      const validation = validateRawTrackingEvent(event);
+      if (validation.ok) {
+        events.push(validation.event);
+        return;
+      }
+
+      errors.push(
+        ...validation.errors.map((error) => ({
+          ...error,
+          field: `events[${index}].${error.field}`,
+        })),
+      );
+    });
+
+    return errors.length > 0 ? { ok: false, errors } : { ok: true, events, mode: "batch" };
+  }
+
+  const validation = validateRawTrackingEvent(body);
+  return validation.ok
+    ? { ok: true, events: [validation.event], mode: "single" }
+    : { ok: false, errors: validation.errors };
+}
+
+async function persistWithRetry(
+  persist: PersistAcceptedEvent,
+  event: AcceptedTrackingEvent<RawTrackingEvent>,
+  maxAttempts: number,
+): Promise<PersistAcceptedEventResult> {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return (await persist(event)) ?? "accepted";
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("event_persist_failed");
+}
+
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -171,8 +250,10 @@ function jsonResponse(body: unknown, status: number): Response {
 export function createEventCollectorHandler(options: {
   persist: PersistAcceptedEvent;
   now?: () => Date;
+  maxPersistenceAttempts?: number;
 }) {
   const now = options.now ?? (() => new Date());
+  const maxPersistenceAttempts = options.maxPersistenceAttempts ?? 3;
 
   return async function handleEventCollectorRequest(request: Request): Promise<Response> {
     const url = new URL(request.url);
@@ -200,29 +281,73 @@ export function createEventCollectorHandler(options: {
       return jsonResponse({ error: "invalid_json" }, 400);
     }
 
-    const validation = validateRawTrackingEvent(body);
-    if (!validation.ok) {
-      return jsonResponse({ error: "invalid_event", details: validation.errors }, 400);
+    const payload = parseCollectorPayload(body);
+    if (!payload.ok) {
+      return jsonResponse({ error: "invalid_event", details: payload.errors }, 400);
     }
 
-    const receivedAt = now().toISOString();
-    const acceptedEvent: AcceptedTrackingEvent<RawTrackingEvent> = {
-      ...validation.event,
-      receivedAt,
-    };
+    const accepted: Array<{ eventId: string; receivedAt: string; status: "accepted" }> = [];
+    const duplicates: Array<{ eventId: string; receivedAt: string; status: "duplicate" }> = [];
+    const seenBatchKeys = new Set<string>();
 
     try {
-      await options.persist(acceptedEvent);
+      for (const event of payload.events) {
+        const receivedAt = now().toISOString();
+        const acceptedEvent: AcceptedTrackingEvent<RawTrackingEvent> = {
+          ...event,
+          receivedAt,
+        };
+        const batchKey = `${acceptedEvent.sessionId}:${acceptedEvent.idempotencyKey}`;
+
+        if (seenBatchKeys.has(batchKey)) {
+          duplicates.push({
+            eventId: acceptedEvent.eventId,
+            receivedAt: acceptedEvent.receivedAt,
+            status: "duplicate",
+          });
+          continue;
+        }
+
+        seenBatchKeys.add(batchKey);
+        const persisted = await persistWithRetry(
+          options.persist,
+          acceptedEvent,
+          maxPersistenceAttempts,
+        );
+
+        if (persisted === "duplicate") {
+          duplicates.push({
+            eventId: acceptedEvent.eventId,
+            receivedAt: acceptedEvent.receivedAt,
+            status: "duplicate",
+          });
+        } else {
+          accepted.push({
+            eventId: acceptedEvent.eventId,
+            receivedAt: acceptedEvent.receivedAt,
+            status: "accepted",
+          });
+        }
+      }
     } catch {
       // Never echo provider/database credentials, binding values, or raw error text.
       return jsonResponse({ error: "ingestion_unavailable" }, 503);
     }
 
+    if (payload.mode === "single") {
+      return jsonResponse(accepted[0] ?? duplicates[0], 202);
+    }
+
     return jsonResponse(
       {
-        eventId: acceptedEvent.eventId,
-        receivedAt: acceptedEvent.receivedAt,
         status: "accepted",
+        accepted,
+        duplicates,
+        summary: {
+          received: payload.events.length,
+          accepted: accepted.length,
+          duplicate: duplicates.length,
+        },
       },
       202,
     );

@@ -3,7 +3,7 @@ import type {
   RawTrackingEvent,
 } from "../tracking/events.ts";
 import { toEventStorageRow } from "../tracking/persistence.ts";
-import type { PersistAcceptedEvent } from "./event-collector.ts";
+import type { PersistAcceptedEvent, PersistAcceptedEventResult } from "./event-collector.ts";
 
 type FetchLike = typeof fetch;
 
@@ -78,7 +78,7 @@ export function createSupabaseEventPersister(options: {
 
   return async function persistAcceptedEvent(
     event: AcceptedTrackingEvent<RawTrackingEvent>,
-  ): Promise<void> {
+  ): Promise<PersistAcceptedEventResult> {
     const query = new URLSearchParams({
       id: `eq.${event.sessionId}`,
       select: "workspace_id,participant_id,test_id,test_version_id",
@@ -102,19 +102,38 @@ export function createSupabaseEventPersister(options: {
     assertEventMatchesSession(event, context);
 
     const storageRow = toEventStorageRow(context.workspace_id, event);
-    const insertResponse = await fetchImpl(`${supabaseUrl}/rest/v1/events`, {
-      method: "POST",
-      headers: {
-        ...authorizationHeaders,
-        "content-type": "application/json",
-        prefer: "return=minimal",
-      },
-      body: JSON.stringify(storageRow),
-      cache: "no-store",
+    const insertQuery = new URLSearchParams({
+      on_conflict: "session_id,idempotency_key",
+      select: "event_id,idempotency_key",
     });
+    const insertResponse = await fetchImpl(
+      `${supabaseUrl}/rest/v1/events?${insertQuery.toString()}`,
+      {
+        method: "POST",
+        headers: {
+          ...authorizationHeaders,
+          "content-type": "application/json",
+          prefer: "resolution=ignore-duplicates,return=representation",
+        },
+        body: JSON.stringify(storageRow),
+        cache: "no-store",
+      },
+    );
 
     if (!insertResponse.ok) {
       throw new Error("event_insert_failed");
     }
+
+    const responseBody = await insertResponse.text();
+    if (responseBody.trim() === "") {
+      return "accepted";
+    }
+
+    const insertedRows = JSON.parse(responseBody);
+    if (Array.isArray(insertedRows) && insertedRows.length === 0) {
+      return "duplicate";
+    }
+
+    return "accepted";
   };
 }
