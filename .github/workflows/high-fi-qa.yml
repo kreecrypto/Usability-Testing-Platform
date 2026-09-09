@@ -1,6 +1,17 @@
 name: High-fi QA
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/app/high-fi/**'
+      - 'src/app/globals.css'
+      - 'src/styles/**'
+      - 'docs/design-system/**'
+      - 'scripts/check-high-fi.mjs'
+      - 'scripts/check-design-system.mjs'
+      - 'package.json'
+      - '.github/workflows/high-fi-qa.yml'
   pull_request:
     paths:
       - 'src/app/high-fi/**'
@@ -25,8 +36,11 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
-      - name: Check design-system baseline
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install from committed lockfile
+        run: npm ci --no-audit --no-fund
+      - name: Check AH Design System v2.6 authority
         run: node scripts/check-design-system.mjs
       - name: Check high-fidelity coverage
         run: node scripts/check-high-fi.mjs
