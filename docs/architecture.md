@@ -52,14 +52,13 @@ A minimal test runtime that:
 
 ### 3. Event collector
 
-Cloudflare Worker boundary responsible for:
+Vercel Next.js route-handler boundary responsible for:
 
 - validating event payloads
 - rejecting malformed or unauthorized payloads
-- assigning/validating idempotency keys
-- batching ingestion
+- assigning server-owned receipt metadata
+- passing accepted events to Supabase persistence
 - protecting database credentials from participant clients
-- supporting retry without double counting
 
 Participant clients must not write raw events directly to the main database.
 
@@ -132,11 +131,11 @@ Participant Runner
     ├─ local event buffer
     │
     ▼
-Cloudflare Event Collector
+Vercel Event Collector
     │
     ├─ validate
-    ├─ idempotency
-    ├─ batch
+    ├─ assign receivedAt
+    ├─ persist to Supabase
     │
     ▼
 Raw Event Store
