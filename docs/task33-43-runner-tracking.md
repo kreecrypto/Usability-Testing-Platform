@@ -107,10 +107,19 @@ This implements at-least-once delivery safety without allowing retries to add du
 
 ## QA evidence
 
-PR #40 exact-head QA must pass all three repository gates before merge:
+PR #40 exact-head QA passed all three repository gates before merge:
 
-1. GWD-11 Build QA — build, typecheck, tests, deterministic lockfile.
-2. Task 20 Schema QA — migration/schema contract.
-3. Task 21 Authorization QA — PostgreSQL migration application plus RLS/grants/role matrix.
+1. GWD-11 Build QA — build, typecheck, tests, deterministic lockfile — PASS.
+2. Task 20 Schema QA — migration/schema contract — PASS.
+3. Task 21 Authorization QA — PostgreSQL migration application plus RLS/grants/role matrix — PASS.
+
+Supabase production migrations for Task 31, 32, 33, 38/40/41 and 37 were applied in dependency order and verified for RPC/trigger presence, service-only participant RPC privileges, raw sequence dedupe and idempotency dedupe.
+
+## Runtime deployment evidence
+
+- The earlier failing Vercel preview `dpl_9GRWETggKaGR1sFHpBvLFFUpRQd4` was built from an intermediate PR #40 commit before `participant-runner.module.css` existed; its missing-module error is not representative of the merged Tasks 33–43 tree.
+- PR #41 used a tree-identical redeploy commit and passed Build QA #115, Schema QA #93 and Authorization QA #83.
+- Vercel preview `dpl_2rUkimW9DqA1gJXpygZfdiyVsPwc` for that tree is READY, proving the merged Tasks 33–43 tree builds successfully on Vercel.
+- This documentation-only change intentionally changes the repository tree so Git integration can produce a fresh production deployment from `main`; production runtime must still be verified after that deployment appears.
 
 Release-gated tasks still require their external/runtime evidence and unresolved Source/Capability gaps to be closed before `COMPLETE`.
