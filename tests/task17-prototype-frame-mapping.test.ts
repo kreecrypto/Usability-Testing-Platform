@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
@@ -140,4 +141,18 @@ test("keeps provider failure details server-side while preserving the provider e
     }),
     (error: unknown) => error instanceof FrameMappingProviderError && error.status === 403 && error.code === "42501",
   );
+});
+
+test("migration keeps the atomic RPC on the authenticated RLS boundary", async () => {
+  const migration = await readFile(
+    new URL("../supabase/migrations/20260909053844_task17_prototype_frame_mapping.sql", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(migration, /security\s+invoker/i);
+  assert.match(migration, /update\s+public\.test_versions/i);
+  assert.match(migration, /update\s+public\.tasks/i);
+  assert.match(migration, /revoke\s+all[\s\S]+from\s+public,\s*anon,\s*service_role/i);
+  assert.match(migration, /grant\s+execute[\s\S]+to\s+authenticated/i);
+  assert.doesNotMatch(migration, /security\s+definer/i);
 });
