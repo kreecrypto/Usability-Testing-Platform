@@ -40,15 +40,21 @@ Create a focused workflow for UX teams:
 
 ## Architecture direction
 
-- Frontend: Next.js + React + TypeScript
+UTP uses three active platform boundaries:
+
+- Source / CI: GitHub
+- Frontend + runtime: Cloudflare Workers
 - Main database / auth: Supabase PostgreSQL
-- Event collector: Vercel Next.js route handler
+- Event collector: Cloudflare-hosted Next.js route handler
 - Event aggregation: Supabase/PostgreSQL-derived analytics pipeline
-- Storage: Supabase-backed application data stores
-- Hosting: Vercel
+- Storage: Supabase-backed application data stores; Cloudflare R2 is optional only when a current task explicitly requires object storage
 - Prototype integration: Figma Embed / OAuth
 
-See [`docs/architecture.md`](docs/architecture.md) for the system model.
+Vercel and Netlify are no longer active architecture targets. Existing Vercel URLs may remain in historical QA evidence until Cloudflare production cutover is verified.
+
+Cloudflare's current recommended migration path for an existing Next.js 16 application is vinext on Workers. The migration must pass compatibility, build and runtime QA before the old production runtime is retired.
+
+See [`docs/architecture.md`](docs/architecture.md) for the system model and [`docs/cloudflare-runtime.md`](docs/cloudflare-runtime.md) for migration/cutover rules.
 
 ## Core modules
 
@@ -69,11 +75,11 @@ Open `http://localhost:3000`.
 
 ## Environment
 
-Copy `.env.example` to `.env.local` and add development credentials when integrations are enabled.
+Copy `.env.example` to `.env.local` and add development credentials when integrations are enabled. Production secrets must be stored in Cloudflare Workers / GitHub secret stores and must never be committed.
 
 ## Source of truth
 
-Product planning and execution order are maintained in the Google Sheet **Usability Testing Platform — Task List**. GitHub is the source of truth for implementation and technical documentation.
+Product planning and execution order are maintained in the Google Sheet **Usability Testing Platform — Task List**. GitHub is the source of truth for implementation and technical documentation. Cloudflare production is runtime evidence only; Supabase remains the authority for canonical persisted application data.
 
 ## Low-fidelity wireframes (Task 12)
 

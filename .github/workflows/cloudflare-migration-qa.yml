@@ -1,0 +1,60 @@
+name: Cloudflare Workers QA
+
+on:
+  push:
+    branches: [main, migration/cloudflare-runtime]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-workers-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  workers-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pinned Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install from committed lockfile
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify Cloudflare runtime files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f wrangler.jsonc
+          test -f vite.config.ts -o -f vite.config.js -o -f vite.config.mts -o -f vite.config.mjs
+          ! grep -q '<your-' wrangler.jsonc
+          ! grep -q 'kv_namespaces' wrangler.jsonc
+          ! grep -q '"images"' wrangler.jsonc
+
+      - name: Existing UTP QA gate
+        run: npm run qa
+
+      - name: vinext compatibility check
+        run: npx --no-install vinext check
+
+      - name: Cloudflare Workers build
+        run: npm run build:vinext
+
+      - name: Verify generated Workers artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f dist/server/wrangler.json
+          test -d dist/client
+
+      - name: Verify QA kept committed source deterministic
+        run: git diff --exit-code -- package.json package-lock.json src docs wrangler.jsonc vite.config.ts
