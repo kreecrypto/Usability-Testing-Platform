@@ -1,9 +1,9 @@
 import {
-  bearerAccessToken,
   createProjectTestCrud,
   CrudProviderError,
   CrudValidationError,
 } from "./project-test-crud.ts";
+import { accessTokenFromRequest } from "./auth/session.ts";
 
 export class CrudHttpError extends Error {
   status: number;
@@ -41,11 +41,18 @@ export async function readJsonObject(request: Request): Promise<Record<string, u
 }
 
 export function crudForRequest(request: Request) {
-  const accessToken = bearerAccessToken(request);
+  // Existing API clients may keep sending Authorization: Bearer. The authenticated
+  // browser shell uses an HttpOnly UTP cookie instead so application code never
+  // exposes the user JWT to client JavaScript. Both paths delegate authorization
+  // to Supabase RLS with the same user access token.
+  const accessToken = accessTokenFromRequest(request);
   if (!accessToken) throw new CrudHttpError(401, "authentication_required");
 
   const supabaseUrl = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const anonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+    process.env.SUPABASE_ANON_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !anonKey) throw new CrudHttpError(503, "data_service_not_configured");
 
   return createProjectTestCrud({ supabaseUrl, anonKey, accessToken });
