@@ -1,19 +1,21 @@
-# Task 22 — Cloudflare Event Collector
+# Task 22 — Vercel Event Collector with Supabase Persistence
 
 ## Status
 
-Implementation is intentionally limited to the source-supported HTTP/validation boundary.
+The source-supported HTTP boundary is wired to a Next.js/Vercel route and a server-only Supabase persistence adapter. Runtime completion still requires Vercel environment configuration and production evidence.
 
 ## Canonical sources
 
 - Planning acceptance: Task 22 in the Google Sheet — collector accepts validated events, rejects malformed input, and does not expose database credentials.
 - `docs/architecture.md` — participant clients do not write raw events directly to the main database; the collector validates payloads and protects database credentials.
 - `docs/event-contract.md` — canonical raw event envelope is schema v2; `receivedAt` is collector-assigned and must not be trusted from participant input.
-- Cloudflare Workers documentation — Workers use the Fetch `Request`/`Response` handler model; sensitive values belong in encrypted secrets/bindings rather than plaintext configuration.
+- `docs/database-schema.md` and Task 20 migrations — `public.events` is the canonical event persistence surface and tenant identity is represented by `workspace_id` plus session/test context.
+- Supabase official security guidance — secret/service-role credentials are server-only and must never be exposed to browsers.
+- Vercel/Next.js runtime — App Router route handlers are the production HTTP deployment target for this repository.
 
 ## Implemented boundary
 
-`src/lib/collector/event-collector.ts` provides a Cloudflare-Worker-compatible Fetch API handler core:
+`src/lib/collector/event-collector.ts` provides the deterministic request/validation boundary:
 
 - `POST /v1/events` only.
 - `application/json` only.
@@ -21,21 +23,52 @@ Implementation is intentionally limited to the source-supported HTTP/validation 
 - rejects derived events at the raw collector boundary.
 - rejects client-supplied `receivedAt`.
 - assigns `receivedAt` server-side only after validation.
-- calls an injected server-side persistence adapter before returning `202 accepted`.
-- maps persistence failures to a generic `503 ingestion_unavailable` response without returning raw error text or credentials.
-- does not place database URLs, passwords, service-role keys, or provider tokens in client-visible code or responses.
+- maps persistence failures to generic `503 ingestion_unavailable` without returning raw error text or credentials.
 
-## Explicit SOURCE GAP
+`src/app/v1/events/route.ts` exposes that handler as the Vercel/Next.js route and reads only server-side environment variables:
 
-The current planning source, architecture, and repository do **not** define the concrete production persistence binding for Task 22 (for example Cloudflare Queue, Service Binding, Hyperdrive/direct PostgreSQL, or a Supabase server-side REST adapter). Choosing one here would be a new architecture decision and would overlap later Task 23 / GWD-07 responsibilities around batching, retry, idempotency, queue semantics and DLQ.
+- `SUPABASE_URL`
+- `SUPABASE_SECRET_KEY`
 
-Therefore this task does **not** invent or commit a Wrangler production binding, database credential, queue name, or deployment target. The injected `PersistAcceptedEvent` boundary keeps validation deterministic while allowing the later source-authorized persistence/queue design to be attached without changing the event contract.
+Neither variable is prefixed with `NEXT_PUBLIC_` and neither is returned to the participant client.
+
+## Supabase persistence boundary
+
+`src/lib/collector/supabase-event-persistence.ts` deliberately does **not** accept `workspaceId` from the event payload.
+
+For each accepted event it:
+
+1. resolves the canonical session from `public.sessions` using the server credential;
+2. obtains trusted `workspace_id`, `participant_id`, `test_id`, and `test_version_id` from that session;
+3. rejects the write if participant/test/version in the event do not match the stored session context;
+4. maps the accepted event through `toEventStorageRow(...)`;
+5. inserts the row into `public.events` using the server-only credential.
+
+This prevents a participant payload from spoofing a different workspace while preserving the canonical Event Contract, which intentionally does not contain a client-controlled workspace ID.
+
+## Responsibility boundary with later tasks
+
+Task 22 covers validated single-event ingestion and secure persistence. It does not invent batching, client/network retry policy, DLQ behavior, or duplicate retry orchestration; those remain Task 23 / GWD-07 scope. Existing database uniqueness constraints remain the persistence safety baseline but are not used to claim Task 23 COMPLETE.
 
 ## QA evidence required before COMPLETE
 
-- contract/unit tests for valid, malformed, derived, spoofed `receivedAt`, invalid JSON/content-type/method/route and persistence error cases;
-- repository build/typecheck/test green on the same head;
-- concrete production persistence binding selected from an authoritative source;
-- Cloudflare deployment/runtime evidence showing the Worker accepts valid input and rejects invalid input without leaking secrets.
+Repository QA:
 
-Until the concrete binding/deployment evidence exists, Task 22 must remain `IN_PROGRESS` rather than `COMPLETE`.
+- valid canonical raw event is persisted before `202 accepted`;
+- malformed/derived/spoofed `receivedAt` input is rejected;
+- invalid JSON/content-type/method/route cases are explicit;
+- database/provider failures return generic `503` with no secret/error leakage;
+- Supabase adapter resolves workspace from the trusted session;
+- participant/test/version mismatch is rejected before event insertion;
+- build, typecheck, and tests pass on the same PR head.
+
+Hosted/runtime QA:
+
+- dedicated Supabase UTP project `qryvrcwbsehrzpersuoc` contains the Task 20 schema and Task 21 RLS/grants;
+- Vercel project `usability-testing-platform` is linked to this GitHub repository;
+- `SUPABASE_URL` and `SUPABASE_SECRET_KEY` are configured as server-only Vercel environment variables;
+- deployed `/v1/events` rejects malformed input;
+- a valid fixture tied to an existing session persists exactly one row into `public.events` and returns `202`;
+- failure responses and logs do not expose the Supabase secret or raw database error.
+
+Until the Vercel environment configuration and hosted valid-persistence test are proven, Task 22 must remain `IN_PROGRESS`/`QA`, not `COMPLETE`.
