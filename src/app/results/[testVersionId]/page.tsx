@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ResultsModel } from "../../../lib/analytics/results.ts";
 import styles from "./results.module.css";
 
-type View = "overview" | "tasks" | "paths" | "sessions";
+type View = "overview" | "tasks" | "paths" | "funnel" | "sessions";
 type LoadState =
   | { status: "loading" }
   | { status: "error"; message: string }
@@ -50,8 +50,8 @@ function Overview({ results }: { results: ResultsModel }) {
       </div>
     </section>
     <section className={styles.warningPanel} role="status">
-      <strong>Capability-gated analytics</strong>
-      <p>Heatmap and funnel are intentionally unavailable until their canonical evidence/configuration gates are satisfied. The Results UI does not substitute CSS coordinates or invent funnel steps.</p>
+      <strong>Heatmap capability gate</strong>
+      <p>Heatmap remains unavailable until canonical pinned-coordinate evidence is release-proven. Funnel analysis is available only when a versioned funnel definition is stored with the published test version.</p>
     </section>
   </div>;
 }
@@ -91,6 +91,27 @@ function Paths({ results }: { results: ResultsModel }) {
       <div><strong>{path.repeatedScreenCount}</strong><span>Repeated screens</span></div>
     </div>
   </article>)}</div>;
+}
+
+function Funnel({ results }: { results: ResultsModel }) {
+  const funnel = results.funnel;
+  if (!funnel) return <EmptyState>No funnel definition is stored with this published version. Configure ordered canonical screen IDs before publishing to calculate conversion and drop-off.</EmptyState>;
+  return <div className={styles.stack}>
+    <section className={styles.metricsGrid} aria-label="Funnel summary">
+      <MetricCard label="Eligible sessions" value={String(funnel.eligibleSessionCount)} detail="Technical blocks excluded" />
+      <MetricCard label="Technical blocked" value={String(funnel.technicalBlockedSessionCount)} detail="Reported separately" />
+      <MetricCard label="Largest drop" value={funnel.largestDrop ? metric(funnel.largestDrop.dropOffRate, "%") : "No Data"} detail={funnel.largestDrop ? `${funnel.largestDrop.fromScreenId} → ${funnel.largestDrop.toScreenId}` : "No entered transition"} />
+    </section>
+    <section className={styles.panel}>
+      <div className={styles.panelHeader}><div><span className={styles.eyebrow}>{funnel.version}</span><h2>Step conversion & drop-off</h2></div></div>
+      <ol className={styles.funnelList}>
+        {funnel.transitions.map((transition) => <li key={`${transition.index}:${transition.fromScreenId}:${transition.toScreenId}`} className={styles.funnelTransition}>
+          <div><strong>{transition.fromScreenId} → {transition.toScreenId}</strong><small>Entered {transition.entered} · Reached {transition.reached} · Dropped {transition.dropped}</small></div>
+          <div className={styles.funnelRates}><span>Conversion <strong>{metric(transition.conversionRate, "%")}</strong></span><span>Drop-off <strong>{metric(transition.dropOffRate, "%")}</strong></span></div>
+        </li>)}
+      </ol>
+    </section>
+  </div>;
 }
 
 function Sessions({ results }: { results: ResultsModel }) {
@@ -133,9 +154,9 @@ export default function ResultsPage({ params }: { params: Promise<{ testVersionI
   const title = useMemo(() => versionId ? `Version ${versionId.slice(0, 8)}` : "Results", [versionId]);
   return <main className={styles.page}>
     <header className={styles.header}><div><span className={styles.eyebrow}>Results · published evidence</span><h1>{title}</h1><p>Metrics are reproduced from accepted canonical events. Technical blocks remain separate from usability outcomes and No Data is never displayed as zero.</p></div><a href="/projects" className={styles.backLink}>Projects</a></header>
-    <nav className={styles.tabs} aria-label="Results views">{(["overview", "tasks", "paths", "sessions"] as const).map((item) => <button key={item} type="button" aria-current={view === item ? "page" : undefined} className={view === item ? styles.tabActive : styles.tab} onClick={() => setView(item)}>{item[0].toUpperCase() + item.slice(1)}</button>)}</nav>
+    <nav className={styles.tabs} aria-label="Results views">{(["overview", "tasks", "paths", "funnel", "sessions"] as const).map((item) => <button key={item} type="button" aria-current={view === item ? "page" : undefined} className={view === item ? styles.tabActive : styles.tab} onClick={() => setView(item)}>{item[0].toUpperCase() + item.slice(1)}</button>)}</nav>
     {state.status === "loading" ? <div className={styles.loading} role="status">Loading canonical Results…</div> : null}
     {state.status === "error" ? <div className={styles.error} role="alert"><strong>Results unavailable</strong><p>{state.message}</p></div> : null}
-    {state.status === "ready" ? <section className={styles.content}>{view === "overview" ? <Overview results={state.results} /> : view === "tasks" ? <Tasks results={state.results} /> : view === "paths" ? <Paths results={state.results} /> : <Sessions results={state.results} />}</section> : null}
+    {state.status === "ready" ? <section className={styles.content}>{view === "overview" ? <Overview results={state.results} /> : view === "tasks" ? <Tasks results={state.results} /> : view === "paths" ? <Paths results={state.results} /> : view === "funnel" ? <Funnel results={state.results} /> : <Sessions results={state.results} />}</section> : null}
   </main>;
 }

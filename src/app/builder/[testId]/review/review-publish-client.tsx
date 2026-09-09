@@ -15,6 +15,8 @@ type Task = {
   postTaskQuestions: Record<string, unknown>;
 };
 
+type FunnelConfig = { version: "screen-funnel-v1"; screenIds: string[] };
+
 type Preview = {
   testId: string;
   testVersionId: string;
@@ -24,6 +26,7 @@ type Preview = {
   embedUrl: string;
   fileKey: string;
   startNodeId: string;
+  funnelConfig: FunnelConfig | null;
   tasks: Task[];
 };
 
@@ -58,23 +61,33 @@ function ruleCount(rule: Record<string, unknown>): number {
   return Array.isArray(targets) ? targets.length : Object.keys(rule).length > 0 ? 1 : 0;
 }
 
+function parseFunnelText(value: string): string[] {
+  return value.split(/[\n,]+/).map((item) => item.trim()).filter(Boolean);
+}
+
 export default function ReviewPublishClient({ testId }: { testId: string }) {
   const [preview, setPreview] = useState<Preview | null>(null);
+  const [funnelText, setFunnelText] = useState("");
   const [state, setState] = useState<State>("loading");
   const [error, setError] = useState("");
+
+  const applyPreview = useCallback((value: Preview) => {
+    setPreview(value);
+    setFunnelText(value.funnelConfig?.screenIds.join("\n") ?? "");
+  }, []);
 
   const load = useCallback(async () => {
     setState("loading");
     setError("");
     try {
       const result = await api<{ preview: Preview }>(`/api/tests/${encodeURIComponent(testId)}/publish`);
-      setPreview(result.preview);
+      applyPreview(result.preview);
       setState("ready");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to load preview");
       setState("error");
     }
-  }, [testId]);
+  }, [applyPreview, testId]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -87,10 +100,32 @@ export default function ReviewPublishClient({ testId }: { testId: string }) {
         method: "POST",
         body: JSON.stringify({ action }),
       });
-      setPreview(result.preview);
+      applyPreview(result.preview);
       setState("ready");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Action failed");
+      setState("error");
+    }
+  }
+
+  async function saveFunnel() {
+    if (state === "working" || preview?.lifecycleStatus !== "draft") return;
+    const screenIds = parseFunnelText(funnelText);
+    if (screenIds.length < 2) {
+      setError("Funnel requires at least two canonical screen IDs.");
+      return;
+    }
+    setState("working");
+    setError("");
+    try {
+      const result = await api<{ preview: Preview }>(`/api/tests/${encodeURIComponent(testId)}/publish`, {
+        method: "POST",
+        body: JSON.stringify({ action: "save_funnel", screenIds }),
+      });
+      applyPreview(result.preview);
+      setState("ready");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to save funnel");
       setState("error");
     }
   }
@@ -125,6 +160,22 @@ export default function ReviewPublishClient({ testId }: { testId: string }) {
           <div><dt>Internal version ID</dt><dd><code>{preview.testVersionId}</code></dd></div>
         </dl>
         <p className={styles.note}>Publishing freezes this internal snapshot and its task rows. Figma REST version metadata is not required in simplified V1.</p>
+      </section>
+
+      <section className={styles.card} aria-labelledby="funnel-heading">
+        <h2 id="funnel-heading">Results funnel</h2>
+        <p className={styles.note}>Define the ordered canonical screen IDs used for step conversion and drop-off. This configuration is frozen with the published test version; it is not inferred from participant paths.</p>
+        {preview.lifecycleStatus === "draft" ? (
+          <div className={styles.funnelEditor}>
+            <label htmlFor="funnel-screen-ids">Canonical screen IDs · one per line or comma-separated</label>
+            <textarea id="funnel-screen-ids" rows={5} value={funnelText} onChange={(event) => setFunnelText(event.target.value)} disabled={state === "working"} placeholder={"screen-A\nscreen-B\nscreen-C"} />
+            <button className={styles.secondary} type="button" disabled={state === "working"} onClick={() => void saveFunnel()}>Save funnel definition</button>
+          </div>
+        ) : preview.funnelConfig ? (
+          <ol className={styles.funnelSteps}>{preview.funnelConfig.screenIds.map((screenId) => <li key={screenId}><code>{screenId}</code></li>)}</ol>
+        ) : (
+          <p>No funnel definition is stored for this published version. Funnel Results will show No Data.</p>
+        )}
       </section>
 
       <section aria-labelledby="task-heading">
