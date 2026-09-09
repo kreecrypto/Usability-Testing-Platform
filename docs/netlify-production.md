@@ -40,7 +40,10 @@ Configure values from the existing `.env.example` in Netlify's environment-varia
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — legacy fallback only while still required.
 - `SUPABASE_URL`
-- `SUPABASE_SECRET_KEY`
+- `SUPABASE_SECRET_KEY` — preferred provider-neutral server-only elevated key.
+- `SUPABASE_SERVICE_ROLE_KEY` — Netlify Supabase Extension server-only fallback. The runtime accepts it only when `SUPABASE_SECRET_KEY` is absent; never expose it through a `NEXT_PUBLIC_` variable.
+
+The Netlify Supabase Extension may be used to OAuth-connect the existing UTP Supabase project and provision its standard environment variables. Do not initialize a second database for UTP.
 
 ### Figma simplified V1
 
@@ -59,7 +62,7 @@ Deferred/legacy OAuth proof variables should remain unset unless that path is de
 
 - `NEXT_PUBLIC_EVENT_COLLECTOR_URL=/v1/events`
 - `EVENT_INGESTION_TOKEN_SECRET`
-- `EVENT_INGESTION_RATE_LIMIT_PER_MINUTE`
+- `EVENT_INGESTION_RATE_LIMIT_PER_MINUTE` — required explicit product/ops value; do not invent a default during hosting migration.
 
 ### Cloudflare R2
 
@@ -79,6 +82,8 @@ Before treating a Netlify deployment as Production-ready:
 8. Require `supabaseDatabase = ok` and `supabaseStorage = ok` in the health payload.
 9. Smoke-test the public participant route and server API behavior used by the current release.
 10. Do not delete or disconnect Vercel until the Netlify production route is verified and rollback evidence exists.
+
+A successful host deployment does not by itself clear Task 60 / V1 Launch. The current Sheet release dependencies and acceptance gates remain authoritative.
 
 ## Rollback
 

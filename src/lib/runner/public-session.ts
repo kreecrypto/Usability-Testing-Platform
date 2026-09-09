@@ -148,7 +148,7 @@ function prototypeFromVersion(version: VersionRow, figmaEmbedClientId: string | 
 export function runnerServerConfig() {
   return Object.freeze({
     supabaseUrl: requiredServerValue(process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "", "SUPABASE_URL"),
-    secretKey: requiredServerValue(process.env.SUPABASE_SECRET_KEY ?? "", "SUPABASE_SECRET_KEY"),
+    secretKey: requiredServerValue(process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "", "SUPABASE_SECRET_KEY"),
     signingKey: requiredServerValue(process.env.EVENT_INGESTION_TOKEN_SECRET ?? "", "EVENT_INGESTION_TOKEN_SECRET"),
     figmaEmbedClientId: process.env.FIGMA_EMBED_CLIENT_ID?.trim() || null,
   });
