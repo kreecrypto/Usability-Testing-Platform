@@ -20,7 +20,7 @@ test("normalizes a public Figma prototype link to the embed host", () => {
   assert.equal(embed.searchParams.get("embed-host"), "ut-platform-v1");
 });
 
-test("does not require OAuth client-id or Figma version-id", () => {
+test("does not require an Embed API client id or Figma version-id for basic embed", () => {
   const parsed = parsePublicFigmaPrototypeUrl(
     "https://figma.com/proto/AbC123xyz/Checkout?node-id=10-20",
   );
@@ -29,6 +29,28 @@ test("does not require OAuth client-id or Figma version-id", () => {
   assert.equal(embed.searchParams.has("client-id"), false);
   assert.equal(embed.searchParams.has("version-id"), false);
   assert.equal(embed.searchParams.get("node-id"), "10-20");
+});
+
+test("ignores an untrusted client id pasted in a prototype URL", () => {
+  const parsed = parsePublicFigmaPrototypeUrl(
+    "https://www.figma.com/proto/AbC123xyz/Checkout?client-id=researcher-supplied&node-id=1-2",
+  );
+  const embed = new URL(parsed.embedUrl);
+
+  assert.equal(embed.searchParams.has("client-id"), false);
+  assert.equal(embed.searchParams.get("node-id"), "1-2");
+});
+
+test("pins the deployment-configured Embed API client id over URL input", () => {
+  const parsed = parsePublicFigmaPrototypeUrl(
+    "https://www.figma.com/proto/AbC123xyz/Checkout?client-id=researcher-supplied&node-id=1-2",
+    "ut-platform-v1",
+    "trusted-app-client-id",
+  );
+  const embed = new URL(parsed.embedUrl);
+
+  assert.equal(embed.searchParams.get("client-id"), "trusted-app-client-id");
+  assert.equal(embed.searchParams.get("embed-host"), "ut-platform-v1");
 });
 
 test("accepts an existing embed.figma.com prototype URL and pins embed-host", () => {
