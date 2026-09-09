@@ -32,7 +32,16 @@ export async function GET(request: Request): Promise<Response> {
     if (!claims) return json({ error: "runner_session_required" }, 401);
 
     const store = createPublicRunnerStore(config);
-    return json({ state: await store.sessionState(claims) }, 200);
+    const state = await store.sessionState(claims);
+    return json({
+      context: {
+        sessionId: claims.sessionId,
+        participantId: claims.participantId,
+        testId: claims.testId,
+        testVersionId: claims.testVersionId,
+      },
+      state,
+    }, 200);
   } catch (error) {
     if (error instanceof PublicRunnerError) return json({ error: error.code }, error.status);
     return json({ error: "data_request_failed" }, 502);
