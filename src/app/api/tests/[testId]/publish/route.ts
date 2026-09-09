@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 type Context = { params: Promise<{ testId: string }> };
 
-type PublishAction = "publish" | "create_draft";
+type PublishAction = "publish" | "create_draft" | "save_funnel";
 
 function json(body: unknown, status: number): Response {
   return Response.json(body, { status, headers: { "cache-control": "private, no-store" } });
@@ -25,6 +25,12 @@ function errorResponse(error: unknown): Response {
     return json({ error: error.code, message: error.message }, error.status);
   }
   return json({ error: "data_request_failed" }, 502);
+}
+
+function screenIdsFrom(body: Record<string, unknown>): string[] | null {
+  const value = body.screenIds;
+  if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) return null;
+  return value;
 }
 
 export async function GET(request: Request, context: Context): Promise<Response> {
@@ -46,16 +52,26 @@ export async function POST(request: Request, context: Context): Promise<Response
     return json({ error: "invalid_json" }, 400);
   }
   if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "invalid_body" }, 400);
-  const action = Reflect.get(body, "action");
-  if (action !== "publish" && action !== "create_draft") return json({ error: "invalid_action" }, 400);
+  const record = body as Record<string, unknown>;
+  const action = record.action;
+  if (action !== "publish" && action !== "create_draft" && action !== "save_funnel") {
+    return json({ error: "invalid_action" }, 400);
+  }
 
   try {
     const store = storeFor(request);
     if (!store) return json({ error: "authentication_required" }, 401);
     const { testId } = await context.params;
-    const preview = action === ("publish" satisfies PublishAction)
-      ? await store.publish(testId)
-      : await store.createDraftFromPublished(testId);
+    let preview;
+    if (action === ("publish" satisfies PublishAction)) {
+      preview = await store.publish(testId);
+    } else if (action === ("create_draft" satisfies PublishAction)) {
+      preview = await store.createDraftFromPublished(testId);
+    } else {
+      const screenIds = screenIdsFrom(record);
+      if (!screenIds) return json({ error: "invalid_funnel_screen_ids" }, 400);
+      preview = await store.saveFunnel(testId, screenIds);
+    }
     return json({ preview }, 200);
   } catch (error) {
     return errorResponse(error);
