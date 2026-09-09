@@ -12,6 +12,7 @@ export const rawEventTypes = [
   "task_technical_blocked",
   "screen_view",
   "pointer_interaction",
+  "component_state_changed",
   "scroll",
   "question_viewed",
   "question_answered",

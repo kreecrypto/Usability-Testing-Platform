@@ -111,10 +111,14 @@ export function validateRawTrackingEvent(input: unknown): CollectorValidationRes
     addUuidError(errors, input, field);
   }
 
-  for (const field of ["taskId", "screenId"] as const) {
-    if (input[field] !== undefined && input[field] !== null) {
-      addUuidError(errors, input, field);
-    }
+  if (input.taskId !== undefined && input.taskId !== null) {
+    addUuidError(errors, input, "taskId");
+  }
+
+  // screenId is provider-neutral text. Figma node ids use values such as "5:3",
+  // so requiring a UUID here would reject valid prototype evidence.
+  if (input.screenId !== undefined && input.screenId !== null) {
+    addRequiredStringError(errors, input, "screenId");
   }
 
   if (
