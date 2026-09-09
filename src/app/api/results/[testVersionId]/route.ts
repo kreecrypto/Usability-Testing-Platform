@@ -1,5 +1,5 @@
-import { accessTokenFromRequest, publicSupabaseConfig } from "../../../../../lib/auth/session.ts";
-import { createResultsStore, ResultsStoreError } from "../../../../../lib/analytics/results-store.ts";
+import { accessTokenFromRequest, publicSupabaseConfig } from "../../../../lib/auth/session.ts";
+import { createResultsStore, ResultsStoreError } from "../../../../lib/analytics/results-store.ts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
