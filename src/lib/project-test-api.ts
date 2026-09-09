@@ -6,9 +6,14 @@ import {
 } from "./project-test-crud.ts";
 
 export class CrudHttpError extends Error {
-  constructor(public status: number, public code: string) {
+  status: number;
+  code: string;
+
+  constructor(status: number, code: string) {
     super(code);
     this.name = "CrudHttpError";
+    this.status = status;
+    this.code = code;
   }
 }
 
