@@ -8,7 +8,9 @@ export type PublicFigmaPrototype = Readonly<{
   sourceUrl: string;
   embedUrl: string;
   fileKey: string;
+  /** Canonical internal Figma node id, using the API/Embed API colon form. */
   nodeId?: string;
+  /** Canonical internal Figma flow-start node id, using the colon form. */
   startingPointNodeId?: string;
 }>;
 
@@ -18,13 +20,41 @@ function required(value: string, field: string): string {
   return trimmed;
 }
 
+function optionalSingleQueryValue(url: URL, key: string): string | undefined {
+  const values = url.searchParams.getAll(key);
+  if (values.length > 1) {
+    throw new Error(`Figma prototype URL must contain at most one ${key}`);
+  }
+  const value = values[0]?.trim();
+  return value || undefined;
+}
+
+/**
+ * Figma URLs represent ordinary node ids with a hyphen (for example 5-3),
+ * while Figma's APIs/events expose the same id with a colon (5:3).
+ * Accept either documented representation and return one canonical internal id.
+ */
+export function parseFigmaNodeIdentifier(
+  value: string | undefined,
+  field: "node-id" | "starting-point-node-id",
+): string | undefined {
+  if (!value) return undefined;
+
+  const match = /^(\d+)(?:-|:)(\d+)$/.exec(value);
+  if (!match) {
+    throw new Error(`${field} must be a valid Figma node identifier`);
+  }
+
+  return `${match[1]}:${match[2]}`;
+}
+
 /**
  * Validate a public Figma prototype URL and normalize it to Figma's embed host.
  *
  * Simplified V1 intentionally does not require OAuth, client secrets, access
  * tokens, or Figma REST metadata. Query parameters supplied by the prototype
- * link (including node/start point) are preserved, while embed-host is pinned
- * to the UT Platform surface.
+ * link are preserved after validation, while parsed node/start identifiers are
+ * exposed in canonical colon form for downstream mapping.
  */
 export function parsePublicFigmaPrototypeUrl(
   input: string,
@@ -58,9 +88,14 @@ export function parsePublicFigmaPrototypeUrl(
     throw new Error("Figma prototype file key is invalid");
   }
 
-  const nodeId = url.searchParams.get("node-id")?.trim() || undefined;
-  const startingPointNodeId =
-    url.searchParams.get("starting-point-node-id")?.trim() || undefined;
+  const nodeId = parseFigmaNodeIdentifier(
+    optionalSingleQueryValue(url, "node-id"),
+    "node-id",
+  );
+  const startingPointNodeId = parseFigmaNodeIdentifier(
+    optionalSingleQueryValue(url, "starting-point-node-id"),
+    "starting-point-node-id",
+  );
 
   url.hostname = "embed.figma.com";
   url.searchParams.set("embed-host", required(embedHost, "embedHost"));
