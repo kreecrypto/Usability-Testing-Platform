@@ -6,6 +6,8 @@ export const dynamic = "force-dynamic";
 
 const COOKIE_NAME = "utp_runner_session";
 
+type FeedbackMarkerRow = Readonly<{ task_id: string; feedback_submitted_at: string | null }>;
+
 function json(body: unknown, status: number): Response {
   return Response.json(body, {
     status,
@@ -22,6 +24,24 @@ function cookieValue(request: Request, name: string): string | null {
   return null;
 }
 
+async function feedbackMarkers(config: ReturnType<typeof runnerServerConfig>, sessionId: string): Promise<Map<string, string | null>> {
+  const query = new URLSearchParams({
+    session_id: `eq.${sessionId}`,
+    select: "task_id,feedback_submitted_at",
+  });
+  const response = await fetch(`${config.supabaseUrl.replace(/\/+$/, "")}/rest/v1/task_sessions?${query}`, {
+    headers: {
+      apikey: config.secretKey,
+      authorization: `Bearer ${config.secretKey}`,
+      accept: "application/json",
+    },
+    cache: "no-store",
+  });
+  if (!response.ok) throw new Error("task_session_state_failed");
+  const rows = await response.json() as FeedbackMarkerRow[];
+  return new Map(rows.map((row) => [row.task_id, row.feedback_submitted_at]));
+}
+
 export async function GET(request: Request): Promise<Response> {
   try {
     const config = runnerServerConfig();
@@ -33,6 +53,7 @@ export async function GET(request: Request): Promise<Response> {
 
     const store = createPublicRunnerStore(config);
     const state = await store.sessionState(claims);
+    const markers = await feedbackMarkers(config, claims.sessionId);
     return json({
       context: {
         sessionId: claims.sessionId,
@@ -40,7 +61,13 @@ export async function GET(request: Request): Promise<Response> {
         testId: claims.testId,
         testVersionId: claims.testVersionId,
       },
-      state,
+      state: {
+        ...state,
+        taskStates: state.taskStates.map((task) => ({
+          ...task,
+          feedbackSubmittedAt: markers.get(task.taskId) ?? null,
+        })),
+      },
     }, 200);
   } catch (error) {
     if (error instanceof PublicRunnerError) return json({ error: error.code }, error.status);
