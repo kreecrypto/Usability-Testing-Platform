@@ -3,6 +3,9 @@
 -- a 7-point post-task ease rating. Stored value includes scaleVersion so later
 -- analytics never silently invert or reinterpret the raw number.
 
+alter table public.task_sessions
+  add column if not exists feedback_submitted_at timestamptz;
+
 create unique index if not exists answers_session_task_question_uq
   on public.answers (session_id, task_id, question_key)
   where task_id is not null;
@@ -86,6 +89,15 @@ begin
     on conflict (session_id, task_id, question_key) where task_id is not null
     do update set value = excluded.value;
   end if;
+
+  -- Submission is a task-session lifecycle fact, not a fabricated answer. This
+  -- marker lets recovery distinguish an optional blank submission from a task
+  -- that has not reached P06 yet and prevents duplicate completion transitions.
+  update public.task_sessions
+  set feedback_submitted_at = coalesce(feedback_submitted_at, now()),
+      updated_at = now()
+  where session_id = p_session_id
+    and task_id = p_task_id;
 end;
 $$;
 
