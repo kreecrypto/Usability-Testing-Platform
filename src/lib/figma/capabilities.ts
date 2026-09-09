@@ -69,6 +69,12 @@ export type FigmaMetricAvailability = Readonly<{
   evidence: readonly FigmaV1EvidenceCapability[];
 }>;
 
+function evidence(
+  ...values: FigmaV1EvidenceCapability[]
+): readonly FigmaV1EvidenceCapability[] {
+  return Object.freeze(values);
+}
+
 export function getFigmaV1MetricAvailability(
   metric: FigmaV1Metric,
   options: Readonly<{ canonicalHeatmapCoordinates?: boolean }> = {},
@@ -78,25 +84,25 @@ export function getFigmaV1MetricAvailability(
       return Object.freeze({
         displayable: true,
         reason: "Backed by canonical pointer_interaction from MOUSE_PRESS_OR_RELEASE.",
-        evidence: Object.freeze(["pointer_interaction"]),
+        evidence: evidence("pointer_interaction"),
       });
     case "screen_path":
       return Object.freeze({
         displayable: true,
         reason: "Backed by ordered canonical screen_view events from PRESENTED_NODE_CHANGED.",
-        evidence: Object.freeze(["screen_view"]),
+        evidence: evidence("screen_view"),
       });
     case "component_state_changes":
       return Object.freeze({
         displayable: true,
         reason: "Backed by canonical component_state_changed from NEW_STATE.",
-        evidence: Object.freeze(["component_state_changed"]),
+        evidence: evidence("component_state_changed"),
       });
     case "backtrack":
       return Object.freeze({
         displayable: true,
         reason: "Derived from ordered screen_view evidence; it is not a raw back event count.",
-        evidence: Object.freeze(["screen_view"]),
+        evidence: evidence("screen_view"),
       });
     case "heatmap":
       return Object.freeze({
@@ -104,25 +110,25 @@ export function getFigmaV1MetricAvailability(
         reason: options.canonicalHeatmapCoordinates === true
           ? "Pointer evidence has passed the canonical GWD-05 coordinate transform."
           : "Figma pointer payload alone lacks canonical normalized frame coordinates; wait for GWD-05 transform evidence.",
-        evidence: Object.freeze(["pointer_interaction"]),
+        evidence: evidence("pointer_interaction"),
       });
     case "scroll_count":
       return Object.freeze({
         displayable: false,
         reason: FIGMA_V1_CAPABILITIES.standalone_scroll.note,
-        evidence: Object.freeze(["standalone_scroll"]),
+        evidence: evidence("standalone_scroll"),
       });
     case "raw_back_count":
       return Object.freeze({
         displayable: false,
         reason: FIGMA_V1_CAPABILITIES.raw_back.note,
-        evidence: Object.freeze(["raw_back"]),
+        evidence: evidence("raw_back"),
       });
     case "raw_forward_count":
       return Object.freeze({
         displayable: false,
         reason: FIGMA_V1_CAPABILITIES.raw_forward.note,
-        evidence: Object.freeze(["raw_forward"]),
+        evidence: evidence("raw_forward"),
       });
   }
 }
