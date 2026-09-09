@@ -1,11 +1,20 @@
 import { accessTokenFromRequest, publicSupabaseConfig } from "../auth/session.ts";
+import { createFindingContextStore } from "./context.ts";
 import { createFindingsStore, FindingsStoreError } from "./store.ts";
 
-export function findingsForRequest(request: Request) {
+function requestConfig(request: Request) {
   const accessToken = accessTokenFromRequest(request);
   if (!accessToken) throw new FindingsStoreError("unauthorized", 401, "authentication_required");
   const config = publicSupabaseConfig();
-  return createFindingsStore({ supabaseUrl: config.url, anonKey: config.key, accessToken });
+  return { supabaseUrl: config.url, anonKey: config.key, accessToken };
+}
+
+export function findingsForRequest(request: Request) {
+  return createFindingsStore(requestConfig(request));
+}
+
+export function findingContextForRequest(request: Request) {
+  return createFindingContextStore(requestConfig(request));
 }
 
 export function findingsJson(body: unknown, status = 200): Response {
