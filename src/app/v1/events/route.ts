@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const secretKey = process.env.SUPABASE_SECRET_KEY;
+const secretKey = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ingestionTokenSigningKey = process.env.EVENT_INGESTION_TOKEN_SECRET;
 const rateLimitPerMinute = Number(process.env.EVENT_INGESTION_RATE_LIMIT_PER_MINUTE);
 
