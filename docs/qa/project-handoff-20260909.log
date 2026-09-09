@@ -1,0 +1,426 @@
+
+> usability-testing-platform@0.1.0 qa
+> npm run build && npm run typecheck && npm test
+
+
+> usability-testing-platform@0.1.0 build
+> next build
+
+⚠ You are running Next.js on an Apple Silicon Mac with Rosetta 2 translation, which may cause degraded performance. You may have accidentally installed an x86-64 version of Node.js.
+▲ Next.js 16.3.4 (Turbopack)
+✓ Running next.config took 15ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 2.1s
+  Running TypeScript ...
+  Finished TypeScript in 2.5s ...
+  Collecting page data using 11 workers ...
+  Generating static pages using 11 workers (0/10) ...
+  Generating static pages using 11 workers (2/10) 
+  Generating static pages using 11 workers (4/10) 
+  Generating static pages using 11 workers (7/10) 
+✓ Generating static pages using 11 workers (10/10) in 325ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /api/auth/login
+├ ƒ /api/auth/logout
+├ ƒ /api/auth/session
+├ ƒ /api/figma/public-prototype/validate
+├ ƒ /api/findings
+├ ƒ /api/findings/[findingId]
+├ ƒ /api/findings/[findingId]/evidence
+├ ƒ /api/health
+├ ƒ /api/integrations/figma/authorize
+├ ƒ /api/integrations/figma/callback
+├ ƒ /api/projects
+├ ƒ /api/projects/[projectId]
+├ ƒ /api/public/sessions/feedback
+├ ƒ /api/public/sessions/state
+├ ƒ /api/public/sessions/token
+├ ƒ /api/public/tests/[testVersionId]
+├ ƒ /api/public/tests/[testVersionId]/session
+├ ƒ /api/results/[testVersionId]
+├ ƒ /api/retests
+├ ƒ /api/retests/[retestId]
+├ ƒ /api/tasks/[taskId]/frame-mapping
+├ ƒ /api/tests
+├ ƒ /api/tests/[testId]
+├ ƒ /api/tests/[testId]/criteria
+├ ƒ /api/tests/[testId]/prototype
+├ ƒ /api/tests/[testId]/publish
+├ ƒ /api/tests/[testId]/questions
+├ ƒ /api/tests/[testId]/tasks
+├ ƒ /api/workspaces
+├ ƒ /builder/[testId]/criteria
+├ ƒ /builder/[testId]/prototype
+├ ƒ /builder/[testId]/questions
+├ ƒ /builder/[testId]/review
+├ ƒ /builder/[testId]/tasks
+├ ƒ /figma-poc
+├ ƒ /findings/[testVersionId]
+├ ○ /high-fi
+├ ○ /high-fi/figma-limitations
+├ ○ /login
+├ ○ /projects
+├ ƒ /results/[testVersionId]
+├ ƒ /retests/[retestId]
+├ ƒ /t/[testVersionId]
+└ ƒ /v1/events
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+
+> usability-testing-platform@0.1.0 typecheck
+> tsc --noEmit
+
+
+> usability-testing-platform@0.1.0 test
+> node --test tests/*.test.ts
+
+(node:58523) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/analytics-metrics.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ percentage metrics preserve No Data instead of rendering 0% (2.029292ms)
+✔ percentage metrics still report a real zero when eligible data exists (0.155125ms)
+✔ technical blocks are excluded from usability denominators (0.189167ms)
+✔ invalid counter relationships fail loudly instead of being clamped (1.258875ms)
+✔ duration uses lifecycle occurredAt and rejects reversed evidence (0.379292ms)
+(node:58524) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/database-schema.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Task 20 migration includes the complete V1 research model (19.06975ms)
+✔ published Figma test versions persist immutable publish identifiers (2.2705ms)
+✔ final event storage enforces Event Contract v2 ordering and idempotency (3.010834ms)
+✔ event schema version is canonical numeric v2 in final persistence (2.151042ms)
+✔ events persist the complete canonical identity and bind it to one session context (3.891417ms)
+✔ tenant consistency is structurally enforced for workspace-scoped relations (2.6885ms)
+✔ workspace roles and product personas remain separate (1.245875ms)
+✔ all public V1 tables enable RLS before Task 21 adds policies (6.685625ms)
+✔ participant/session storage follows privacy baseline (3.65025ms)
+(node:58525) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/event-persistence.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ raw event round-trips through the canonical storage mapping (1.890042ms)
+✔ derived event round-trips with provenance and rule version (0.230708ms)
+✔ storage decoder rejects schema drift and malformed event-layer combinations (1.059209ms)
+(node:58526) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/figma-oauth.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ authorization URL carries state, redirect URI, scopes and code response type (2.469375ms)
+✔ OAuth state comparison rejects mismatches (0.168792ms)
+✔ authorization code exchange uses HTTP Basic auth and form encoding (28.156375ms)
+✔ OAuth proof verifies the token against Figma /v1/me (0.91575ms)
+✔ prototype proof embeds the pinned version and exact start point (3.951959ms)
+(node:58527) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/figma-public-embed.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ normalizes a public Figma prototype link to the embed host (6.413583ms)
+✔ parses documented URL and API node-id forms into one canonical identifier (0.184458ms)
+✔ does not require OAuth client-id or Figma version-id (1.047458ms)
+✔ strips an untrusted client id from a researcher-supplied prototype URL (0.357958ms)
+✔ accepts an existing embed.figma.com prototype URL and pins embed-host (0.1595ms)
+✔ rejects malformed or ambiguous node/start identifiers (2.436792ms)
+✔ rejects non-prototype, non-Figma, non-HTTPS, and invalid file-key URLs (8.582042ms)
+(node:58528) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/figma-version-pin.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ publish resolves and stores one immutable Figma version (2.793584ms)
+✔ runner embed and REST reads use the exact same pinned version (1.69475ms)
+✔ published helpers reject snapshots without a version ID (1.015958ms)
+(node:58529) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/gwd02-figma-access-preflight.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Embed API client id is added only to an already-normalized Figma embed URL (2.908333ms)
+✔ missing Embed API configuration fails closed instead of claiming public access (0.133958ms)
+✔ INITIAL_LOAD is the only access signal that allows publish (0.137375ms)
+✔ Figma login and password screens are technical blocks, never usability failures (1.931542ms)
+✔ unexpected origins and unrelated messages cannot change the access gate (0.112791ms)
+✔ preflight timeout fails closed as a technical block (1.220042ms)
+(node:58530) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/gwd03-figma-event-adapter.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ maps Figma MOUSE_PRESS_OR_RELEASE to pointer_interaction and preserves provider coordinates (4.284083ms)
+✔ maps frame navigation to screen_view and preserves Figma history + component state mapping (1.094125ms)
+✔ preserves overlay-capable PRESENTED_NODE_CHANGED evidence without inventing an overlay event type (0.114291ms)
+✔ maps Figma NEW_STATE to canonical component_state_changed and round-trips persistence (0.618958ms)
+✔ keeps embed lifecycle/access events operational instead of fabricating usability events (0.219542ms)
+✔ rejects undocumented provider event types and malformed documented payloads (1.195458ms)
+(node:58531) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/gwd04-figma-capabilities.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ declares only official emitted-event evidence as raw Figma V1 capabilities (1.638959ms)
+✔ never exposes raw scroll/back/forward metrics without provider evidence (0.361459ms)
+✔ keeps backtrack derived from screen path rather than claiming a raw back event (0.354292ms)
+✔ gates heatmap display until canonical GWD-05 coordinates exist (0.095792ms)
+✔ Builder/Results metric filtering drops unsupported and not-yet-ready metrics (0.161709ms)
+(node:58532) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/gwd05-heatmap-transform.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ combines target/scroller coordinates and scroll offset into canonical frame coordinates (3.117958ms)
+✔ keeps normalized coordinates stable under uniform pinned-geometry scaling (0.313459ms)
+✔ handles a device-sized frame at a non-zero canvas origin (0.396ms)
+✔ uses the pinned topmost overlay as the canonical heatmap frame (0.144792ms)
+✔ adds scroll offset when the target itself is the scrolling frame (0.224375ms)
+✔ fails closed when pinned geometry IDs or independent coordinate paths disagree (1.570208ms)
+✔ fails closed instead of manufacturing a heatmap point outside the pinned presented node (0.205334ms)
+(node:58533) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/gwd06-session-ingestion-token.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ token is session/version bound and expires (7.221459ms)
+✔ context mismatch is rejected before consumption (41.508667ms)
+✔ replay and rate limit gate outcomes stop ingestion (27.948458ms)
+(node:58534) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/gwd07-event-reliability.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ transient persistence failure retries without DLQ when a later attempt succeeds (1.878291ms)
+✔ poison event is recorded once after max attempts are exhausted (1.223792ms)
+✔ duplicate result is preserved through the reliability wrapper (0.112084ms)
+(node:58535) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/gwd08-rls-hardening.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ all V1 public tables are force-RLS hardened (7.253125ms)
+✔ anon has no direct table, sequence or function surface (2.7815ms)
+✔ authenticated operations remain explicit and RLS-backed (12.303792ms)
+✔ cross-workspace access is mediated by trusted membership helpers (2.35475ms)
+✔ private helpers fail closed and authenticated gets only explicit RLS helpers (4.287083ms)
+✔ service-role secret is not embedded in database migrations (5.190292ms)
+(node:58536) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/task17-prototype-frame-mapping.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ builds explicit mapping and derives the start target from the public prototype URL (20.9635ms)
+✔ allows an explicit canonical start target to override the URL start point (5.835792ms)
+✔ fails closed when no start target can be derived (5.906333ms)
+✔ rejects malformed and duplicate explicit targets (0.767959ms)
+✔ persists the mapping through one authenticated atomic RPC call (43.690625ms)
+✔ keeps provider failure details server-side while preserving the provider error code (5.066458ms)
+✔ migration keeps the atomic RPC on the authenticated RLS boundary (35.496333ms)
+(node:58537) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/task18-figma-event-bridge.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ accepts only the exact Figma origin and expected iframe window (1.75725ms)
+✔ wraps supported Figma pointer evidence in the canonical internal envelope (4.189958ms)
+✔ keeps navigation sequence/current screen deterministic for later component-state events (0.301875ms)
+✔ keeps access/lifecycle messages operational and outside the usability raw stream (0.214334ms)
+✔ fails closed for unsupported or malformed provider messages without consuming sequence (6.768083ms)
+✔ does not advance sequence or screen state when the downstream event sink fails (4.886875ms)
+(node:58538) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/task19-figma-limitations.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Builder blocks unsupported access and unconfigured live event mode (1.692959ms)
+✔ Runner classifies login/password as technical block and never synthesizes provider events (0.655958ms)
+✔ Results hides unsupported raw scroll/back/forward metrics (0.902417ms)
+✔ Heatmap fails closed when canonical coordinates are unavailable (0.143792ms)
+✔ All three required surfaces expose explicit fallback copy (4.794959ms)
+(node:58539) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/task21-authorization.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Task 21 uses explicit workspace authorization helpers outside public schema (8.424417ms)
+✔ authorization never trusts user-editable JWT metadata or deprecated auth.role (1.494042ms)
+✔ anonymous clients have no direct V1 table access (2.208ms)
+✔ Product Viewer is database-enforced read-only for research objects (4.514459ms)
+✔ sensitive participant/session evidence is not readable by Product Viewer (2.290709ms)
+✔ participant collection tables remain read-only to authenticated researcher clients (3.247708ms)
+✔ workspace admin and owner bootstrap policies are explicit (2.871792ms)
+✔ UPDATE authorization uses USING and WITH CHECK (7.148666ms)
+(node:58540) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/task22-event-collector.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ valid raw canonical event is accepted only after persistence and gets server receivedAt (53.547875ms)
+✔ malformed and derived events are rejected before persistence (3.950083ms)
+✔ client cannot spoof collector-owned receivedAt (0.360958ms)
+✔ invalid JSON, content type, route, and method fail explicitly (7.499833ms)
+✔ persistence failures return generic 503 without leaking credential or raw provider error (3.185833ms)
+✔ Supabase persister resolves trusted workspace from session before inserting event (4.917458ms)
+✔ Supabase persister rejects participant/test/version spoofing before event insert (1.861ms)
+(node:58541) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/task23-event-batching.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ batch upload accepts multiple valid events with per-event receipts (53.466708ms)
+✔ invalid event in a batch rejects the whole upload before persistence (1.831083ms)
+✔ retrying transient persistence failures eventually accepts without leaking raw errors (2.76375ms)
+✔ retry exhaustion returns generic 503 without partial batch response details (3.937208ms)
+✔ duplicate idempotency keys inside the same batch are suppressed before a second write (4.365042ms)
+✔ Supabase persister uses idempotency conflict target and reports ignored duplicate inserts (2.366875ms)
+(node:58542) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/task24-retention-archiving.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Task 24 adds task-scoped event and answer query indexes (4.279541ms)
+✔ Task 24 defaults retention to 90 days after authoritative completion (1.044375ms)
+✔ Task 24 expiry removes reconstructable finding evidence before session cascade (1.310667ms)
+✔ Task 24 purge is bounded and service-role only (1.395042ms)
+(node:58543) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/task25-analytics-aggregation.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Task 25 aggregates reproducible task/session metrics and excludes technical blocks (15.68975ms)
+✔ duplicate delivery cannot double-count analytics (2.905375ms)
+✔ first valid terminal evidence wins by canonical raw anchor order (0.613291ms)
+✔ derived metrics fail closed when provenance does not resolve to accepted raw evidence (1.006333ms)
+✔ No Data stays null when every started task is technical blocked (1.426375ms)
+(node:58544) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/task26-observability.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ health check is bounded, non-cacheable and fails closed (11.645542ms)
+✔ structured logging provides correlation without payload or secret fields (12.6775ms)
+✔ Supabase Storage readiness does not invent a bucket contract (17.459583ms)
+(node:58545) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/task27-authenticated-crud-ui.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ authenticated browser CRUD uses HttpOnly session cookie while bearer API clients still work (39.382ms)
+✔ session cookie is HttpOnly SameSite Lax and secure on HTTPS (2.951041ms)
+✔ password sign-in uses current Supabase token endpoint and never sends a service secret (6.154291ms)
+✔ invalid password response is sanitized to invalid_credentials (2.094417ms)
+✔ server verifies cookie JWT against Supabase Auth user endpoint before reporting a session (5.271167ms)
+(node:58546) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/task27-project-test-crud.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ bearer access token is required from the request instead of a global shared secret (37.321167ms)
+✔ project creation validates input and delegates authorization to Supabase RLS with the user JWT (11.308459ms)
+✔ project and test names reject blank values before any provider write (2.193708ms)
+✔ archive operations use schema-supported archived status rather than destructive delete (1.483958ms)
+✔ test listing is workspace-scoped and can be project-scoped (4.549333ms)
+✔ provider permission denial stays a permission denial without exposing provider details (5.792625ms)
+(node:58547) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/task28-prototype-import.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ prototype URL validation preserves public source and canonicalizes Figma node ids (6.351166ms)
+✔ invalid/non-prototype URLs fail closed before persistence (0.793583ms)
+✔ saveDraft creates only a draft test version using the authenticated user JWT and existing RLS boundary (51.021625ms)
+✔ saveDraft updates an existing draft instead of mutating a published version (8.927667ms)
+✔ permission denial remains a sanitized authorization failure (2.471084ms)
+✔ builder UI exposes paste, validate, preview, save, accessibility and responsive states (32.285541ms)
+(node:58548) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/task29-task-scenario-builder.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ listTasks is scoped to the current draft test version (50.97125ms)
+✔ createTask appends title, scenario and instruction to the draft without touching rule fields (9.248084ms)
+✔ updateTask preserves identity/order and edits only participant task content (6.514459ms)
+✔ reorderTasks uses one atomic RPC and returns canonical order (7.406333ms)
+✔ invalid task order and empty title fail before data mutation (10.113209ms)
+✔ Task 29 migration keeps reorder atomic under RLS and removes anonymous RPC execution (32.650667ms)
+✔ Task Editor exposes loading, empty, validation, reorder, unsaved-state, responsive and keyboard-focus states (10.01825ms)
+(node:58549) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/task30-success-criteria-editor.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ disjoint start/success/failure targets are canonicalized and accepted (4.158584ms)
+✔ the same canonical node cannot be both success and failure (2.95575ms)
+✔ criteria reader supports Task17 prototypeUrl mapping and presented-node rules (39.781791ms)
+✔ criteria reader also supports Task28 sourceUrl mapping and protects unknown rule types (2.143875ms)
+✔ frame mapping route uses current authenticated session boundary (48.342333ms)
+✔ database RPC independently rejects conflicting terminal targets under caller RLS (17.270417ms)
+✔ S14 editor exposes target selection, conflict validation, unsupported-rule protection and responsive accessibility states (4.866875ms)
+(node:58550) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/task31-post-task-question-builder.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Task31 config supports only fixed SEQ and Open Feedback toggles (1.367125ms)
+✔ required question cannot be disabled (2.159208ms)
+✔ builder reads latest draft and persists config with authenticated user JWT (57.123583ms)
+✔ database config shape enforces booleans and required implies enabled (25.746625ms)
+✔ question API uses current authenticated session boundary and no service role (8.220791ms)
+✔ S15 editor exposes SEQ, Open Feedback, required optional, validation, empty and responsive accessibility states (4.194542ms)
+(node:58551) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/task32-publish-versioning.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ preview resolves one exact immutable internal snapshot in deterministic task order (46.075292ms)
+✔ publish and edit-after-publish use atomic database RPC boundaries (8.73525ms)
+✔ Task32 migration removes REST version-id requirement and freezes published version plus task rows (22.646542ms)
+✔ review/publish API keeps user JWT + RLS boundary and exposes no service role (9.458125ms)
+✔ review UI communicates exact version snapshot and edit-after-publish behavior (2.571209ms)
+(node:58552) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/task33-43-participant-runner-tracking.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Task33 public snapshot never exposes expected path or success/failure rules (35.2605ms)
+✔ Task38 browser lifecycle emits raw events only with deterministic increasing sequence (2.466375ms)
+✔ Task38 recovery resumes above server and durable-outbox sequence without re-emitting session start (0.187958ms)
+✔ Task43 durable outbox keeps stable identity on failed delivery and removes only after success (3.318375ms)
+✔ Task39 canonical pointer normalization preserves provider evidence and outputs 0..1 only with pinned geometry (0.977334ms)
+✔ Task42 time metrics derive from occurredAt and do not invent idle-adjusted or Figma scroll (0.935208ms)
+✔ Tasks 34-37 runner UI implements P01-P12 contract and never references hidden research rules (23.754166ms)
+✔ Tasks 37/38/40/41 database rules are idempotent, server-derived, and mark proposed friction thresholds honestly (3.461375ms)
+✔ Task43 existing database and collector gates retain stable event dedupe/DLQ guarantees (3.209041ms)
+(node:58553) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/task44-49-results.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Tasks 44/45 overview and task metrics reproduce canonical eligible evidence (21.590708ms)
+✔ Task 46 path analysis uses ordered canonical screen_view and separate derived backtrack evidence (4.770375ms)
+✔ Task 49 timeline preserves event and feedback detail without fabricating unsupported heatmap/funnel (2.050292ms)
+✔ No Data stays null when the only task session is technical blocked (0.305375ms)
+(node:58554) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/task48-funnel.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Task 48 parses only a versioned, ordered, unique funnel definition (1.803417ms)
+✔ Task 48 computes step conversion and largest drop from eligible canonical screen evidence (2.780834ms)
+✔ Task 48 requires ordered progression and preserves No Data (0.406416ms)
+✔ Task 48 Results model exposes funnel only when the published version carries a definition (17.785333ms)
+(node:58555) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/task50-52-findings-retest.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Task 50 metric snapshot remains version-traceable and preserves No Data (5.864458ms)
+✔ Task 52 computes absolute and relative delta without claiming significance (0.704125ms)
+✔ Task 52 relative delta is not fabricated for zero or missing baseline (0.254083ms)
+✔ Task 51 path evidence insert carries finding workspace scope (44.389167ms)
+✔ Task 51 heatmap/path evidence fails closed without canonical payload (4.581625ms)
+(node:58556) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/task54-58-nonfigma-release-qa.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Task 54 non-Figma harness provides 20+ sessions, 500+ unique events and all required outcome classes (8.346209ms)
+✔ Task 55 recomputes displayed non-Figma metrics from accepted evidence (63.739708ms)
+✔ Task 58 duplicate delivery does not change analytics metrics or session aggregates (13.89125ms)
+✔ Task 58 rejects conflicting events that reuse one session idempotency identity (5.467375ms)
+(node:58557) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/bank/Desktop/UT%20Platform%20Handoff/tests/task57-privacy-security-qa.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/bank/Desktop/UT Platform Handoff/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Task 57 consent gate rejects before any participant session request or tracking credential exists (2.844459ms)
+✔ Task 57 public session route requires accepted consent and issues HttpOnly SameSite proof (9.825417ms)
+✔ Task 57 participant client receives only session-bound credentials and no server secret names (6.34925ms)
+✔ Task 57 retention and delete propagation remove reconstructable evidence before session deletion (7.9635ms)
+✔ Task 57 grants RLS and tenant-scoped finding evidence fail closed (2.760792ms)
+✔ Task 57 server runner config keeps elevated keys server-only (0.866875ms)
+✔ Netlify host routes accept the Supabase Extension service-role key only as a server-side fallback (1.455667ms)
+ℹ tests 194
+ℹ suites 0
+ℹ pass 194
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2544.175875
