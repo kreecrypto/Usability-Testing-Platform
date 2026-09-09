@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { POST as collectEvent } from "../../v1/events/route.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,19 @@ type Json = Record<string, unknown> | Array<unknown>;
 
 async function callJson(url: string, init: RequestInit): Promise<{ status: number; body: unknown }> {
   const response = await fetch(url, init);
+  const text = await response.text();
+  let body: unknown = null;
+  if (text) {
+    try {
+      body = JSON.parse(text);
+    } catch {
+      body = { nonJson: true };
+    }
+  }
+  return { status: response.status, body };
+}
+
+async function readResponse(response: Response): Promise<{ status: number; body: unknown }> {
   const text = await response.text();
   let body: unknown = null;
   if (text) {
@@ -93,10 +107,7 @@ export async function GET(request: Request) {
     }
     userIdHolder.id = createdUser.id;
 
-    await restInsert("users", {
-      id: createdUser.id,
-      display_name: "Task 22 Runtime QA",
-    });
+    await restInsert("users", { id: createdUser.id, display_name: "Task 22 Runtime QA" });
     await restInsert("workspaces", {
       id: ids.workspaceId,
       name: "Task 22 Runtime QA",
@@ -142,7 +153,6 @@ export async function GET(request: Request) {
       consented_at: new Date().toISOString(),
     });
 
-    const origin = new URL(request.url).origin;
     const eventPayload = {
       schemaVersion: 2,
       eventId: ids.eventId,
@@ -159,11 +169,15 @@ export async function GET(request: Request) {
       metadata: { qa: "task22-runtime" },
     };
 
-    const accepted = await callJson(`${origin}/v1/events`, {
-      method: "POST",
-      headers: jsonHeaders,
-      body: JSON.stringify(eventPayload),
-    });
+    const accepted = await readResponse(
+      await collectEvent(
+        new Request(new URL("/v1/events", request.url), {
+          method: "POST",
+          headers: jsonHeaders,
+          body: JSON.stringify(eventPayload),
+        }),
+      ),
+    );
 
     const eventQuery = await callJson(
       `${supabaseUrl}/rest/v1/events?event_id=eq.${ids.eventId}&select=event_id,workspace_id,session_id,participant_id,test_id,test_version_id,event_name,received_at`,
@@ -171,26 +185,45 @@ export async function GET(request: Request) {
     );
     const rows = Array.isArray(eventQuery.body) ? eventQuery.body : [];
 
-    const malformed = await callJson(`${origin}/v1/events`, {
-      method: "POST",
-      headers: jsonHeaders,
-      body: "{}",
-    });
+    const malformed = await readResponse(
+      await collectEvent(
+        new Request(new URL("/v1/events", request.url), {
+          method: "POST",
+          headers: jsonHeaders,
+          body: "{}",
+        }),
+      ),
+    );
 
     const secretLeaked = JSON.stringify({ accepted: accepted.body, malformed: malformed.body }).includes(secret);
+    const persistedContextMatches =
+      rows.length === 1 &&
+      (rows[0] as Record<string, unknown>).workspace_id === ids.workspaceId &&
+      (rows[0] as Record<string, unknown>).session_id === ids.sessionId;
+    const ok = accepted.status === 202 && rows.length === 1 && malformed.status >= 400 && !secretLeaked && persistedContextMatches;
 
-    return Response.json({
-      ok: accepted.status === 202 && rows.length === 1 && malformed.status >= 400 && !secretLeaked,
+    console.info("task22-runtime-qa", {
+      ok,
       acceptedStatus: accepted.status,
       persistedRows: rows.length,
       malformedStatus: malformed.status,
       secretLeaked,
-      persistedContextMatches:
-        rows.length === 1 &&
-        (rows[0] as Record<string, unknown>).workspace_id === ids.workspaceId &&
-        (rows[0] as Record<string, unknown>).session_id === ids.sessionId,
+      persistedContextMatches,
     });
+
+    return Response.json(
+      {
+        ok,
+        acceptedStatus: accepted.status,
+        persistedRows: rows.length,
+        malformedStatus: malformed.status,
+        secretLeaked,
+        persistedContextMatches,
+      },
+      { status: ok ? 200 : 500 },
+    );
   } catch (error) {
+    console.error("task22-runtime-qa-failed", error instanceof Error ? error.message : "unknown");
     return Response.json(
       { ok: false, stage: "runtime", error: error instanceof Error ? error.message : "unknown" },
       { status: 500 },
