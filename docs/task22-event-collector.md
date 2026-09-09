@@ -2,7 +2,7 @@
 
 ## Status
 
-The source-supported HTTP boundary is wired to a Next.js/Vercel route and a server-only Supabase persistence adapter. Runtime completion still requires Vercel environment configuration and production evidence.
+The source-supported HTTP boundary is wired to a Next.js/Vercel route and a server-only Supabase persistence adapter. Runtime completion now proceeds against a fresh Vercel deployment after environment configuration was added by the project owner on 2026-09-09.
 
 ## Canonical sources
 
@@ -71,4 +71,4 @@ Hosted/runtime QA:
 - a valid fixture tied to an existing session persists exactly one row into `public.events` and returns `202`;
 - failure responses and logs do not expose the Supabase secret or raw database error.
 
-Until the Vercel environment configuration and hosted valid-persistence test are proven, Task 22 must remain `IN_PROGRESS`/`QA`, not `COMPLETE`.
+Until the hosted valid-persistence test is proven on the fresh deployment, Task 22 must remain `IN_PROGRESS`/`QA`, not `COMPLETE`.
