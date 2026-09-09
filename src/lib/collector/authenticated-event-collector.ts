@@ -2,10 +2,7 @@ import type { ConsumeIngestionToken } from "./session-ingestion-token.ts";
 import { bearerToken, verifySessionIngestionToken } from "./session-ingestion-token.ts";
 
 function jsonResponse(body: unknown, status: number): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
-  });
+  return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
 }
 
 function eventContexts(body: unknown): Array<{ sessionId: unknown; testVersionId: unknown }> | null {
@@ -18,41 +15,23 @@ function eventContexts(body: unknown): Array<{ sessionId: unknown; testVersionId
   });
 }
 
-export function withSessionIngestionAuth(options: {
-  handler: (request: Request) => Promise<Response>;
-  secret: string;
-  consume: ConsumeIngestionToken;
-  now?: () => Date;
-}) {
+export function withSessionIngestionAuth(options: { handler: (request: Request) => Promise<Response>; signingKey: string; consume: ConsumeIngestionToken; now?: () => Date }) {
   return async (request: Request): Promise<Response> => {
     if (request.method !== "POST") return options.handler(request);
-
     const token = bearerToken(request);
     if (!token) return jsonResponse({ error: "unauthorized" }, 401);
-    const claims = verifySessionIngestionToken({ token, secret: options.secret, now: options.now?.() });
+    const claims = verifySessionIngestionToken({ token, signingKey: options.signingKey, now: options.now?.() });
     if (!claims) return jsonResponse({ error: "unauthorized" }, 401);
 
     let body: unknown;
-    try {
-      body = await request.clone().json();
-    } catch {
-      return options.handler(request);
-    }
-
+    try { body = await request.clone().json(); } catch { return options.handler(request); }
     const contexts = eventContexts(body);
-    if (!contexts || contexts.length === 0 || contexts.some((context) => context.sessionId !== claims.sessionId || context.testVersionId !== claims.testVersionId)) {
-      return jsonResponse({ error: "token_context_mismatch" }, 403);
-    }
+    if (!contexts || contexts.length === 0 || contexts.some((context) => context.sessionId !== claims.sessionId || context.testVersionId !== claims.testVersionId)) return jsonResponse({ error: "token_context_mismatch" }, 403);
 
     let consumed: Awaited<ReturnType<ConsumeIngestionToken>>;
-    try {
-      consumed = await options.consume(claims);
-    } catch {
-      return jsonResponse({ error: "ingestion_unavailable" }, 503);
-    }
+    try { consumed = await options.consume(claims); } catch { return jsonResponse({ error: "ingestion_unavailable" }, 503); }
     if (consumed === "replayed") return jsonResponse({ error: "token_replayed" }, 409);
     if (consumed === "rate_limited") return jsonResponse({ error: "rate_limited" }, 429);
-
     return options.handler(request);
   };
 }
