@@ -98,7 +98,7 @@ test("Task 48 computes step conversion and largest drop from eligible canonical 
   assert.equal(funnel.largestDrop?.dropOffRate, 50);
 });
 
-test("Task 48 requires the next step to occur after the entered step and preserves No Data", () => {
+test("Task 48 requires ordered progression and preserves No Data", () => {
   const definition = parseFunnelDefinition({ version: FUNNEL_SCHEMA_VERSION, screenIds: ["A", "B", "Z"] });
   assert.ok(definition);
   const events: AcceptedTrackingEvent[] = [
@@ -110,8 +110,9 @@ test("Task 48 requires the next step to occur after the entered step and preserv
   assert.equal(funnel.transitions[0].entered, 1);
   assert.equal(funnel.transitions[0].reached, 0);
   assert.equal(funnel.transitions[0].conversionRate, 0);
-  assert.equal(funnel.transitions[1].entered, 1);
+  assert.equal(funnel.transitions[1].entered, 0);
   assert.equal(funnel.transitions[1].reached, 0);
+  assert.equal(funnel.transitions[1].conversionRate, null);
 
   const noEntry = deriveFunnel(events, { version: FUNNEL_SCHEMA_VERSION, screenIds: ["X", "Y"] });
   assert.equal(noEntry.transitions[0].entered, 0);
