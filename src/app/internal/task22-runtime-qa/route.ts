@@ -121,10 +121,9 @@ export async function GET(request: Request) {
       workspace_id: ids.workspaceId,
       test_id: ids.testId,
       version_no: 1,
-      lifecycle_status: "published",
+      lifecycle_status: "draft",
       provider: "figma",
       event_schema_version: 2,
-      published_at: new Date().toISOString(),
       created_by: createdUser.id,
     });
     await restInsert("participants", {
