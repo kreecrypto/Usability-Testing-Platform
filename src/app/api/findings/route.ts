@@ -1,4 +1,4 @@
-import { findingsError, findingsForRequest, findingsJson, readObject } from "../../../lib/findings/api.ts";
+import { findingContextForRequest, findingsError, findingsForRequest, findingsJson, readObject } from "../../../lib/findings/api.ts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,7 +13,15 @@ export async function GET(request: Request): Promise<Response> {
 
 export async function POST(request: Request): Promise<Response> {
   try {
-    const finding = await findingsForRequest(request).createFinding(await readObject(request));
+    const body = await readObject(request);
+    const testVersionId = typeof body.testVersionId === "string" ? body.testVersionId : "";
+    const scope = await findingContextForRequest(request).version(testVersionId);
+    const finding = await findingsForRequest(request).createFinding({
+      ...body,
+      workspaceId: scope.workspaceId,
+      projectId: scope.projectId,
+      testVersionId,
+    });
     return findingsJson({ finding }, 201);
   } catch (error) { return findingsError(error); }
 }
