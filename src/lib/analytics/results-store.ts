@@ -1,3 +1,4 @@
+import { parseFunnelDefinition } from "./funnel.ts";
 import { buildResultsModel, type ResultAnswer, type ResultTaskDefinition, type ResultsModel } from "./results.ts";
 import { fromEventStorageRow, type EventStorageRow } from "../tracking/persistence.ts";
 
@@ -7,6 +8,7 @@ const PAGE_SIZE = 1000;
 type FetchLike = typeof fetch;
 
 type SessionRow = Readonly<{ id: string }>;
+type VersionRow = Readonly<{ funnel_config: unknown }>;
 type TaskRow = Readonly<{
   id: string;
   title: string;
@@ -89,6 +91,11 @@ export function createResultsStore(options: Readonly<{
   async function read(testVersionId: string): Promise<ResultsModel> {
     if (!UUID_PATTERN.test(testVersionId)) throw new ResultsStoreError("invalid_test_version", 400);
 
+    const versionQuery = new URLSearchParams({
+      id: `eq.${testVersionId}`,
+      select: "funnel_config",
+      limit: "1",
+    });
     const sessionQuery = new URLSearchParams({
       test_version_id: `eq.${testVersionId}`,
       select: "id",
@@ -105,7 +112,8 @@ export function createResultsStore(options: Readonly<{
       order: "ordinal.asc,id.asc",
     });
 
-    const [sessions, eventRows, taskRows] = await Promise.all([
+    const [versionRows, sessions, eventRows, taskRows] = await Promise.all([
+      readAll<VersionRow>("test_versions", versionQuery),
       readAll<SessionRow>("sessions", sessionQuery),
       readAll<EventStorageRow>("events", eventQuery),
       readAll<TaskRow>("tasks", taskQuery),
@@ -145,6 +153,7 @@ export function createResultsStore(options: Readonly<{
       events: eventRows.map(fromEventStorageRow),
       tasks,
       answers,
+      funnelDefinition: parseFunnelDefinition(versionRows[0]?.funnel_config),
     });
   }
 
