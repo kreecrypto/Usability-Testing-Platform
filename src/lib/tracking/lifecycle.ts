@@ -1,4 +1,4 @@
-import type { DerivedTrackingEvent, RawEventSource, RawEventType, RawTrackingEvent, TrackingEvent } from "./events.ts";
+import type { RawEventSource, RawEventType, RawTrackingEvent, TrackingEvent } from "./events.ts";
 import { EVENT_SCHEMA_VERSION } from "./events.ts";
 
 export const TASK_OUTCOME_RULE_VERSION = "task-outcome-v1" as const;
@@ -18,6 +18,13 @@ type RunnerSessionContext = Readonly<{
 }>;
 
 type EventSink = (event: TrackingEvent) => void | Promise<void>;
+
+export type RunnerDetectedTerminal = Readonly<{
+  kind: "server_derived_terminal";
+  eventType: "task_success" | "task_failed";
+  outcome: "success_direct" | "success_indirect" | "failed";
+  triggerEventId: string;
+}>;
 
 function nodeIds(rule: Readonly<Record<string, unknown>>): readonly string[] {
   if (rule.type !== "presented_node" || !Array.isArray(rule.nodeIds)) return [];
@@ -83,25 +90,12 @@ export function createRunnerLifecycle(options: {
     return event;
   }
 
-  async function derivedTerminal(kind: "task_success" | "task_failed", trigger: RawTrackingEvent, outcome?: "success_direct" | "success_indirect") {
+  function markServerDerivedTerminal(kind: "task_success" | "task_failed", trigger: RawTrackingEvent, outcome: RunnerDetectedTerminal["outcome"]): RunnerDetectedTerminal | null {
     if (!activeTask || activeTaskTerminal) return null;
-    const event: DerivedTrackingEvent = Object.freeze({
-      schemaVersion: EVENT_SCHEMA_VERSION,
-      eventId: eventIdFactory(),
-      idempotencyKey: `${options.session.sessionId}:derived:${activeTask.id}:${trigger.eventId}:${kind}`,
-      eventLayer: "derived",
-      source: "rules_engine",
-      eventType: kind,
-      occurredAt: trigger.occurredAt,
-      ...options.session,
-      taskId: activeTask.id,
-      derivedFromEventIds: Object.freeze([trigger.eventId]),
-      ruleVersion: TASK_OUTCOME_RULE_VERSION,
-      ...(kind === "task_success" ? { metadata: Object.freeze({ outcome }) } : {}),
-    });
-    await sink(event);
     activeTaskTerminal = true;
-    return event;
+    // Participant collector is raw-only. The database trigger creates the
+    // canonical derived row transactionally from this accepted raw trigger.
+    return Object.freeze({ kind: "server_derived_terminal", eventType: kind, outcome, triggerEventId: trigger.eventId });
   }
 
   async function startSession() {
@@ -119,7 +113,7 @@ export function createRunnerLifecycle(options: {
     return raw("task_started", "runner", task.id);
   }
 
-  async function acceptExternalRaw(event: RawTrackingEvent) {
+  async function acceptExternalRaw(event: RawTrackingEvent): Promise<RawTrackingEvent | RunnerDetectedTerminal> {
     if (!sessionStarted || sessionTerminal) throw new Error("session_not_active");
     if (event.sessionId !== options.session.sessionId || event.participantId !== options.session.participantId || event.testId !== options.session.testId || event.testVersionId !== options.session.testVersionId) {
       throw new Error("external_event_context_mismatch");
@@ -133,10 +127,11 @@ export function createRunnerLifecycle(options: {
       screenPath.push(event.screenId);
       const failures = nodeIds(activeTask.failureRule);
       const successes = nodeIds(activeTask.successRule);
-      if (failures.includes(event.screenId)) return derivedTerminal("task_failed", event);
+      if (failures.includes(event.screenId)) return markServerDerivedTerminal("task_failed", event, "failed") ?? event;
       if (successes.includes(event.screenId)) {
         const expected = expectedNodePath(activeTask.expectedPath);
-        return derivedTerminal("task_success", event, samePath(screenPath, expected) ? "success_direct" : "success_indirect");
+        const outcome = samePath(screenPath, expected) ? "success_direct" : "success_indirect";
+        return markServerDerivedTerminal("task_success", event, outcome) ?? event;
       }
     }
     return event;
