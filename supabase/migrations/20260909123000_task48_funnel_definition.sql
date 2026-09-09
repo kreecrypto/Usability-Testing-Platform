@@ -33,43 +33,6 @@ as $$
 declare
   v_version_id uuid;
   v_clean text[];
-  v_count integer;
-begin
-  if p_screen_ids is null or coalesce(array_length(p_screen_ids, 1), 0) < 2 then
-    raise exception 'funnel_requires_at_least_two_screens' using errcode = '22023';
-  end if;
-
-  select array_agg(trim(value) order by ordinal)
-  into v_clean
-  from unnest(p_screen_ids) with ordinality as item(value, ordinal);
-
-  if exists (select 1 from unnest(v_clean) as value where value is null or value = '') then
-    raise exception 'funnel_screen_id_required' using errcode = '22023';
-  end if;
-
-  select count(*), count(distinct value)
-  into v_count, strict v_count
-  from unnest(v_clean) as value;
-
-  -- The STRICT INTO form above cannot hold both counts in one variable; this
-  -- block is intentionally replaced below by a direct duplicate check.
-  return null;
-end;
-$$;
-
--- Replace the validation stub with the final atomic implementation.
-create or replace function public.save_draft_funnel_config(
-  p_test_id uuid,
-  p_screen_ids text[]
-)
-returns uuid
-language plpgsql
-security invoker
-set search_path = ''
-as $$
-declare
-  v_version_id uuid;
-  v_clean text[];
 begin
   if p_screen_ids is null or coalesce(array_length(p_screen_ids, 1), 0) < 2 then
     raise exception 'funnel_requires_at_least_two_screens' using errcode = '22023';
