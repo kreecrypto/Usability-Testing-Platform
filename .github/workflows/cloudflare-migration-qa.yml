@@ -1,8 +1,8 @@
-name: Cloudflare Migration QA
+name: Cloudflare Workers QA
 
 on:
   push:
-    branches: [migration/cloudflare-runtime]
+    branches: [main, migration/cloudflare-runtime]
   pull_request:
   workflow_dispatch:
 
@@ -10,11 +10,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: cloudflare-migration-${{ github.ref }}
+  group: cloudflare-workers-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  workers-preflight:
+  workers-qa:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -27,27 +27,34 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
-      - name: Install repository dependencies
+      - name: Install from committed lockfile
         run: npm ci --no-audit --no-fund
+
+      - name: Verify Cloudflare runtime files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f wrangler.jsonc
+          test -f vite.config.ts -o -f vite.config.js -o -f vite.config.mts -o -f vite.config.mjs
+          ! grep -q '<your-' wrangler.jsonc
+          ! grep -q 'kv_namespaces' wrangler.jsonc
+          ! grep -q '"images"' wrangler.jsonc
 
       - name: Existing UTP QA gate
         run: npm run qa
 
       - name: vinext compatibility check
-        run: npx --yes vinext@1.0.0-beta.9 check
+        run: npx --no-install vinext check
 
-      - name: Generate Cloudflare target in isolated workspace
+      - name: Cloudflare Workers build
+        run: npm run build:vinext
+
+      - name: Verify generated Workers artifact
         shell: bash
         run: |
           set -euo pipefail
-          workdir="$RUNNER_TEMP/utp-cloudflare"
-          mkdir -p "$workdir"
-          cp -a . "$workdir/"
-          cd "$workdir"
-          npx --yes vinext@1.0.0-beta.9 init --platform=cloudflare --skip-check
-          test -f wrangler.jsonc
-          test -f vite.config.ts -o -f vite.config.js -o -f vite.config.mts -o -f vite.config.mjs
-          npm run build:vinext
+          test -f dist/server/wrangler.json
+          test -d dist/client
 
-      - name: Confirm migration preflight did not rewrite application sources
-        run: git diff --exit-code -- package.json package-lock.json src docs
+      - name: Verify QA kept committed source deterministic
+        run: git diff --exit-code -- package.json package-lock.json src docs wrangler.jsonc vite.config.ts
