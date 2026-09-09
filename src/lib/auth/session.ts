@@ -23,7 +23,7 @@ export class AuthSessionError extends Error {
   constructor(
     code: AuthSessionError["code"],
     status: number,
-    message = code,
+    message: string = code,
   ) {
     super(message);
     this.name = "AuthSessionError";
