@@ -2,7 +2,7 @@
 
 ## Status
 
-The source-supported HTTP boundary is wired to a Next.js/Vercel route and a server-only Supabase persistence adapter. Runtime completion now proceeds against a fresh Vercel deployment after environment configuration was added by the project owner on 2026-09-09.
+The source-supported HTTP boundary is wired to a Next.js/Vercel route and a server-only Supabase persistence adapter. Runtime completion now proceeds against a fresh Vercel deployment after environment configuration was added by the project owner on 2026-09-09. Preview environment scope was then enabled and requires a newly triggered Preview deployment before hosted verification.
 
 ## Canonical sources
 
