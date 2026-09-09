@@ -1,0 +1,40 @@
+.shell {
+  min-height: 100vh;
+  padding: 32px;
+  background: var(--color-surface-subtle, #f6f7f9);
+  color: var(--color-text-primary, #1f2937);
+}
+
+.header { max-width: 1040px; margin: 0 auto 24px; }
+.header h1 { margin: 6px 0 8px; font-size: clamp(1.8rem, 4vw, 2.5rem); }
+.header p { max-width: 760px; line-height: 1.6; }
+.backLink { display: inline-block; margin-bottom: 12px; font-weight: 700; }
+.eyebrow { margin: 0; font-size: .78rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.layout { max-width: 1040px; margin: 0 auto; display: grid; grid-template-columns: minmax(220px, 280px) 1fr; gap: 20px; align-items: start; }
+.taskRail, .card, .empty, .notice, .error { background: white; border: 1px solid #d8dde5; border-radius: 12px; }
+.taskRail { padding: 16px; display: grid; gap: 8px; }
+.taskRail h2 { margin: 0 0 8px; font-size: 1rem; }
+.taskButton, .activeTask { width: 100%; padding: 12px; border: 1px solid #d8dde5; border-radius: 8px; background: white; text-align: left; cursor: pointer; }
+.activeTask { border-width: 2px; }
+.taskButton span, .activeTask span { display: block; font-size: .78rem; margin-bottom: 3px; }
+.taskButton:focus-visible, .activeTask:focus-visible, button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid currentColor; outline-offset: 2px; }
+.card { padding: 22px; display: grid; gap: 16px; }
+.cardHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.cardHeader h2 { margin: 3px 0 0; }
+.questionCard { border: 1px solid #d8dde5; border-radius: 10px; padding: 16px; display: grid; gap: 10px; }
+.questionCard legend { font-weight: 800; padding: 0 6px; }
+.questionCard p { margin: 0 0 4px; }
+.checkRow { display: flex; align-items: center; gap: 10px; min-height: 36px; }
+.checkRow input { width: 18px; height: 18px; }
+.card > button { justify-self: start; min-height: 44px; padding: 10px 18px; border: 0; border-radius: 8px; font-weight: 800; cursor: pointer; }
+.card > button:disabled, .taskButton:disabled, .activeTask:disabled { cursor: not-allowed; opacity: .6; }
+.empty, .notice, .error { max-width: 1040px; margin: 0 auto 18px; padding: 16px; }
+.error, .validation { border-left: 4px solid currentColor; }
+.validation, .valid { padding: 12px; border-radius: 8px; background: var(--color-surface-subtle, #f6f7f9); }
+
+@media (max-width: 760px) {
+  .shell { padding: 20px 16px; }
+  .layout { grid-template-columns: 1fr; }
+  .taskRail { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+  .taskRail h2 { grid-column: 1 / -1; }
+}
