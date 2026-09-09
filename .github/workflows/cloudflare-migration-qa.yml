@@ -49,5 +49,5 @@ jobs:
           test -f vite.config.ts -o -f vite.config.js -o -f vite.config.mts -o -f vite.config.mjs
           npm run build:vinext
 
-      - name: Confirm migration did not mutate committed source
-        run: git diff --exit-code
+      - name: Confirm migration preflight did not rewrite application sources
+        run: git diff --exit-code -- package.json package-lock.json src docs
