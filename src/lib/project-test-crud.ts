@@ -106,10 +106,7 @@ export function createProjectTestCrud(options: {
       cache: "no-store",
     });
 
-    if (!response.ok) {
-      throw new CrudProviderError(response.status);
-    }
-
+    if (!response.ok) throw new CrudProviderError(response.status);
     const body = await response.text();
     return body.trim() ? JSON.parse(body) as T[] : [];
   }
@@ -123,11 +120,17 @@ export function createProjectTestCrud(options: {
     }));
   }
 
-  async function createProject(input: {
-    workspaceId: string;
-    name: string;
-    description?: string | null;
-  }): Promise<ProjectRow> {
+  async function getProject(projectId: string): Promise<ProjectRow | null> {
+    projectId = requiredUuid(projectId, "projectId");
+    const rows = await requestRows<ProjectRow>("projects", new URLSearchParams({
+      id: `eq.${projectId}`,
+      select: "id,workspace_id,name,description,status,created_at,updated_at",
+      limit: "1",
+    }));
+    return rows[0] ?? null;
+  }
+
+  async function createProject(input: { workspaceId: string; name: string; description?: string | null }): Promise<ProjectRow> {
     const workspaceId = requiredUuid(input.workspaceId, "workspaceId");
     const name = requiredText(input.name, "name");
     const description = optionalText(input.description, "description");
@@ -136,35 +139,23 @@ export function createProjectTestCrud(options: {
     }), {
       method: "POST",
       headers: { prefer: "return=representation" },
-      body: JSON.stringify({
-        workspace_id: workspaceId,
-        name,
-        ...(description !== undefined ? { description } : {}),
-      }),
+      body: JSON.stringify({ workspace_id: workspaceId, name, ...(description !== undefined ? { description } : {}) }),
     });
     if (rows.length !== 1) throw new CrudProviderError(502, "unexpected_project_create_result");
     return rows[0];
   }
 
-  async function updateProject(projectId: string, input: {
-    name?: string;
-    description?: string | null;
-  }): Promise<ProjectRow | null> {
+  async function updateProject(projectId: string, input: { name?: string; description?: string | null }): Promise<ProjectRow | null> {
     projectId = requiredUuid(projectId, "projectId");
     const patch: Record<string, unknown> = {};
     if (input.name !== undefined) patch.name = requiredText(input.name, "name");
     const description = optionalText(input.description, "description");
     if (description !== undefined) patch.description = description;
     if (Object.keys(patch).length === 0) throw new CrudValidationError("body", "at least one editable field is required");
-
     const rows = await requestRows<ProjectRow>("projects", new URLSearchParams({
       id: `eq.${projectId}`,
       select: "id,workspace_id,name,description,status,created_at,updated_at",
-    }), {
-      method: "PATCH",
-      headers: { prefer: "return=representation" },
-      body: JSON.stringify(patch),
-    });
+    }), { method: "PATCH", headers: { prefer: "return=representation" }, body: JSON.stringify(patch) });
     return rows[0] ?? null;
   }
 
@@ -173,11 +164,7 @@ export function createProjectTestCrud(options: {
     const rows = await requestRows<ProjectRow>("projects", new URLSearchParams({
       id: `eq.${projectId}`,
       select: "id,workspace_id,name,description,status,created_at,updated_at",
-    }), {
-      method: "PATCH",
-      headers: { prefer: "return=representation" },
-      body: JSON.stringify({ status: "archived" }),
-    });
+    }), { method: "PATCH", headers: { prefer: "return=representation" }, body: JSON.stringify({ status: "archived" }) });
     return rows[0] ?? null;
   }
 
@@ -192,12 +179,17 @@ export function createProjectTestCrud(options: {
     return requestRows<TestRow>("tests", query);
   }
 
-  async function createTest(input: {
-    workspaceId: string;
-    projectId: string;
-    title: string;
-    description?: string | null;
-  }): Promise<TestRow> {
+  async function getTest(testId: string): Promise<TestRow | null> {
+    testId = requiredUuid(testId, "testId");
+    const rows = await requestRows<TestRow>("tests", new URLSearchParams({
+      id: `eq.${testId}`,
+      select: "id,workspace_id,project_id,title,description,status,created_at,updated_at",
+      limit: "1",
+    }));
+    return rows[0] ?? null;
+  }
+
+  async function createTest(input: { workspaceId: string; projectId: string; title: string; description?: string | null }): Promise<TestRow> {
     const workspaceId = requiredUuid(input.workspaceId, "workspaceId");
     const projectId = requiredUuid(input.projectId, "projectId");
     const title = requiredText(input.title, "title");
@@ -207,36 +199,23 @@ export function createProjectTestCrud(options: {
     }), {
       method: "POST",
       headers: { prefer: "return=representation" },
-      body: JSON.stringify({
-        workspace_id: workspaceId,
-        project_id: projectId,
-        title,
-        ...(description !== undefined ? { description } : {}),
-      }),
+      body: JSON.stringify({ workspace_id: workspaceId, project_id: projectId, title, ...(description !== undefined ? { description } : {}) }),
     });
     if (rows.length !== 1) throw new CrudProviderError(502, "unexpected_test_create_result");
     return rows[0];
   }
 
-  async function updateTest(testId: string, input: {
-    title?: string;
-    description?: string | null;
-  }): Promise<TestRow | null> {
+  async function updateTest(testId: string, input: { title?: string; description?: string | null }): Promise<TestRow | null> {
     testId = requiredUuid(testId, "testId");
     const patch: Record<string, unknown> = {};
     if (input.title !== undefined) patch.title = requiredText(input.title, "title");
     const description = optionalText(input.description, "description");
     if (description !== undefined) patch.description = description;
     if (Object.keys(patch).length === 0) throw new CrudValidationError("body", "at least one editable field is required");
-
     const rows = await requestRows<TestRow>("tests", new URLSearchParams({
       id: `eq.${testId}`,
       select: "id,workspace_id,project_id,title,description,status,created_at,updated_at",
-    }), {
-      method: "PATCH",
-      headers: { prefer: "return=representation" },
-      body: JSON.stringify(patch),
-    });
+    }), { method: "PATCH", headers: { prefer: "return=representation" }, body: JSON.stringify(patch) });
     return rows[0] ?? null;
   }
 
@@ -245,22 +224,9 @@ export function createProjectTestCrud(options: {
     const rows = await requestRows<TestRow>("tests", new URLSearchParams({
       id: `eq.${testId}`,
       select: "id,workspace_id,project_id,title,description,status,created_at,updated_at",
-    }), {
-      method: "PATCH",
-      headers: { prefer: "return=representation" },
-      body: JSON.stringify({ status: "archived" }),
-    });
+    }), { method: "PATCH", headers: { prefer: "return=representation" }, body: JSON.stringify({ status: "archived" }) });
     return rows[0] ?? null;
   }
 
-  return {
-    listProjects,
-    createProject,
-    updateProject,
-    archiveProject,
-    listTests,
-    createTest,
-    updateTest,
-    archiveTest,
-  };
+  return { listProjects, getProject, createProject, updateProject, archiveProject, listTests, getTest, createTest, updateTest, archiveTest };
 }
