@@ -164,7 +164,7 @@ test("Task 25 aggregates reproducible task/session metrics and excludes technica
   });
   assert.equal(task.eligiblePointerInteractions, 3);
   assert.equal(task.misclicks, 1);
-  assert.equal(task.misclickRate, 100 / 3);
+  assert.equal(task.misclickRate, (1 / 3) * 100);
 
   assert.deepEqual(task.trace.completion.ruleVersions, ["success-rule-v1"]);
   assert.deepEqual(task.trace.misclick.ruleVersions, ["misclick-rule-v1"]);
