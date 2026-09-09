@@ -4,28 +4,38 @@ import path from 'node:path';
 const root = process.cwd();
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 const requestedGroup = process.argv[2] ?? 'all';
-const validGroups = new Set(['all', 'inventory', 'tokens', 'baseline', 'accessibility']);
+const validGroups = new Set(['all', 'authority', 'inventory', 'tokens', 'baseline', 'accessibility', 'runtime']);
 
 if (!validGroups.has(requestedGroup)) {
   console.error(`FAIL: unknown QA group ${requestedGroup}`);
   process.exit(2);
 }
 
-const mapPath = 'docs/design-system/screen-component-map.json';
-const baselinePath = 'docs/design-system/baseline.md';
-const a11yPath = 'docs/design-system/accessibility-state-matrix.md';
-const tokenPath = 'src/styles/tokens.css';
+const paths = {
+  master: 'docs/design-system/AH_DESIGN_v2.6/00-master-and-core.md',
+  tokensDoc: 'docs/design-system/AH_DESIGN_v2.6/01-tokens-and-shell.md',
+  componentDoc: 'docs/design-system/AH_DESIGN_v2.6/03-components-and-layout.md',
+  stateDoc: 'docs/design-system/AH_DESIGN_v2.6/04-page-contracts-responsive-states-a11y.md',
+  runtimeDoc: 'docs/design-system/AH_DESIGN_v2.6/05-implementation-runtime-ai-rules.md',
+  map: 'docs/design-system/screen-component-map.json',
+  tokens: 'src/styles/tokens.css',
+  globals: 'src/app/globals.css',
+};
 
-for (const p of [mapPath, baselinePath, a11yPath, tokenPath]) {
-  if (!fs.existsSync(path.join(root, p))) {
-    throw new Error(`Missing design-system artifact: ${p}`);
+for (const file of Object.values(paths)) {
+  if (!fs.existsSync(path.join(root, file))) {
+    throw new Error(`Missing design-system artifact: ${file}`);
   }
 }
 
-const map = JSON.parse(read(mapPath));
-const baseline = read(baselinePath);
-const a11y = read(a11yPath);
-const tokens = read(tokenPath);
+const master = read(paths.master);
+const tokensDoc = read(paths.tokensDoc);
+const componentDoc = read(paths.componentDoc);
+const stateDoc = read(paths.stateDoc);
+const runtimeDoc = read(paths.runtimeDoc);
+const map = JSON.parse(read(paths.map));
+const tokens = read(paths.tokens);
+const globals = read(paths.globals);
 
 const fail = (message) => {
   console.error(`FAIL: ${message}`);
@@ -35,6 +45,34 @@ const fail = (message) => {
 const run = (group, check) => {
   if (requestedGroup === 'all' || requestedGroup === group) check();
 };
+
+function requireText(source, signal, label) {
+  if (!source.includes(signal)) fail(`${label} missing required AH 2.6 signal: ${signal}`);
+}
+
+/* Authority is checked on every invocation so group-specific CI cannot bypass it. */
+for (const signal of [
+  'version: 2.6',
+  'single source of truth',
+  'complete visual authority',
+  'Prefer this Design System over generic dashboard styling',
+]) {
+  requireText(master, signal, 'AH master');
+}
+
+for (const signal of [
+  'cssVariablePrefix: "--ah"',
+  'allowRawValues: false',
+  '--ah-primary: #00008f',
+  '--ah-sidebar-width: 200px',
+  '--ah-font-primary',
+]) {
+  requireText(tokensDoc, signal, 'AH token contract');
+}
+
+run('authority', () => {
+  console.log('PASS authority: AH_DESIGN_v2.6 is the canonical visual source');
+});
 
 run('inventory', () => {
   const ids = map.screens.map((screen) => screen.id);
@@ -63,70 +101,109 @@ run('inventory', () => {
 });
 
 run('tokens', () => {
-  const requiredTokens = [
-    '--ut-color-brand',
-    '--ut-color-text-primary',
-    '--ut-color-bg-surface',
-    '--ut-color-border-default',
-    '--ut-color-focus-ring',
-    '--ut-color-success',
-    '--ut-color-warning',
-    '--ut-color-error',
-    '--ut-color-info',
-    '--ut-color-outcome-technical',
-    '--ut-data-1',
-    '--ut-heatmap-1',
-    '--ut-font-family-sans',
-    '--ut-type-body-size',
-    '--ut-space-4',
-    '--ut-radius-sm',
-    '--ut-shadow-card',
-    '--ut-breakpoint-desktop-small',
-  ];
+  const exactRuntimeTokens = new Map([
+    ['--ah-primary', '#00008f'],
+    ['--ah-primary-deep', '#00006f'],
+    ['--ah-primary-dark', '#000056'],
+    ['--ah-primary-soft', '#e2efff'],
+    ['--ah-app-bg', '#f0f6ff'],
+    ['--ah-canvas', '#ffffff'],
+    ['--ah-ink-deep', '#1a1d21'],
+    ['--ah-ink', '#434956'],
+    ['--ah-slate', '#606776'],
+    ['--ah-sidebar-width', '200px'],
+    ['--ah-main-pane-reference-width', '1080px'],
+    ['--ah-content-gutter', '16px'],
+    ['--ah-topbar-height', '64px'],
+    ['--ah-radius-xs', '4px'],
+    ['--ah-radius-sm', '8px'],
+    ['--ah-radius-md', '12px'],
+    ['--ah-radius-lg', '16px'],
+    ['--ah-space-4', '4px'],
+    ['--ah-space-8', '8px'],
+    ['--ah-space-12', '12px'],
+    ['--ah-space-16', '16px'],
+    ['--ah-space-24', '24px'],
+    ['--ah-space-32', '32px'],
+  ]);
 
-  for (const token of requiredTokens) {
-    if (!tokens.includes(token)) fail(`missing semantic token ${token}`);
+  for (const [name, value] of exactRuntimeTokens) {
+    const pattern = new RegExp(`${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:\\s*${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*;`);
+    if (!pattern.test(tokens)) fail(`runtime token ${name} must equal AH 2.6 value ${value}`);
   }
 
-  if (!process.exitCode) console.log(`PASS tokens: ${requiredTokens.length} required semantic tokens`);
+  for (const signal of [
+    '--ah-font-primary: "DB Helvethaica X"',
+    '--ah-type-display-xl-size: 32px',
+    '--ah-type-display-xl-line-height: 42px',
+    '--ah-type-heading-lg-size: 24px',
+    '--ah-type-body-md-size: 16px',
+    '--ah-type-button-md-size: 16px',
+  ]) {
+    requireText(tokens, signal, 'runtime tokens');
+  }
+
+  const legacyLines = tokens
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith('--ut-'));
+  const literalLegacy = legacyLines.filter((line) => {
+    if (line.startsWith('--ut-space-0: 0;')) return false;
+    if (line.startsWith('--ut-radius-none: 0;')) return false;
+    if (line.startsWith('--ut-font-family-mono:')) return false;
+    return !line.includes('var(--ah-');
+  });
+  if (literalLegacy.length > 0) {
+    fail(`legacy --ut-* tokens must be aliases to --ah-* only: ${literalLegacy.join(' | ')}`);
+  }
+
+  if (!process.exitCode) console.log('PASS tokens: AH 2.6 values canonical; --ut-* compatibility aliases only');
 });
 
 run('baseline', () => {
-  const baselineSections = [
-    'DS-02 — Foundation Color & Semantic Tokens',
-    'DS-03 — Typography Scale & Content Hierarchy',
-    'DS-04 — Spacing, Grid, Radius & Elevation',
-    'DS-05 — Form, Action & Feedback Components',
-    'DS-06 — Navigation & Responsive App Shell',
-    'DS-07 — Data Display Components',
-    'DS-08 — Analytics Visualization Extensions',
-  ];
-
-  for (const section of baselineSections) {
-    if (!baseline.includes(section)) fail(`missing baseline section ${section}`);
+  for (const [source, label, signals] of [
+    [componentDoc, 'AH components', ['Shared Components', 'Layout', 'button']],
+    [stateDoc, 'AH states/a11y', ['Responsive', 'Accessibility', 'focus']],
+    [runtimeDoc, 'AH runtime rules', ['Implementation', 'Runtime', 'AI']],
+  ]) {
+    for (const signal of signals) requireText(source, signal, label);
   }
-
-  if (!process.exitCode) console.log('PASS baseline: DS-02 through DS-08');
+  if (!process.exitCode) console.log('PASS baseline: AH 2.6 component/layout/state/runtime contracts present');
 });
 
 run('accessibility', () => {
-  const accessibilitySignals = [
-    'focus-visible',
-    'keyboard',
-    'color alone',
-    'Loading',
-    'Restricted',
-    'Heatmap',
-    'Participant runner',
-  ];
-
-  for (const signal of accessibilitySignals) {
-    if (!a11y.toLowerCase().includes(signal.toLowerCase())) fail(`accessibility matrix missing signal: ${signal}`);
+  for (const signal of ['focus', 'keyboard', 'color', 'loading', 'error']) {
+    if (!stateDoc.toLowerCase().includes(signal)) fail(`AH accessibility/state contract missing signal: ${signal}`);
   }
-
-  if (!process.exitCode) console.log(`PASS accessibility: ${accessibilitySignals.length} required signals`);
+  if (!process.exitCode) console.log('PASS accessibility: AH 2.6 state/accessibility contract present');
 });
 
-if (requestedGroup === 'all' && !process.exitCode) {
-  console.log('PASS design-system QA: inventory + tokens + baseline + accessibility');
+run('runtime', () => {
+  const required = [
+    'background: var(--ah-app-bg)',
+    'color: var(--ah-ink-deep)',
+    'font-family: var(--ah-font-primary)',
+    'grid-template-columns: var(--ah-sidebar-width)',
+  ];
+  for (const signal of required) requireText(globals, signal, 'globals.css');
+
+  for (const forbidden of ['font-family: Inter', 'grid-template-columns: 248px', '--accent:', '--bg:', '--radius:', '--shadow:']) {
+    if (globals.includes(forbidden)) fail(`globals.css contains pre-AH styling authority: ${forbidden}`);
+  }
+
+  if (!process.exitCode) console.log('PASS runtime: global shell consumes AH 2.6 directly');
+});
+
+if (requestedGroup === 'all') {
+  // all must include the runtime rule even though run() keeps groups individually addressable.
+  const required = [
+    'background: var(--ah-app-bg)',
+    'font-family: var(--ah-font-primary)',
+    'grid-template-columns: var(--ah-sidebar-width)',
+  ];
+  for (const signal of required) requireText(globals, signal, 'globals.css');
+}
+
+if (!process.exitCode) {
+  console.log(`PASS AH Design System v2.6 QA (${requestedGroup})`);
 }

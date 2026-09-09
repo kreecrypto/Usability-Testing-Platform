@@ -1,246 +1,379 @@
 :root {
   /*
-   * UT Platform Design Tokens — V1
-   * Baseline: AXA France Design System / Collab-Distrib (Distributeur)
-   * AXA source pin: cfd646c12507b2f176489dd31a5d831a3e3c848b
+   * UTP runtime design tokens
+   * Canonical visual authority: docs/design-system/AH_DESIGN_v2.6
    *
-   * Rule: product UI consumes semantic --ut-* tokens. Primitive values stay
-   * isolated here so high-fidelity screens do not introduce ad-hoc colors,
-   * spacing, typography, radii, or elevations.
+   * IMPORTANT:
+   * - New UI MUST consume --ah-* tokens.
+   * - --ut-* names below are temporary compatibility aliases only.
+   * - Do not add new literal colors/radii/shadows/spacing under --ut-*.
    */
 
-  /* Primitive color aliases from AXA Distributeur tokens.css */
-  --ut-primitive-white: #ffffff;
-  --ut-primitive-black: #000000;
+  /* AH 2.6 — canonical colors */
+  --ah-primary: #00008f;
+  --ah-primary-deep: #00006f;
+  --ah-primary-dark: #000056;
+  --ah-primary-soft: #e2efff;
+  --ah-primary-gradient-end: #4658fc;
+  --ah-canvas: #ffffff;
+  --ah-app-bg: #f0f6ff;
+  --ah-surface-muted: #f7f7f8;
+  --ah-ink-deep: #1a1d21;
+  --ah-ink: #434956;
+  --ah-slate: #606776;
+  --ah-placeholder: #b2b2b2;
+  --ah-disabled: #bfc3c9;
+  --ah-hairline: #e5e5e5;
+  --ah-hairline-soft: #eceded;
+  --ah-field-border: #cccccc;
+  --ah-neutral-border: #8c93a1;
+  --ah-success: #17663a;
+  --ah-warning: #f2a918;
+  --ah-critical: #e3000a;
+  --ah-on-primary: #ffffff;
+  --ah-badge-coral: #ffb4ce;
+  --ah-badge-blue: #74bde8;
+  --ah-badge-sunshine: #ffff00;
+  --ah-badge-teal: #0f717f;
+  --ah-badge-success-bg: #dff8ea;
+  --ah-badge-success-ink: #0f4527;
+  --ah-badge-cyan-bg: #dbf7fb;
 
-  --ut-primitive-blue-10: #f7f7fc;
-  --ut-primitive-blue-20: #f8f8ff;
-  --ut-primitive-blue-30: #eeeeff;
-  --ut-primitive-blue-40: #e4e4ff;
-  --ut-primitive-blue-50: #8080c7;
-  --ut-primitive-blue-60: #5959b6;
-  --ut-primitive-blue-70: #3333a5;
-  --ut-primitive-blue-80: #00008f;
-  --ut-primitive-blue-90: #000072;
-  --ut-primitive-blue-100: #00005b;
+  /* AH 2.6 — canonical layout */
+  --ah-reference-desktop-width: 1280px;
+  --ah-sidebar-width: 200px;
+  --ah-main-pane-reference-width: 1080px;
+  --ah-main-pane-width: calc(100vw - var(--ah-sidebar-width));
+  --ah-content-gutter: 16px;
+  --ah-topbar-height: 64px;
+  --ah-search-width: 370px;
+  --ah-search-height: 40px;
+  --ah-sidebar-item-height: 32px;
+  --ah-table-header-height: 44px;
+  --ah-table-row-height: 44px;
+  --ah-table-row-height-comfortable: 48px;
+  --ah-tab-height: 40px;
+  --ah-button-md-height: 40px;
+  --ah-badge-height: 20px;
+  --ah-side-panel-width: 320px;
 
-  --ut-primitive-gray-10: #f6f6f6;
-  --ut-primitive-gray-20: #e9e9e9;
-  --ut-primitive-gray-30: #e6e6e6;
-  --ut-primitive-gray-40: #cccccc;
-  --ut-primitive-gray-50: #999999;
-  --ut-primitive-gray-60: #666666;
-  --ut-primitive-gray-80: #333333;
+  /* AH 2.6 — canonical radius */
+  --ah-radius-xs: 4px;
+  --ah-radius-sm: 8px;
+  --ah-radius-md: 12px;
+  --ah-radius-lg: 16px;
+  --ah-radius-full: 100px;
+  --ah-radius-pill: 100px;
+  --ah-radius-chip: 999px;
+  --ah-radius-rail: 1000px;
+  --ah-radius-circle: 9999px;
 
-  --ut-primitive-green-20: #85b398;
-  --ut-primitive-green-30: #0c7d3b;
-  --ut-primitive-green-40: #084922;
+  /* AH 2.6 — canonical spacing */
+  --ah-space-4: 4px;
+  --ah-space-8: 8px;
+  --ah-space-10: 10px;
+  --ah-space-12: 12px;
+  --ah-space-16: 16px;
+  --ah-space-20: 20px;
+  --ah-space-24: 24px;
+  --ah-space-32: 32px;
+  --ah-space-xs: var(--ah-space-8);
+  --ah-space-sm: var(--ah-space-12);
+  --ah-space-md: var(--ah-space-16);
+  --ah-space-lg: var(--ah-space-24);
+  --ah-space-xl: var(--ah-space-32);
 
-  --ut-primitive-red-20: #debbc1;
-  --ut-primitive-red-30: #c7102e;
-  --ut-primitive-red-40: #6d0915;
+  /* AH 2.6 — canonical elevation */
+  --ah-shadow-card: 0px 4px 8px rgba(150, 167, 214, 0.15);
+  --ah-shadow-none: none;
 
-  --ut-primitive-orange-20: #fff1ef;
-  --ut-primitive-orange-30: #dea696;
-  --ut-primitive-orange-40: #bc4c2d;
+  /* AH 2.6 — canonical typography */
+  --ah-font-primary: "DB Helvethaica X", "DB Helvethaica", "DB Heavent", "Noto Sans Thai", "Leelawadee UI", Tahoma, Arial, sans-serif;
+  --ah-type-metric-xl-size: 40px;
+  --ah-type-metric-xl-line-height: 46px;
+  --ah-type-display-xl-size: 32px;
+  --ah-type-display-xl-line-height: 42px;
+  --ah-type-heading-lg-size: 24px;
+  --ah-type-heading-lg-line-height: 30px;
+  --ah-type-heading-md-size: 20px;
+  --ah-type-heading-md-line-height: 28px;
+  --ah-type-body-lg-size: 20px;
+  --ah-type-body-lg-line-height: 28px;
+  --ah-type-body-md-size: 16px;
+  --ah-type-body-md-line-height: 24px;
+  --ah-type-body-sm-size: 14px;
+  --ah-type-body-sm-line-height: 20px;
+  --ah-type-body-xs-size: 12px;
+  --ah-type-body-xs-line-height: 18px;
+  --ah-type-button-md-size: 16px;
+  --ah-type-button-md-line-height: 24px;
+  --ah-font-weight-regular: 400;
+  --ah-font-weight-bold: 700;
 
-  --ut-primitive-cyan-20: #d5e1ef;
-  --ut-primitive-cyan-30: #9cb8da;
-  --ut-primitive-cyan-40: #3871b5;
+  /* AH 2.6 — canonical breakpoints */
+  --ah-breakpoint-wide: 1440px;
+  --ah-breakpoint-desktop: 1280px;
+  --ah-breakpoint-tablet: 1024px;
+  --ah-breakpoint-mobile: 768px;
 
-  --ut-primitive-purple-20: #e8e2ef;
-  --ut-primitive-purple-30: #c1b0d5;
-  --ut-primitive-purple-40: #633a96;
+  /* Derived semantics must resolve back to AH 2.6 tokens. */
+  --ah-bg-page: var(--ah-app-bg);
+  --ah-bg-surface: var(--ah-canvas);
+  --ah-bg-subtle: var(--ah-surface-muted);
+  --ah-bg-muted: var(--ah-surface-muted);
+  --ah-bg-selected: var(--ah-primary-soft);
+  --ah-bg-disabled: var(--ah-hairline-soft);
+  --ah-overlay: color-mix(in srgb, var(--ah-ink-deep) 48%, transparent);
+  --ah-text-primary: var(--ah-ink-deep);
+  --ah-text-secondary: var(--ah-ink);
+  --ah-text-muted: var(--ah-slate);
+  --ah-text-disabled: var(--ah-disabled);
+  --ah-text-inverse: var(--ah-on-primary);
+  --ah-text-link: var(--ah-primary);
+  --ah-text-link-hover: var(--ah-primary-dark);
+  --ah-border-default: var(--ah-hairline);
+  --ah-border-strong: var(--ah-neutral-border);
+  --ah-border-interactive: var(--ah-primary);
+  --ah-border-error: var(--ah-critical);
+  --ah-focus-ring: var(--ah-primary);
+  --ah-focus-ring-width: 2px;
+  --ah-focus-ring-offset: 2px;
+  --ah-action-primary-bg: var(--ah-primary);
+  --ah-action-primary-bg-hover: var(--ah-primary-dark);
+  --ah-action-primary-bg-active: var(--ah-primary-deep);
+  --ah-action-primary-text: var(--ah-on-primary);
+  --ah-action-secondary-bg: var(--ah-canvas);
+  --ah-action-secondary-text: var(--ah-primary);
+  --ah-action-secondary-border: var(--ah-primary);
+  --ah-action-danger-bg: var(--ah-critical);
+  --ah-action-danger-bg-hover: var(--ah-critical);
+  --ah-action-danger-text: var(--ah-on-primary);
+  --ah-action-disabled-bg: var(--ah-canvas);
+  --ah-action-disabled-text: var(--ah-disabled);
+  --ah-action-disabled-border: var(--ah-disabled);
+  --ah-status-success: var(--ah-success);
+  --ah-status-success-strong: var(--ah-badge-success-ink);
+  --ah-status-success-soft: var(--ah-badge-success-bg);
+  --ah-status-warning: var(--ah-warning);
+  --ah-status-warning-soft: var(--ah-badge-sunshine);
+  --ah-status-error: var(--ah-critical);
+  --ah-status-error-strong: var(--ah-critical);
+  --ah-status-error-soft: var(--ah-badge-coral);
+  --ah-status-info: var(--ah-badge-teal);
+  --ah-status-info-soft: var(--ah-badge-cyan-bg);
 
-  --ut-primitive-teal-20: #dce7ea;
-  --ut-primitive-teal-30: #a1bec6;
-  --ut-primitive-teal-40: #155d70;
+  /* Existing analytics semantics mapped only to the AH palette. */
+  --ah-outcome-success: var(--ah-success);
+  --ah-outcome-failed: var(--ah-critical);
+  --ah-outcome-give-up: var(--ah-warning);
+  --ah-outcome-timeout: var(--ah-slate);
+  --ah-outcome-abandoned: var(--ah-slate);
+  --ah-outcome-technical: var(--ah-badge-teal);
+  --ah-data-1: var(--ah-primary);
+  --ah-data-2: var(--ah-badge-teal);
+  --ah-data-3: var(--ah-primary-gradient-end);
+  --ah-data-4: var(--ah-warning);
+  --ah-data-5: var(--ah-badge-blue);
+  --ah-data-6: var(--ah-success);
+  --ah-data-neutral: var(--ah-slate);
+  --ah-heatmap-1: var(--ah-primary-soft);
+  --ah-heatmap-2: var(--ah-badge-cyan-bg);
+  --ah-heatmap-3: var(--ah-badge-blue);
+  --ah-heatmap-4: var(--ah-primary-gradient-end);
+  --ah-heatmap-5: var(--ah-primary);
+  --ah-border-width-1: 1px;
+  --ah-border-width-2: 2px;
+  --ah-touch-target-min: 44px;
+  --ah-icon-size-sm: 16px;
+  --ah-icon-size-md: 20px;
+  --ah-icon-size-lg: 24px;
+  --ah-content-max-width: var(--ah-main-pane-reference-width);
+  --ah-motion-fast: 120ms;
+  --ah-motion-default: 200ms;
+  --ah-motion-ease: ease-out;
 
-  /* Brand */
-  --ut-color-brand: var(--ut-primitive-blue-80);
-  --ut-color-brand-hover: var(--ut-primitive-blue-100);
-  --ut-color-brand-active: var(--ut-primitive-blue-90);
-  --ut-color-brand-soft: var(--ut-primitive-blue-30);
-
-  /* Surfaces */
-  --ut-color-bg-page: var(--ut-primitive-gray-10);
-  --ut-color-bg-surface: var(--ut-primitive-white);
-  --ut-color-bg-subtle: var(--ut-primitive-blue-10);
-  --ut-color-bg-muted: var(--ut-primitive-gray-20);
-  --ut-color-bg-selected: var(--ut-primitive-blue-30);
-  --ut-color-bg-disabled: var(--ut-primitive-gray-20);
-  --ut-color-bg-overlay: rgb(0 0 0 / 48%);
-
-  /* Text */
-  --ut-color-text-primary: var(--ut-primitive-gray-80);
-  --ut-color-text-secondary: var(--ut-primitive-gray-60);
-  --ut-color-text-muted: var(--ut-primitive-gray-50);
-  --ut-color-text-disabled: var(--ut-primitive-gray-50);
-  --ut-color-text-inverse: var(--ut-primitive-white);
-  --ut-color-text-link: var(--ut-primitive-blue-80);
-  --ut-color-text-link-hover: var(--ut-primitive-blue-100);
-
-  /* Borders and focus */
-  --ut-color-border-default: var(--ut-primitive-gray-40);
-  --ut-color-border-strong: var(--ut-primitive-gray-50);
-  --ut-color-border-interactive: var(--ut-primitive-blue-80);
-  --ut-color-border-error: var(--ut-primitive-red-30);
-  --ut-color-focus-ring: var(--ut-primitive-blue-80);
-  --ut-focus-ring-width: 2px;
-  --ut-focus-ring-offset: 2px;
-
-  /* Actions */
-  --ut-color-action-primary-bg: var(--ut-primitive-blue-80);
-  --ut-color-action-primary-bg-hover: var(--ut-primitive-blue-100);
-  --ut-color-action-primary-bg-active: var(--ut-primitive-blue-90);
-  --ut-color-action-primary-text: var(--ut-primitive-white);
-  --ut-color-action-secondary-bg: var(--ut-primitive-white);
-  --ut-color-action-secondary-text: var(--ut-primitive-blue-80);
-  --ut-color-action-secondary-border: var(--ut-primitive-blue-80);
-  --ut-color-action-danger-bg: var(--ut-primitive-red-30);
-  --ut-color-action-danger-bg-hover: var(--ut-primitive-red-40);
-  --ut-color-action-danger-text: var(--ut-primitive-white);
-  --ut-color-action-disabled-bg: var(--ut-primitive-white);
-  --ut-color-action-disabled-text: var(--ut-primitive-gray-40);
-  --ut-color-action-disabled-border: var(--ut-primitive-gray-40);
-
-  /* Status / feedback semantics */
-  --ut-color-success: var(--ut-primitive-green-30);
-  --ut-color-success-strong: var(--ut-primitive-green-40);
-  --ut-color-success-soft: #fafffb;
-  --ut-color-warning: var(--ut-primitive-orange-40);
-  --ut-color-warning-soft: var(--ut-primitive-orange-20);
-  --ut-color-error: var(--ut-primitive-red-30);
-  --ut-color-error-strong: var(--ut-primitive-red-40);
-  --ut-color-error-soft: #fffafb;
-  --ut-color-info: var(--ut-primitive-cyan-40);
-  --ut-color-info-soft: #f5fbfd;
-
-  /* Operational outcome semantics.
-   * These names prevent technical blocks from being visually conflated with
-   * usability failures in analytics and participant/session views.
+  /*
+   * Legacy compatibility aliases.
+   * These are aliases only: --ut-* is NOT a design authority.
+   * New or modified UI must use --ah-* directly.
    */
-  --ut-color-outcome-success: var(--ut-color-success);
-  --ut-color-outcome-failed: var(--ut-color-error);
-  --ut-color-outcome-give-up: var(--ut-color-warning);
-  --ut-color-outcome-timeout: var(--ut-primitive-purple-40);
-  --ut-color-outcome-abandoned: var(--ut-primitive-gray-60);
-  --ut-color-outcome-technical: var(--ut-color-info);
-
-  /* Data visualization categorical palette.
-   * Never communicate meaning by color alone; pair with labels, icons, shape,
-   * line style, or explicit legend text.
-   */
-  --ut-data-1: var(--ut-primitive-blue-80);
-  --ut-data-2: var(--ut-primitive-teal-40);
-  --ut-data-3: var(--ut-primitive-purple-40);
-  --ut-data-4: var(--ut-primitive-orange-40);
-  --ut-data-5: var(--ut-primitive-cyan-40);
-  --ut-data-6: var(--ut-primitive-green-30);
-  --ut-data-neutral: var(--ut-primitive-gray-60);
-
-  /* Heatmap sequential scale. */
-  --ut-heatmap-1: var(--ut-primitive-blue-30);
-  --ut-heatmap-2: var(--ut-primitive-blue-40);
-  --ut-heatmap-3: var(--ut-primitive-blue-50);
-  --ut-heatmap-4: var(--ut-primitive-blue-70);
-  --ut-heatmap-5: var(--ut-primitive-blue-80);
-
-  /* Typography */
-  --ut-font-family-sans: "Source Sans Pro", "Source Sans 3", Arial, sans-serif;
+  --ut-primitive-white: var(--ah-canvas);
+  --ut-primitive-black: var(--ah-ink-deep);
+  --ut-primitive-blue-10: var(--ah-surface-muted);
+  --ut-primitive-blue-20: var(--ah-surface-muted);
+  --ut-primitive-blue-30: var(--ah-primary-soft);
+  --ut-primitive-blue-40: var(--ah-primary-soft);
+  --ut-primitive-blue-50: var(--ah-badge-blue);
+  --ut-primitive-blue-60: var(--ah-primary-gradient-end);
+  --ut-primitive-blue-70: var(--ah-primary-deep);
+  --ut-primitive-blue-80: var(--ah-primary);
+  --ut-primitive-blue-90: var(--ah-primary-deep);
+  --ut-primitive-blue-100: var(--ah-primary-dark);
+  --ut-primitive-gray-10: var(--ah-app-bg);
+  --ut-primitive-gray-20: var(--ah-hairline-soft);
+  --ut-primitive-gray-30: var(--ah-hairline);
+  --ut-primitive-gray-40: var(--ah-field-border);
+  --ut-primitive-gray-50: var(--ah-placeholder);
+  --ut-primitive-gray-60: var(--ah-slate);
+  --ut-primitive-gray-80: var(--ah-ink-deep);
+  --ut-primitive-green-20: var(--ah-badge-success-bg);
+  --ut-primitive-green-30: var(--ah-success);
+  --ut-primitive-green-40: var(--ah-badge-success-ink);
+  --ut-primitive-red-20: var(--ah-badge-coral);
+  --ut-primitive-red-30: var(--ah-critical);
+  --ut-primitive-red-40: var(--ah-critical);
+  --ut-primitive-orange-20: var(--ah-badge-sunshine);
+  --ut-primitive-orange-30: var(--ah-warning);
+  --ut-primitive-orange-40: var(--ah-warning);
+  --ut-primitive-cyan-20: var(--ah-badge-cyan-bg);
+  --ut-primitive-cyan-30: var(--ah-badge-blue);
+  --ut-primitive-cyan-40: var(--ah-badge-teal);
+  --ut-primitive-purple-20: var(--ah-primary-soft);
+  --ut-primitive-purple-30: var(--ah-primary-gradient-end);
+  --ut-primitive-purple-40: var(--ah-primary-deep);
+  --ut-primitive-teal-20: var(--ah-badge-cyan-bg);
+  --ut-primitive-teal-30: var(--ah-badge-blue);
+  --ut-primitive-teal-40: var(--ah-badge-teal);
+  --ut-color-brand: var(--ah-primary);
+  --ut-color-brand-hover: var(--ah-primary-dark);
+  --ut-color-brand-active: var(--ah-primary-deep);
+  --ut-color-brand-soft: var(--ah-primary-soft);
+  --ut-color-bg-page: var(--ah-bg-page);
+  --ut-color-bg-surface: var(--ah-bg-surface);
+  --ut-color-bg-subtle: var(--ah-bg-subtle);
+  --ut-color-bg-muted: var(--ah-bg-muted);
+  --ut-color-bg-selected: var(--ah-bg-selected);
+  --ut-color-bg-disabled: var(--ah-bg-disabled);
+  --ut-color-bg-overlay: var(--ah-overlay);
+  --ut-color-text-primary: var(--ah-text-primary);
+  --ut-color-text-secondary: var(--ah-text-secondary);
+  --ut-color-text-muted: var(--ah-text-muted);
+  --ut-color-text-disabled: var(--ah-text-disabled);
+  --ut-color-text-inverse: var(--ah-text-inverse);
+  --ut-color-text-link: var(--ah-text-link);
+  --ut-color-text-link-hover: var(--ah-text-link-hover);
+  --ut-color-border-default: var(--ah-border-default);
+  --ut-color-border-strong: var(--ah-border-strong);
+  --ut-color-border-interactive: var(--ah-border-interactive);
+  --ut-color-border-error: var(--ah-border-error);
+  --ut-color-focus-ring: var(--ah-focus-ring);
+  --ut-focus-ring-width: var(--ah-focus-ring-width);
+  --ut-focus-ring-offset: var(--ah-focus-ring-offset);
+  --ut-color-action-primary-bg: var(--ah-action-primary-bg);
+  --ut-color-action-primary-bg-hover: var(--ah-action-primary-bg-hover);
+  --ut-color-action-primary-bg-active: var(--ah-action-primary-bg-active);
+  --ut-color-action-primary-text: var(--ah-action-primary-text);
+  --ut-color-action-secondary-bg: var(--ah-action-secondary-bg);
+  --ut-color-action-secondary-text: var(--ah-action-secondary-text);
+  --ut-color-action-secondary-border: var(--ah-action-secondary-border);
+  --ut-color-action-danger-bg: var(--ah-action-danger-bg);
+  --ut-color-action-danger-bg-hover: var(--ah-action-danger-bg-hover);
+  --ut-color-action-danger-text: var(--ah-action-danger-text);
+  --ut-color-action-disabled-bg: var(--ah-action-disabled-bg);
+  --ut-color-action-disabled-text: var(--ah-action-disabled-text);
+  --ut-color-action-disabled-border: var(--ah-action-disabled-border);
+  --ut-color-success: var(--ah-status-success);
+  --ut-color-success-strong: var(--ah-status-success-strong);
+  --ut-color-success-soft: var(--ah-status-success-soft);
+  --ut-color-warning: var(--ah-status-warning);
+  --ut-color-warning-soft: var(--ah-status-warning-soft);
+  --ut-color-error: var(--ah-status-error);
+  --ut-color-error-strong: var(--ah-status-error-strong);
+  --ut-color-error-soft: var(--ah-status-error-soft);
+  --ut-color-info: var(--ah-status-info);
+  --ut-color-info-soft: var(--ah-status-info-soft);
+  --ut-color-outcome-success: var(--ah-outcome-success);
+  --ut-color-outcome-failed: var(--ah-outcome-failed);
+  --ut-color-outcome-give-up: var(--ah-outcome-give-up);
+  --ut-color-outcome-timeout: var(--ah-outcome-timeout);
+  --ut-color-outcome-abandoned: var(--ah-outcome-abandoned);
+  --ut-color-outcome-technical: var(--ah-outcome-technical);
+  --ut-data-1: var(--ah-data-1);
+  --ut-data-2: var(--ah-data-2);
+  --ut-data-3: var(--ah-data-3);
+  --ut-data-4: var(--ah-data-4);
+  --ut-data-5: var(--ah-data-5);
+  --ut-data-6: var(--ah-data-6);
+  --ut-data-neutral: var(--ah-data-neutral);
+  --ut-heatmap-1: var(--ah-heatmap-1);
+  --ut-heatmap-2: var(--ah-heatmap-2);
+  --ut-heatmap-3: var(--ah-heatmap-3);
+  --ut-heatmap-4: var(--ah-heatmap-4);
+  --ut-heatmap-5: var(--ah-heatmap-5);
+  --ut-font-family-sans: var(--ah-font-primary);
   --ut-font-family-mono: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-
-  --ut-font-size-12: 0.75rem;
-  --ut-font-size-14: 0.875rem;
-  --ut-font-size-16: 1rem;
-  --ut-font-size-18: 1.125rem;
-  --ut-font-size-20: 1.25rem;
-  --ut-font-size-24: 1.5rem;
-  --ut-font-size-28: 1.75rem;
-  --ut-font-size-32: 2rem;
-
-  --ut-font-weight-regular: 400;
-  --ut-font-weight-semibold: 600;
-  --ut-font-weight-bold: 700;
-
-  --ut-line-height-tight: 1.25;
-  --ut-line-height-heading: 1.3;
-  --ut-line-height-body: 1.5;
-
-  --ut-type-caption-size: var(--ut-font-size-12);
-  --ut-type-caption-line-height: 1.33;
-  --ut-type-label-size: var(--ut-font-size-14);
-  --ut-type-label-line-height: 1.43;
-  --ut-type-body-size: var(--ut-font-size-16);
-  --ut-type-body-line-height: var(--ut-line-height-body);
-  --ut-type-title-sm-size: var(--ut-font-size-18);
-  --ut-type-title-md-size: var(--ut-font-size-20);
-  --ut-type-title-lg-size: var(--ut-font-size-24);
-  --ut-type-page-title-size: var(--ut-font-size-28);
-  --ut-type-metric-size: var(--ut-font-size-32);
-
-  /* Spacing: 4px base scale. */
+  --ut-font-size-12: var(--ah-type-body-xs-size);
+  --ut-font-size-14: var(--ah-type-body-sm-size);
+  --ut-font-size-16: var(--ah-type-body-md-size);
+  --ut-font-size-18: var(--ah-type-body-md-size);
+  --ut-font-size-20: var(--ah-type-body-lg-size);
+  --ut-font-size-24: var(--ah-type-heading-lg-size);
+  --ut-font-size-28: var(--ah-type-display-xl-size);
+  --ut-font-size-32: var(--ah-type-display-xl-size);
+  --ut-font-weight-regular: var(--ah-font-weight-regular);
+  --ut-font-weight-semibold: var(--ah-font-weight-bold);
+  --ut-font-weight-bold: var(--ah-font-weight-bold);
+  --ut-line-height-tight: var(--ah-type-heading-md-line-height);
+  --ut-line-height-heading: var(--ah-type-heading-lg-line-height);
+  --ut-line-height-body: var(--ah-type-body-md-line-height);
+  --ut-type-caption-size: var(--ah-type-body-xs-size);
+  --ut-type-caption-line-height: var(--ah-type-body-xs-line-height);
+  --ut-type-label-size: var(--ah-type-body-sm-size);
+  --ut-type-label-line-height: var(--ah-type-body-sm-line-height);
+  --ut-type-body-size: var(--ah-type-body-md-size);
+  --ut-type-body-line-height: var(--ah-type-body-md-line-height);
+  --ut-type-title-sm-size: var(--ah-type-heading-md-size);
+  --ut-type-title-md-size: var(--ah-type-heading-md-size);
+  --ut-type-title-lg-size: var(--ah-type-heading-lg-size);
+  --ut-type-page-title-size: var(--ah-type-display-xl-size);
+  --ut-type-metric-size: var(--ah-type-metric-xl-size);
   --ut-space-0: 0;
-  --ut-space-1: 0.25rem;
-  --ut-space-2: 0.5rem;
-  --ut-space-3: 0.75rem;
-  --ut-space-4: 1rem;
-  --ut-space-5: 1.25rem;
-  --ut-space-6: 1.5rem;
-  --ut-space-8: 2rem;
-  --ut-space-10: 2.5rem;
-  --ut-space-12: 3rem;
-  --ut-space-16: 4rem;
-
-  /* Sizing */
-  --ut-control-height-sm: 2.5rem;
-  --ut-control-height-md: 3rem;
-  --ut-icon-size-sm: 1rem;
-  --ut-icon-size-md: 1.25rem;
-  --ut-icon-size-lg: 1.5rem;
-  --ut-touch-target-min: 2.75rem;
-
-  /* Radius — card 4px is directly evidenced in AXA; the scale extends it. */
+  --ut-space-1: var(--ah-space-4);
+  --ut-space-2: var(--ah-space-8);
+  --ut-space-3: var(--ah-space-12);
+  --ut-space-4: var(--ah-space-16);
+  --ut-space-5: var(--ah-space-20);
+  --ut-space-6: var(--ah-space-24);
+  --ut-space-8: var(--ah-space-32);
+  --ut-space-10: var(--ah-space-32);
+  --ut-space-12: var(--ah-space-32);
+  --ut-space-16: var(--ah-space-32);
+  --ut-control-height-sm: var(--ah-button-md-height);
+  --ut-control-height-md: var(--ah-table-row-height-comfortable);
+  --ut-icon-size-sm: var(--ah-icon-size-sm);
+  --ut-icon-size-md: var(--ah-icon-size-md);
+  --ut-icon-size-lg: var(--ah-icon-size-lg);
+  --ut-touch-target-min: var(--ah-touch-target-min);
   --ut-radius-none: 0;
-  --ut-radius-sm: 0.25rem;
-  --ut-radius-md: 0.5rem;
-  --ut-radius-lg: 0.75rem;
-  --ut-radius-pill: 999px;
-
-  /* Border */
-  --ut-border-width-1: 1px;
-  --ut-border-width-2: 2px;
-
-  /* Elevation */
-  --ut-shadow-none: none;
-  --ut-shadow-card: 0 0 0.5625rem rgb(0 0 0 / 18%);
-  --ut-shadow-popover: 0 0.5rem 1.5rem rgb(0 0 0 / 18%);
-  --ut-shadow-modal: 0 1rem 2.5rem rgb(0 0 0 / 24%);
-
-  /* Layout */
-  --ut-shell-sidebar-width: 15rem;
-  --ut-shell-header-height: 4rem;
-  --ut-content-max-width: 89.5rem; /* 1432px AXA desktop-large breakpoint */
-  --ut-content-gutter-mobile: var(--ut-space-4);
-  --ut-content-gutter-tablet: var(--ut-space-6);
-  --ut-content-gutter-desktop: var(--ut-space-8);
-
-  /* AXA Distributeur breakpoints retained as implementation references. */
-  --ut-breakpoint-tablet-portrait: 576px;
-  --ut-breakpoint-tablet-landscape: 772px;
-  --ut-breakpoint-desktop-small: 1016px;
-  --ut-breakpoint-desktop-medium: 1272px;
-  --ut-breakpoint-desktop-large: 1432px;
-
-  /* Motion */
-  --ut-motion-fast: 120ms;
-  --ut-motion-default: 200ms;
-  --ut-motion-ease: ease-out;
+  --ut-radius-sm: var(--ah-radius-xs);
+  --ut-radius-md: var(--ah-radius-sm);
+  --ut-radius-lg: var(--ah-radius-md);
+  --ut-radius-pill: var(--ah-radius-chip);
+  --ut-border-width-1: var(--ah-border-width-1);
+  --ut-border-width-2: var(--ah-border-width-2);
+  --ut-shadow-none: var(--ah-shadow-none);
+  --ut-shadow-card: var(--ah-shadow-card);
+  --ut-shadow-popover: var(--ah-shadow-card);
+  --ut-shadow-modal: var(--ah-shadow-card);
+  --ut-shell-sidebar-width: var(--ah-sidebar-width);
+  --ut-shell-header-height: var(--ah-topbar-height);
+  --ut-content-max-width: var(--ah-content-max-width);
+  --ut-content-gutter-mobile: var(--ah-content-gutter);
+  --ut-content-gutter-tablet: var(--ah-content-gutter);
+  --ut-content-gutter-desktop: var(--ah-content-gutter);
+  --ut-breakpoint-tablet-portrait: var(--ah-breakpoint-mobile);
+  --ut-breakpoint-tablet-landscape: var(--ah-breakpoint-mobile);
+  --ut-breakpoint-desktop-small: var(--ah-breakpoint-tablet);
+  --ut-breakpoint-desktop-medium: var(--ah-breakpoint-desktop);
+  --ut-breakpoint-desktop-large: var(--ah-breakpoint-wide);
+  --ut-motion-fast: var(--ah-motion-fast);
+  --ut-motion-default: var(--ah-motion-default);
+  --ut-motion-ease: var(--ah-motion-ease);
 }
 
 @media (prefers-reduced-motion: reduce) {
   :root {
-    --ut-motion-fast: 0.01ms;
-    --ut-motion-default: 0.01ms;
+    --ah-motion-fast: 0.01ms;
+    --ah-motion-default: 0.01ms;
   }
 }

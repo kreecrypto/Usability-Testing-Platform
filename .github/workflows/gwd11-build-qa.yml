@@ -51,6 +51,12 @@ jobs:
       - name: Install from committed lockfile
         run: npm ci --no-audit --no-fund
 
+      - name: AH Design System v2.6 release gate
+        run: npm run check:design-system
+
+      - name: High-fi release gate
+        run: npm run check:high-fi
+
       - name: Build
         run: npm run build
 

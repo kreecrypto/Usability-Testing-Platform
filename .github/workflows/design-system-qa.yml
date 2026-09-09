@@ -1,10 +1,20 @@
 name: Design System QA
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/design-system/**'
+      - 'src/styles/**'
+      - 'src/app/globals.css'
+      - 'scripts/check-design-system.mjs'
+      - 'package.json'
+      - '.github/workflows/design-system-qa.yml'
   pull_request:
     paths:
       - 'docs/design-system/**'
       - 'src/styles/**'
+      - 'src/app/globals.css'
       - 'scripts/check-design-system.mjs'
       - 'package.json'
       - '.github/workflows/design-system-qa.yml'
@@ -22,12 +32,19 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install from committed lockfile
+        run: npm ci --no-audit --no-fund
+      - name: Verify AH 2.6 authority
+        run: node scripts/check-design-system.mjs authority
       - name: Verify screen and state inventory
         run: node scripts/check-design-system.mjs inventory
-      - name: Verify semantic tokens
+      - name: Verify AH 2.6 canonical tokens
         run: node scripts/check-design-system.mjs tokens
-      - name: Verify DS-02 through DS-08 baseline
+      - name: Verify AH 2.6 component/layout baseline
         run: node scripts/check-design-system.mjs baseline
-      - name: Verify accessibility matrix
+      - name: Verify AH 2.6 accessibility/state contract
         run: node scripts/check-design-system.mjs accessibility
+      - name: Verify runtime consumes AH 2.6
+        run: node scripts/check-design-system.mjs runtime
