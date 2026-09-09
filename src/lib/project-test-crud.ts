@@ -24,16 +24,22 @@ export type TestRow = {
 };
 
 export class CrudValidationError extends Error {
-  constructor(public field: string, message: string) {
+  field: string;
+
+  constructor(field: string, message: string) {
     super(message);
     this.name = "CrudValidationError";
+    this.field = field;
   }
 }
 
 export class CrudProviderError extends Error {
-  constructor(public status: number, message = "data_request_failed") {
+  status: number;
+
+  constructor(status: number, message = "data_request_failed") {
     super(message);
     this.name = "CrudProviderError";
+    this.status = status;
   }
 }
 
