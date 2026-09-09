@@ -9,7 +9,7 @@ import {
   type RetestMetricComparison,
 } from "./model.ts";
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 type FetchLike = typeof fetch;
 
 type FindingRow = Readonly<{
@@ -59,7 +59,7 @@ export class FindingsStoreError extends Error {
   code: "validation_error" | "unauthorized" | "forbidden" | "not_found" | "provider_error";
   status: number;
 
-  constructor(code: FindingsStoreError["code"], status: number, message = code) {
+  constructor(code: FindingsStoreError["code"], status: number, message: string = code) {
     super(message);
     this.name = "FindingsStoreError";
     this.code = code;
