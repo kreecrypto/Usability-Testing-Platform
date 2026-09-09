@@ -1,9 +1,10 @@
 import { aggregateAnalytics, type TaskMetricAggregate } from "./aggregation.ts";
+import { deriveFunnel, type FunnelDefinition, type FunnelResult } from "./funnel.ts";
 import { deriveTaskTimeMetrics } from "./time-metrics.ts";
 import { median, percentage } from "./metrics.ts";
 import type { AcceptedTrackingEvent, TaskOutcome } from "../tracking/events.ts";
 
-export const RESULTS_MODEL_VERSION = "tasks44-49-v1" as const;
+export const RESULTS_MODEL_VERSION = "tasks44-49-v2" as const;
 export const SEQ_SCALE_VERSION = "seq-7-v1" as const;
 
 export type ResultTaskDefinition = Readonly<{
@@ -107,9 +108,10 @@ export type ResultsModel = Readonly<{
   taskDetails: readonly TaskDetailResult[];
   paths: readonly TaskPathResult[];
   sessions: readonly SessionDetailResult[];
+  funnel: FunnelResult | null;
   unsupported: Readonly<{
     heatmap: true;
-    funnel: true;
+    funnel: boolean;
     reasons: readonly string[];
   }>;
 }>;
@@ -298,6 +300,7 @@ export function buildResultsModel(input: Readonly<{
   events: readonly AcceptedTrackingEvent[];
   tasks: readonly ResultTaskDefinition[];
   answers?: readonly ResultAnswer[];
+  funnelDefinition?: FunnelDefinition | null;
 }>): ResultsModel {
   const scopedEvents = input.events.filter((event) => event.testVersionId === input.testVersionId);
   const answers = input.answers ?? [];
@@ -354,6 +357,12 @@ export function buildResultsModel(input: Readonly<{
     });
   }).sort((a, b) => a.ordinal - b.ordinal || a.taskId.localeCompare(b.taskId));
 
+  const funnel = input.funnelDefinition ? deriveFunnel(scopedEvents, input.funnelDefinition) : null;
+  const unsupportedReasons = [
+    "Task 47 requires canonical pinned geometry from Task 39 before heatmap output can be claimed.",
+    ...(funnel ? [] : ["No funnel definition is stored with this published test version."]),
+  ];
+
   return Object.freeze({
     modelVersion: RESULTS_MODEL_VERSION,
     testId: scopedEvents[0]?.testId ?? null,
@@ -376,13 +385,11 @@ export function buildResultsModel(input: Readonly<{
     taskDetails: Object.freeze(taskDetails),
     paths: Object.freeze(buildPaths(scopedEvents, input.tasks)),
     sessions: Object.freeze(buildSessionDetails(scopedEvents, answers)),
+    funnel,
     unsupported: Object.freeze({
       heatmap: true,
-      funnel: true,
-      reasons: Object.freeze([
-        "Task 47 requires canonical pinned geometry from Task 39 before heatmap output can be claimed.",
-        "Task 48 requires a funnel configuration stored with the published test version; no canonical funnel config exists in the current published-version schema.",
-      ]),
+      funnel: funnel === null,
+      reasons: Object.freeze(unsupportedReasons),
     }),
   });
 }
