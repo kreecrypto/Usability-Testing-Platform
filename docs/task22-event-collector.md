@@ -2,7 +2,7 @@
 
 ## Status
 
-The source-supported HTTP boundary is wired to a Next.js/Vercel route and a server-only Supabase persistence adapter. Runtime completion now proceeds against a fresh Vercel deployment after environment configuration was added by the project owner on 2026-09-09. Preview environment scope was then enabled and requires a newly triggered Preview deployment before hosted verification.
+The source-supported HTTP boundary is wired to a Next.js/Vercel route and a server-only Supabase persistence adapter. Runtime QA passed on a fresh Vercel preview for `task22-vercel-event-collector` on 2026-09-09. The temporary preview QA route used for hosted verification was removed before merge readiness so only the production collector route remains.
 
 ## Canonical sources
 
@@ -71,4 +71,12 @@ Hosted/runtime QA:
 - a valid fixture tied to an existing session persists exactly one row into `public.events` and returns `202`;
 - failure responses and logs do not expose the Supabase secret or raw database error.
 
-Until the hosted valid-persistence test is proven on the fresh deployment, Task 22 must remain `IN_PROGRESS`/`QA`, not `COMPLETE`.
+Completed evidence on 2026-09-09:
+
+- Local `npm run typecheck` passed.
+- Local `npm run build` passed.
+- Local `npm test` passed with 40 tests.
+- Repository scan found no legacy provider references in the working tree content.
+- Vercel preview `dpl_5hKNroqDJrvj8sj917vg3uT64fsc` for commit `430f2b6b5787ab3e263e554eef8c38423e7dc4b5` was READY.
+- Hosted runtime QA against Supabase project `qryvrcwbsehrzpersuoc` returned `ok: true`, `acceptedStatus: 202`, `persistedRows: 1`, `malformedStatus: 400`, `secretLeaked: false`, and `persistedContextMatches: true`.
+- The temporary hosted QA route was removed after verification and before final merge readiness.
