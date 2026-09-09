@@ -1,0 +1,12 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "24.20.0"
+  NETLIFY_NEXT_SKEW_PROTECTION = "true"
+
+# Secrets and environment-specific values MUST be configured in Netlify's
+# environment-variable settings, never committed here.
+# Production branch is `main`; keep Deploy Previews disabled unless explicitly
+# needed so the Free plan is not consumed by unnecessary preview builds.
