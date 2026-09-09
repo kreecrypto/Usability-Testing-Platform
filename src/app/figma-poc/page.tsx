@@ -7,6 +7,7 @@ type PageProps = Readonly<{
 export default async function FigmaPocPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const initialUrl = typeof params.url === "string" ? params.url : "";
+  const embedApiClientId = process.env.FIGMA_EMBED_CLIENT_ID?.trim() || undefined;
 
   return (
     <main style={{ maxWidth: 1180, margin: "0 auto", padding: "40px 24px 72px" }}>
@@ -18,7 +19,10 @@ export default async function FigmaPocPage({ searchParams }: PageProps) {
         deferred beyond the simplified V1 path.
       </p>
 
-      <PublicFigmaEmbedProof initialUrl={initialUrl} />
+      <PublicFigmaEmbedProof
+        initialUrl={initialUrl}
+        embedApiClientId={embedApiClientId}
+      />
     </main>
   );
 }
