@@ -1,4 +1,5 @@
 import { createPublicRunnerStore, PublicRunnerError, runnerServerConfig } from "../../../../../lib/runner/public-session.ts";
+import { createSupabaseAdminFetch } from "../../../../../lib/runner/supabase-admin-fetch.ts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,7 +18,10 @@ function errorResponse(error: unknown): Response {
 export async function GET(_request: Request, context: Context): Promise<Response> {
   try {
     const config = runnerServerConfig();
-    const store = createPublicRunnerStore(config);
+    const store = createPublicRunnerStore({
+      ...config,
+      fetchImpl: createSupabaseAdminFetch(config.secretKey),
+    });
     const { testVersionId } = await context.params;
     return json({ test: await store.snapshot(testVersionId) }, 200);
   } catch (error) {
