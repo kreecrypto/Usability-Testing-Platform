@@ -1,0 +1,54 @@
+name: Cloudflare Runtime Bootstrap
+
+on:
+  push:
+    branches: [migration/cloudflare-runtime]
+    paths:
+      - .github/workflows/cloudflare-bootstrap.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout migration branch
+        uses: actions/checkout@v4
+        with:
+          ref: migration/cloudflare-runtime
+
+      - name: Set up pinned Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install repository dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify vinext compatibility
+        run: npx --yes vinext@1.0.0-beta.9 check
+
+      - name: Generate Cloudflare Workers target from current source
+        run: npx --yes vinext@1.0.0-beta.9 init --platform=cloudflare --skip-check
+
+      - name: Record generated runtime configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f wrangler.jsonc
+          test -f vite.config.ts -o -f vite.config.js -o -f vite.config.mts -o -f vite.config.mjs
+          git status --short
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "vinext produced no source changes"
+            exit 0
+          fi
+          git commit -m "Configure Cloudflare Workers runtime from vinext"
+          git push origin HEAD:migration/cloudflare-runtime
