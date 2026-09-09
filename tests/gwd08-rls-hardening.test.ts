@@ -50,11 +50,14 @@ test("cross-workspace access is mediated by trusted membership helpers", () => {
   assert.doesNotMatch(authSql, /user_metadata|raw_user_meta_data/i);
 });
 
-test("private helpers and future public objects fail closed for anonymous callers", () => {
+test("private helpers fail closed and authenticated gets only explicit RLS helpers", () => {
   assert.match(hardeningSql, /revoke all on schema private from public, anon/i);
-  assert.match(hardeningSql, /revoke execute on all functions in schema private from public, anon/i);
+  assert.match(hardeningSql, /revoke execute on all functions in schema private from public, anon, authenticated/i);
   assert.match(hardeningSql, /grant usage on schema private to authenticated, service_role/i);
-  assert.match(hardeningSql, /grant execute on all functions in schema private to authenticated, service_role/i);
+  assert.doesNotMatch(hardeningSql, /grant execute on all functions in schema private to authenticated/i);
+  for (const fn of ["is_workspace_member", "is_workspace_admin", "is_workspace_owner", "is_research_editor", "can_read_sensitive_workspace", "can_read_session", "can_edit_finding", "can_read_finding_evidence"]) {
+    assert.match(hardeningSql, new RegExp(`grant execute on function private\\.${fn}\\(uuid\\) to authenticated, service_role`, "i"));
+  }
 });
 
 test("service-role secret is not embedded in database migrations", () => {
