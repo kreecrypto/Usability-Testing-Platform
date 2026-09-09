@@ -10,9 +10,6 @@ export type PublicRunnerTask = Readonly<{
   title: string;
   scenario: string | null;
   instruction: string | null;
-  expectedPath: readonly unknown[];
-  successRule: Readonly<Record<string, unknown>>;
-  failureRule: Readonly<Record<string, unknown>>;
   timeoutSeconds: number | null;
   postTaskQuestions: Readonly<Record<string, unknown>>;
 }>;
@@ -26,6 +23,7 @@ export type PublicTestSnapshot = Readonly<{
   prototype: Readonly<{
     sourceUrl: string;
     embedUrl: string;
+    liveEmbedUrl: string | null;
     startNodeId: string;
   }>;
   tasks: readonly PublicRunnerTask[];
@@ -39,6 +37,22 @@ export type AnonymousRunnerSession = Readonly<{
   startedAt: string;
   ingestionToken: string;
   ingestionTokenExpiresAt: string;
+}>;
+
+export type RunnerTaskState = Readonly<{
+  taskId: string;
+  outcome: "success_direct" | "success_indirect" | "failed" | "give_up" | "timeout" | "abandoned" | "technical_blocked" | null;
+  startedAt: string;
+  endedAt: string | null;
+}>;
+
+export type RunnerSessionState = Readonly<{
+  sessionId: string;
+  status: "active" | "completed" | "abandoned" | "technical_blocked";
+  completedAt: string | null;
+  lastSequence: number;
+  taskStates: readonly RunnerTaskState[];
+  answeredQuestionKeys: readonly Readonly<{ taskId: string | null; questionKey: string }>[];
 }>;
 
 export class PublicRunnerError extends Error {
@@ -64,16 +78,37 @@ type VersionRow = Readonly<{
 
 type TestRow = Readonly<{ id: string; title: string; description: string | null; status: string }>;
 type TaskRow = Readonly<{
-  id: string; ordinal: number; title: string; scenario: string | null; instruction: string | null;
-  expected_path: unknown; success_rule: Record<string, unknown>; failure_rule: Record<string, unknown>;
-  timeout_seconds: number | null; post_task_questions: Record<string, unknown>;
+  id: string;
+  ordinal: number;
+  title: string;
+  scenario: string | null;
+  instruction: string | null;
+  timeout_seconds: number | null;
+  post_task_questions: Record<string, unknown>;
 }>;
 type SessionRpcRow = Readonly<{
-  participant_id: string; session_id: string; workspace_id: string; test_id: string;
-  test_version_id: string; started_at: string;
+  participant_id: string;
+  session_id: string;
+  workspace_id: string;
+  test_id: string;
+  test_version_id: string;
+  started_at: string;
 }>;
-
-type SessionStatusRow = Readonly<{ id: string; status: string; participant_id: string; test_version_id: string }>;
+type SessionStatusRow = Readonly<{
+  id: string;
+  status: "active" | "completed" | "abandoned" | "technical_blocked";
+  participant_id: string;
+  test_version_id: string;
+  completed_at: string | null;
+}>;
+type TaskSessionRow = Readonly<{
+  task_id: string;
+  outcome: RunnerTaskState["outcome"];
+  started_at: string;
+  ended_at: string | null;
+}>;
+type EventSequenceRow = Readonly<{ sequence: number | null }>;
+type AnswerRow = Readonly<{ task_id: string | null; question_key: string }>;
 
 function requiredVersionId(value: string): string {
   if (!UUID_PATTERN.test(value)) throw new PublicRunnerError("invalid_version_id", 400);
@@ -86,7 +121,15 @@ function requiredServerValue(value: string, field: string): string {
   return result;
 }
 
-function prototypeFromVersion(version: VersionRow) {
+function liveEmbedUrl(embedUrl: string, clientId: string | null): string | null {
+  if (!clientId) return null;
+  const url = new URL(embedUrl);
+  if (url.protocol !== "https:" || url.hostname !== "embed.figma.com") return null;
+  url.searchParams.set("client-id", clientId);
+  return url.toString();
+}
+
+function prototypeFromVersion(version: VersionRow, figmaEmbedClientId: string | null) {
   const mapping = version.prototype_mapping;
   if (
     mapping?.provider !== "figma" ||
@@ -94,7 +137,12 @@ function prototypeFromVersion(version: VersionRow) {
     typeof mapping.embedUrl !== "string" || !mapping.embedUrl.trim() ||
     !version.figma_start_node_id
   ) throw new PublicRunnerError("published_test_not_found", 404);
-  return Object.freeze({ sourceUrl: mapping.sourceUrl, embedUrl: mapping.embedUrl, startNodeId: version.figma_start_node_id });
+  return Object.freeze({
+    sourceUrl: mapping.sourceUrl,
+    embedUrl: mapping.embedUrl,
+    liveEmbedUrl: liveEmbedUrl(mapping.embedUrl, figmaEmbedClientId),
+    startNodeId: version.figma_start_node_id,
+  });
 }
 
 export function runnerServerConfig() {
@@ -102,6 +150,7 @@ export function runnerServerConfig() {
     supabaseUrl: requiredServerValue(process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "", "SUPABASE_URL"),
     secretKey: requiredServerValue(process.env.SUPABASE_SECRET_KEY ?? "", "SUPABASE_SECRET_KEY"),
     signingKey: requiredServerValue(process.env.EVENT_INGESTION_TOKEN_SECRET ?? "", "EVENT_INGESTION_TOKEN_SECRET"),
+    figmaEmbedClientId: process.env.FIGMA_EMBED_CLIENT_ID?.trim() || null,
   });
 }
 
@@ -109,6 +158,7 @@ export function createPublicRunnerStore(options: {
   supabaseUrl: string;
   secretKey: string;
   signingKey: string;
+  figmaEmbedClientId?: string | null;
   fetchImpl?: typeof fetch;
   now?: () => Date;
   eventIdFactory?: () => string;
@@ -116,6 +166,7 @@ export function createPublicRunnerStore(options: {
   const supabaseUrl = requiredServerValue(options.supabaseUrl, "supabaseUrl").replace(/\/+$/, "");
   const secretKey = requiredServerValue(options.secretKey, "secretKey");
   const signingKey = requiredServerValue(options.signingKey, "signingKey");
+  const figmaEmbedClientId = options.figmaEmbedClientId?.trim() || null;
   const fetchImpl = options.fetchImpl ?? fetch;
   const now = options.now ?? (() => new Date());
   const eventIdFactory = options.eventIdFactory ?? randomUUID;
@@ -132,7 +183,12 @@ export function createPublicRunnerStore(options: {
     const text = await response.text();
     if (!response.ok) {
       let message = "data_request_failed";
-      try { const parsed = JSON.parse(text) as Record<string, unknown>; if (typeof parsed.message === "string") message = parsed.message; } catch { /* sanitized */ }
+      try {
+        const parsed = JSON.parse(text) as Record<string, unknown>;
+        if (typeof parsed.message === "string") message = parsed.message;
+      } catch {
+        // Provider details stay server-side.
+      }
       if (/published_test_version_not_found|consent_version_required/i.test(message)) {
         throw new PublicRunnerError(/consent/i.test(message) ? "invalid_consent" : "published_test_not_found", /consent/i.test(message) ? 400 : 404);
       }
@@ -143,18 +199,35 @@ export function createPublicRunnerStore(options: {
 
   async function snapshot(testVersionId: string): Promise<PublicTestSnapshot> {
     testVersionId = requiredVersionId(testVersionId);
-    const versionParams = new URLSearchParams({ id: `eq.${testVersionId}`, lifecycle_status: "eq.published", select: "id,test_id,version_no,lifecycle_status,figma_start_node_id,prototype_mapping", limit: "1" });
+    const versionParams = new URLSearchParams({
+      id: `eq.${testVersionId}`,
+      lifecycle_status: "eq.published",
+      select: "id,test_id,version_no,lifecycle_status,figma_start_node_id,prototype_mapping",
+      limit: "1",
+    });
     const versions = await request<VersionRow[]>(`/rest/v1/test_versions?${versionParams}`);
     const version = versions[0];
     if (!version) throw new PublicRunnerError("published_test_not_found", 404);
-    const prototype = prototypeFromVersion(version);
+    const prototype = prototypeFromVersion(version, figmaEmbedClientId);
 
-    const testParams = new URLSearchParams({ id: `eq.${version.test_id}`, status: "eq.published", select: "id,title,description,status", limit: "1" });
+    const testParams = new URLSearchParams({
+      id: `eq.${version.test_id}`,
+      status: "eq.published",
+      select: "id,title,description,status",
+      limit: "1",
+    });
     const tests = await request<TestRow[]>(`/rest/v1/tests?${testParams}`);
     const test = tests[0];
     if (!test) throw new PublicRunnerError("published_test_not_found", 404);
 
-    const taskParams = new URLSearchParams({ test_version_id: `eq.${version.id}`, select: "id,ordinal,title,scenario,instruction,expected_path,success_rule,failure_rule,timeout_seconds,post_task_questions", order: "ordinal.asc" });
+    // Participant payload deliberately excludes expected_path, success_rule and
+    // failure_rule. Those remain server/database-side inputs to the versioned
+    // outcome engine and are never exposed in the public runner.
+    const taskParams = new URLSearchParams({
+      test_version_id: `eq.${version.id}`,
+      select: "id,ordinal,title,scenario,instruction,timeout_seconds,post_task_questions",
+      order: "ordinal.asc",
+    });
     const taskRows = await request<TaskRow[]>(`/rest/v1/tasks?${taskParams}`);
     if (taskRows.length === 0) throw new PublicRunnerError("published_test_not_found", 404);
 
@@ -171,9 +244,6 @@ export function createPublicRunnerStore(options: {
         title: task.title,
         scenario: task.scenario,
         instruction: task.instruction,
-        expectedPath: Object.freeze(Array.isArray(task.expected_path) ? [...task.expected_path] : []),
-        successRule: Object.freeze({ ...(task.success_rule ?? {}) }),
-        failureRule: Object.freeze({ ...(task.failure_rule ?? {}) }),
         timeoutSeconds: task.timeout_seconds,
         postTaskQuestions: Object.freeze({ ...(task.post_task_questions ?? {}) }),
       }))),
@@ -194,7 +264,11 @@ export function createPublicRunnerStore(options: {
     if (!consentVersion.trim()) throw new PublicRunnerError("invalid_consent", 400);
     const rows = await request<SessionRpcRow[]>("/rest/v1/rpc/create_anonymous_participant_session", {
       method: "POST",
-      body: JSON.stringify({ p_test_version_id: testVersionId, p_consent_version: consentVersion.trim(), p_locale: locale?.trim() || null }),
+      body: JSON.stringify({
+        p_test_version_id: testVersionId,
+        p_consent_version: consentVersion.trim(),
+        p_locale: locale?.trim() || null,
+      }),
     });
     const row = rows[0];
     if (!row) throw new PublicRunnerError("data_request_failed", 502);
@@ -210,13 +284,66 @@ export function createPublicRunnerStore(options: {
     });
   }
 
-  async function refreshIngestionToken(claims: { sessionId: string; participantId: string; testVersionId: string }) {
-    const params = new URLSearchParams({ id: `eq.${claims.sessionId}`, participant_id: `eq.${claims.participantId}`, test_version_id: `eq.${claims.testVersionId}`, select: "id,status,participant_id,test_version_id", limit: "1" });
+  async function sessionRow(claims: { sessionId: string; participantId: string; testVersionId: string }): Promise<SessionStatusRow> {
+    const params = new URLSearchParams({
+      id: `eq.${claims.sessionId}`,
+      participant_id: `eq.${claims.participantId}`,
+      test_version_id: `eq.${claims.testVersionId}`,
+      select: "id,status,participant_id,test_version_id,completed_at",
+      limit: "1",
+    });
     const rows = await request<SessionStatusRow[]>(`/rest/v1/sessions?${params}`);
     const row = rows[0];
-    if (!row || row.status !== "active") throw new PublicRunnerError("session_not_active", 409);
+    if (!row) throw new PublicRunnerError("session_not_active", 409);
+    return row;
+  }
+
+  async function refreshIngestionToken(claims: { sessionId: string; participantId: string; testVersionId: string }) {
+    const row = await sessionRow(claims);
+    if (row.status !== "active") throw new PublicRunnerError("session_not_active", 409);
     return Object.freeze(mintIngestion(row.id, row.test_version_id));
   }
 
-  return Object.freeze({ snapshot, startSession, refreshIngestionToken });
+  async function sessionState(claims: { sessionId: string; participantId: string; testVersionId: string }): Promise<RunnerSessionState> {
+    const row = await sessionRow(claims);
+    const taskParams = new URLSearchParams({
+      session_id: `eq.${row.id}`,
+      select: "task_id,outcome,started_at,ended_at",
+      order: "started_at.asc",
+    });
+    const taskRows = await request<TaskSessionRow[]>(`/rest/v1/task_sessions?${taskParams}`);
+    const eventParams = new URLSearchParams({
+      session_id: `eq.${row.id}`,
+      event_layer: "eq.raw",
+      select: "sequence",
+      order: "sequence.desc",
+      limit: "1",
+    });
+    const eventRows = await request<EventSequenceRow[]>(`/rest/v1/events?${eventParams}`);
+    const answerParams = new URLSearchParams({
+      session_id: `eq.${row.id}`,
+      select: "task_id,question_key",
+      order: "created_at.asc",
+    });
+    const answerRows = await request<AnswerRow[]>(`/rest/v1/answers?${answerParams}`);
+
+    return Object.freeze({
+      sessionId: row.id,
+      status: row.status,
+      completedAt: row.completed_at,
+      lastSequence: Number.isSafeInteger(eventRows[0]?.sequence) ? (eventRows[0]?.sequence as number) : 0,
+      taskStates: Object.freeze(taskRows.map((task) => Object.freeze({
+        taskId: task.task_id,
+        outcome: task.outcome,
+        startedAt: task.started_at,
+        endedAt: task.ended_at,
+      }))),
+      answeredQuestionKeys: Object.freeze(answerRows.map((answer) => Object.freeze({
+        taskId: answer.task_id,
+        questionKey: answer.question_key,
+      }))),
+    });
+  }
+
+  return Object.freeze({ snapshot, startSession, refreshIngestionToken, sessionState });
 }
