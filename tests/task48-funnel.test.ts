@@ -25,7 +25,6 @@ function raw(
     occurredAt: at,
     receivedAt: at,
     sequence,
-    workspaceId: "workspace-1",
     sessionId,
     participantId: `participant-${sessionId}`,
     testId: "test-1",
@@ -78,21 +77,21 @@ test("Task 48 computes step conversion and largest drop from eligible canonical 
   assert.equal(funnel.technicalBlockedSessionCount, 1);
   assert.equal(funnel.transitions.length, 2);
 
+  const [first, second] = funnel.transitions;
   assert.deepEqual(
-    funnel.transitions.map((step) => ({
-      from: step.fromScreenId,
-      to: step.toScreenId,
-      entered: step.entered,
-      reached: step.reached,
-      dropped: step.dropped,
-      conversion: step.conversionRate,
-      drop: step.dropOffRate,
-    })),
-    [
-      { from: "A", to: "B", entered: 3, reached: 2, dropped: 1, conversion: 200 / 3, drop: 100 / 3 },
-      { from: "B", to: "C", entered: 2, reached: 1, dropped: 1, conversion: 50, drop: 50 },
-    ],
+    { from: first.fromScreenId, to: first.toScreenId, entered: first.entered, reached: first.reached, dropped: first.dropped },
+    { from: "A", to: "B", entered: 3, reached: 2, dropped: 1 },
   );
+  assert.ok(first.conversionRate !== null && Math.abs(first.conversionRate - (200 / 3)) < 1e-10);
+  assert.ok(first.dropOffRate !== null && Math.abs(first.dropOffRate - (100 / 3)) < 1e-10);
+
+  assert.deepEqual(
+    { from: second.fromScreenId, to: second.toScreenId, entered: second.entered, reached: second.reached, dropped: second.dropped },
+    { from: "B", to: "C", entered: 2, reached: 1, dropped: 1 },
+  );
+  assert.equal(second.conversionRate, 50);
+  assert.equal(second.dropOffRate, 50);
+
   assert.equal(funnel.largestDrop?.fromScreenId, "B");
   assert.equal(funnel.largestDrop?.toScreenId, "C");
   assert.equal(funnel.largestDrop?.dropOffRate, 50);
