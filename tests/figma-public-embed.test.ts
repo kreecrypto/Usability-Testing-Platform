@@ -41,6 +41,16 @@ test("does not require OAuth client-id or Figma version-id", () => {
   assert.equal(parsed.nodeId, "10:20");
 });
 
+test("strips an untrusted client id from a researcher-supplied prototype URL", () => {
+  const parsed = parsePublicFigmaPrototypeUrl(
+    "https://www.figma.com/proto/AbC123xyz/Checkout?client-id=researcher-supplied&node-id=1-2",
+  );
+  const embed = new URL(parsed.embedUrl);
+
+  assert.equal(embed.searchParams.has("client-id"), false);
+  assert.equal(parsed.nodeId, "1:2");
+});
+
 test("accepts an existing embed.figma.com prototype URL and pins embed-host", () => {
   const parsed = parsePublicFigmaPrototypeUrl(
     "https://embed.figma.com/proto/AbC123xyz/Checkout?embed-host=old-host&hotspot-hints=0",
