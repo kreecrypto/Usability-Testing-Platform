@@ -68,10 +68,17 @@ function isTechnicalBlocked(events: readonly AcceptedTrackingEvent[]): boolean {
   );
 }
 
-function reachedAfter(path: readonly string[], from: string, to: string): boolean {
-  const fromIndex = path.indexOf(from);
-  if (fromIndex < 0) return false;
-  return path.slice(fromIndex + 1).includes(to);
+function orderedProgress(path: readonly string[], screenIds: readonly string[]): boolean[] {
+  const reached = Array.from({ length: screenIds.length }, () => false);
+  let cursor = 0;
+  for (let step = 0; step < screenIds.length; step += 1) {
+    const relative = path.slice(cursor).indexOf(screenIds[step]);
+    if (relative < 0) break;
+    const absolute = cursor + relative;
+    reached[step] = true;
+    cursor = absolute + 1;
+  }
+  return reached;
 }
 
 export function deriveFunnel(
@@ -85,27 +92,22 @@ export function deriveFunnel(
     else bySession.set(event.sessionId, [event]);
   }
 
-  const eligiblePaths: string[][] = [];
+  const progressBySession: boolean[][] = [];
   let technicalBlockedSessionCount = 0;
   for (const sessionEvents of bySession.values()) {
     if (isTechnicalBlocked(sessionEvents)) {
       technicalBlockedSessionCount += 1;
       continue;
     }
-    eligiblePaths.push(sessionPath(sessionEvents));
+    progressBySession.push(orderedProgress(sessionPath(sessionEvents), definition.screenIds));
   }
 
   const transitions: FunnelTransitionResult[] = [];
   for (let index = 0; index < definition.screenIds.length - 1; index += 1) {
     const fromScreenId = definition.screenIds[index];
     const toScreenId = definition.screenIds[index + 1];
-    let entered = 0;
-    let reached = 0;
-    for (const path of eligiblePaths) {
-      if (!path.includes(fromScreenId)) continue;
-      entered += 1;
-      if (reachedAfter(path, fromScreenId, toScreenId)) reached += 1;
-    }
+    const entered = progressBySession.filter((progress) => progress[index]).length;
+    const reached = progressBySession.filter((progress) => progress[index + 1]).length;
     const dropped = entered - reached;
     transitions.push(Object.freeze({
       index,
@@ -130,7 +132,7 @@ export function deriveFunnel(
   return Object.freeze({
     version: FUNNEL_SCHEMA_VERSION,
     screenIds: Object.freeze([...definition.screenIds]),
-    eligibleSessionCount: eligiblePaths.length,
+    eligibleSessionCount: progressBySession.length,
     technicalBlockedSessionCount,
     transitions: Object.freeze(transitions),
     largestDrop: ranked[0] ?? null,
