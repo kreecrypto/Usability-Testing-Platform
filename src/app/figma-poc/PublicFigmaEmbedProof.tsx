@@ -1,11 +1,20 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
+import {
+  applyFigmaAccessSignal,
+  idleFigmaAccessPreflight,
+  parseFigmaAccessSignal,
+  startFigmaAccessPreflight,
+  timeoutFigmaAccessPreflight,
+  withFigmaEmbedClientId,
+} from "@/lib/figma/access-preflight";
 import { parsePublicFigmaPrototypeUrl } from "@/lib/figma/public-embed";
 
 type Props = Readonly<{
   initialUrl?: string;
+  clientId?: string;
 }>;
 
 function resolve(value: string) {
@@ -24,14 +33,55 @@ function resolve(value: string) {
   }
 }
 
-export function PublicFigmaEmbedProof({ initialUrl = "" }: Props) {
+export function PublicFigmaEmbedProof({ initialUrl = "", clientId }: Props) {
   const [value, setValue] = useState(initialUrl);
   const [submittedValue, setSubmittedValue] = useState(initialUrl);
+  const [preflightAttempt, setPreflightAttempt] = useState(0);
+  const [preflight, setPreflight] = useState(idleFigmaAccessPreflight);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const result = useMemo(() => resolve(submittedValue), [submittedValue]);
+  const embedUrl = useMemo(() => {
+    if (!result.embedUrl || !clientId?.trim()) return result.embedUrl;
+    return withFigmaEmbedClientId(result.embedUrl, clientId);
+  }, [clientId, result.embedUrl]);
+
+  useEffect(() => {
+    if (!result.embedUrl) {
+      setPreflight(idleFigmaAccessPreflight());
+      return;
+    }
+
+    const started = startFigmaAccessPreflight(clientId);
+    setPreflight(started);
+    if (started.status !== "checking") return;
+
+    let settled = false;
+    const timeoutId = window.setTimeout(() => {
+      if (!settled) setPreflight(timeoutFigmaAccessPreflight());
+    }, 10_000);
+
+    function onMessage(event: MessageEvent<unknown>) {
+      if (event.source !== iframeRef.current?.contentWindow) return;
+      const signal = parseFigmaAccessSignal(event.origin, event.data);
+      if (!signal) return;
+
+      settled = true;
+      window.clearTimeout(timeoutId);
+      setPreflight(applyFigmaAccessSignal(signal));
+    }
+
+    window.addEventListener("message", onMessage);
+    return () => {
+      settled = true;
+      window.clearTimeout(timeoutId);
+      window.removeEventListener("message", onMessage);
+    };
+  }, [clientId, preflightAttempt, result.embedUrl]);
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmittedValue(value);
+    setPreflightAttempt((attempt) => attempt + 1);
   }
 
   return (
@@ -40,8 +90,8 @@ export function PublicFigmaEmbedProof({ initialUrl = "" }: Props) {
         <span className="moduleIndex">01</span>
         <h2 style={{ fontSize: 22 }}>Paste public prototype URL</h2>
         <p style={{ maxWidth: 760, marginBottom: 14 }}>
-          V1 supports public Figma prototype links only. No Figma OAuth login, client secret,
-          access token, or REST call is required for this proof.
+          V1 supports public Figma prototype links only. No Researcher Figma OAuth login,
+          client secret, access token, or REST call is required for this path.
         </p>
         <form onSubmit={onSubmit}>
           <label htmlFor="figma-public-prototype-url" style={{ display: "block", fontWeight: 700 }}>
@@ -67,7 +117,7 @@ export function PublicFigmaEmbedProof({ initialUrl = "" }: Props) {
             }}
           />
           <button className="primaryButton" type="submit" style={{ marginTop: 12 }}>
-            Validate & Preview
+            Validate & Check Access
           </button>
         </form>
         {result.error ? (
@@ -83,10 +133,12 @@ export function PublicFigmaEmbedProof({ initialUrl = "" }: Props) {
           <h2 style={{ marginTop: 12 }}>Public Figma embed</h2>
         </div>
 
-        {result.embedUrl ? (
+        {embedUrl ? (
           <iframe
-            title="Public Figma prototype Task 15 proof"
-            src={result.embedUrl}
+            key={`${embedUrl}:${preflightAttempt}`}
+            ref={iframeRef}
+            title="Public Figma prototype access preflight"
+            src={embedUrl}
             width="100%"
             height="720"
             allowFullScreen
@@ -114,6 +166,26 @@ export function PublicFigmaEmbedProof({ initialUrl = "" }: Props) {
           </div>
         )}
       </section>
+
+      {result.embedUrl ? (
+        <section className="moduleCard" style={{ marginTop: 24 }} aria-live="polite">
+          <span className="moduleIndex">02</span>
+          <h2 style={{ fontSize: 22 }}>Pre-publish participant access</h2>
+          <p>
+            <strong>Status:</strong> {preflight.status.replace("_", " ")}
+          </p>
+          <p style={{ marginTop: 8 }}>{preflight.message}</p>
+          <p style={{ marginTop: 8 }}>
+            <strong>Publish:</strong> {preflight.publishAllowed ? "Allowed" : "Blocked"}
+          </p>
+          {preflight.classification === "technical_blocked" ? (
+            <p style={{ marginTop: 8 }}>
+              This is an access/technical condition. It must not be recorded as participant task
+              failure or included in the usability-failure denominator.
+            </p>
+          ) : null}
+        </section>
+      ) : null}
     </>
   );
 }
