@@ -68,10 +68,13 @@ task_technical_blocked
 ```text
 screen_view
 pointer_interaction
+component_state_changed
 scroll
 ```
 
-`scroll` is emitted only when the active prototype provider can supply trustworthy canonical scroll evidence. Provider capability is defined separately in the capability matrix.
+`component_state_changed` records a trustworthy provider-emitted component/variant transition. For Figma V1 it is sourced only from the documented Embed API `NEW_STATE` event and preserves the provider node/variant IDs in metadata.
+
+`scroll` is emitted only when the active prototype provider can supply a trustworthy standalone canonical scroll event. A scroll offset attached to some other provider event is contextual metadata and must not be promoted into a synthetic `scroll` event. Provider capability is defined separately in the capability matrix.
 
 ### Question evidence
 
@@ -163,6 +166,8 @@ interface RawTrackingEvent {
 
 The persisted accepted record additionally contains collector-assigned `receivedAt`.
 
+`screenId` is a provider-neutral string identifier, not necessarily a UUID. Figma adapters persist the developer-friendly presented node ID (for example `5:3`) so the event remains traceable to the exact prototype node.
+
 ## Pointer / coordinate contract
 
 `pointer_interaction` is the provider-neutral interaction event used as the primary input for heatmaps and misclick analysis.
@@ -190,7 +195,7 @@ Do not derive heatmaps from raw browser CSS pixels alone.
 
 ## Screen / path contract
 
-`screen_view` is the provider-neutral canonical screen/frame transition event.
+`screen_view` is the provider-neutral canonical presented-node transition event. A provider may use this for a top-level frame or overlay when its native event does not distinguish them as separate event types.
 
 It should carry enough metadata to preserve:
 
@@ -199,6 +204,8 @@ previousScreenId
 currentScreenId
 navigationSource
 ```
+
+For Figma, `PRESENTED_NODE_CHANGED` can describe frame-to-frame or overlay-to-overlay navigation. The adapter therefore preserves the presented node ID, Figma history flag and component `stateMappings`; it must not invent an `overlay_opened` event that the provider did not emit.
 
 Backtracking is derived from the ordered `screen_view` sequence. `back` / `forward` are therefore not required as universal canonical raw event types.
 
