@@ -1,5 +1,5 @@
 import type { AcceptedTrackingEvent, RawTrackingEvent } from "../tracking/events.ts";
-import type { RecordDeadLetter } from "./event-collector.ts";
+import type { RecordDeadLetter } from "./reliable-event-persistence.ts";
 
 type FetchLike = typeof fetch;
 
