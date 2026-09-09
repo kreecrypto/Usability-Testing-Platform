@@ -1,5 +1,7 @@
 import { createEventCollectorHandler, type PersistAcceptedEvent } from "../../../lib/collector/event-collector.ts";
 import { withSessionIngestionAuth } from "../../../lib/collector/authenticated-event-collector.ts";
+import { createReliableEventPersister } from "../../../lib/collector/reliable-event-persistence.ts";
+import { createSupabaseDeadLetterRecorder } from "../../../lib/collector/supabase-event-dead-letter.ts";
 import { createSupabaseEventPersister } from "../../../lib/collector/supabase-event-persistence.ts";
 import { createSupabaseIngestionTokenConsumer } from "../../../lib/collector/supabase-ingestion-token-gate.ts";
 
@@ -13,10 +15,18 @@ const rateLimitPerMinute = Number(process.env.EVENT_INGESTION_RATE_LIMIT_PER_MIN
 
 const persist: PersistAcceptedEvent = async (event) => {
   if (!supabaseUrl || !secretKey) throw new Error("collector_not_configured");
-  return createSupabaseEventPersister({ supabaseUrl, secretKey })(event);
+
+  const persistReliably = createReliableEventPersister({
+    persist: createSupabaseEventPersister({ supabaseUrl, secretKey }),
+    recordDeadLetter: createSupabaseDeadLetterRecorder({ supabaseUrl, secretKey }),
+    maxAttempts: 3,
+  });
+
+  return persistReliably(event);
 };
 
-const collector = createEventCollectorHandler({ persist });
+// Reliable persistence owns the bounded retry loop so exhaustion is recorded once in the DLQ.
+const collector = createEventCollectorHandler({ persist, maxPersistenceAttempts: 1 });
 const handler = supabaseUrl && secretKey && ingestionTokenSigningKey && Number.isSafeInteger(rateLimitPerMinute) && rateLimitPerMinute > 0
   ? withSessionIngestionAuth({ handler: collector, signingKey: ingestionTokenSigningKey, consume: createSupabaseIngestionTokenConsumer({ supabaseUrl, secretKey, rateLimitPerMinute }) })
   : async () => new Response(JSON.stringify({ error: "collector_not_configured" }), { status: 503, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
