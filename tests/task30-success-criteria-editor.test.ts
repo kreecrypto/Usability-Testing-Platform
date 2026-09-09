@@ -124,6 +124,16 @@ test("frame mapping route uses current authenticated session boundary", async ()
   assert.match(route, /message: error\.message/);
 });
 
+test("database RPC independently rejects conflicting terminal targets under caller RLS", async () => {
+  const migration = await readFile(new URL("../supabase/migrations/20260909082424_task30_disjoint_terminal_targets.sql", import.meta.url), "utf8");
+  assert.match(migration, /security invoker/i);
+  assert.match(migration, /join unnest\(p_failure_node_ids\)/i);
+  assert.match(migration, /conflicting_terminal_target/i);
+  assert.match(migration, /revoke all .* from public, anon, service_role/is);
+  assert.match(migration, /grant execute .* to authenticated/is);
+  assert.doesNotMatch(migration, /security definer/i);
+});
+
 test("S14 editor exposes target selection, conflict validation, unsupported-rule protection and responsive accessibility states", async () => {
   const client = await readFile(new URL("../src/app/builder/[testId]/criteria/success-criteria-client.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../src/app/builder/[testId]/criteria/success-criteria.module.css", import.meta.url), "utf8");
