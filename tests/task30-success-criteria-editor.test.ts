@@ -129,8 +129,8 @@ test("database RPC independently rejects conflicting terminal targets under call
   assert.match(migration, /security invoker/i);
   assert.match(migration, /join unnest\(p_failure_node_ids\)/i);
   assert.match(migration, /conflicting_terminal_target/i);
-  assert.match(migration, /revoke all .* from public, anon, service_role/is);
-  assert.match(migration, /grant execute .* to authenticated/is);
+  assert.match(migration, /revoke all[\s\S]*from public, anon, service_role/i);
+  assert.match(migration, /grant execute[\s\S]*to authenticated/i);
   assert.doesNotMatch(migration, /security definer/i);
 });
 
