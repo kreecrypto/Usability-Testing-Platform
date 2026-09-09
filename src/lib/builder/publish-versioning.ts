@@ -25,19 +25,22 @@ export type PublishPreview = Readonly<{
   tasks: readonly PublishPreviewTask[];
 }>;
 
+type PublishVersioningErrorCode =
+  | "invalid_test_id"
+  | "test_version_not_found"
+  | "permission_denied"
+  | "not_publishable"
+  | "data_request_failed";
+
 export class PublishVersioningError extends Error {
-  constructor(
-    public readonly code:
-      | "invalid_test_id"
-      | "test_version_not_found"
-      | "permission_denied"
-      | "not_publishable"
-      | "data_request_failed",
-    public readonly status: number,
-    message: string = code,
-  ) {
+  readonly code: PublishVersioningErrorCode;
+  readonly status: number;
+
+  constructor(code: PublishVersioningErrorCode, status: number, message: string = code) {
     super(message);
     this.name = "PublishVersioningError";
+    this.code = code;
+    this.status = status;
   }
 }
 
