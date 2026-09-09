@@ -81,8 +81,18 @@ test("Task 57 grants RLS and tenant-scoped finding evidence fail closed", async 
 test("Task 57 server runner config keeps elevated keys server-only", async () => {
   const server = await source("src/lib/runner/public-session.ts");
   assert.match(server, /process\.env\.SUPABASE_SECRET_KEY/);
+  assert.match(server, /process\.env\.SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(server, /process\.env\.EVENT_INGESTION_TOKEN_SECRET/);
-  assert.doesNotMatch(server, /NEXT_PUBLIC_SUPABASE_SECRET_KEY|NEXT_PUBLIC_EVENT_INGESTION_TOKEN_SECRET/);
+  assert.doesNotMatch(server, /NEXT_PUBLIC_SUPABASE_SECRET_KEY|NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY|NEXT_PUBLIC_EVENT_INGESTION_TOKEN_SECRET/);
   assert.match(server, /sessionId, testVersionId/);
   assert.match(server, /row\.status !== "active"/);
+});
+
+test("Netlify host routes accept the Supabase Extension service-role key only as a server-side fallback", async () => {
+  const health = await source("src/app/api/health/route.ts");
+  const collector = await source("src/app/v1/events/route.ts");
+  for (const serverSource of [health, collector]) {
+    assert.match(serverSource, /process\.env\.SUPABASE_SECRET_KEY \?\? process\.env\.SUPABASE_SERVICE_ROLE_KEY/);
+    assert.doesNotMatch(serverSource, /NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY/);
+  }
 });
