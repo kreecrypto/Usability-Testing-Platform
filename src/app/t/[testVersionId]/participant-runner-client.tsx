@@ -148,7 +148,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
   const [snapshot, setSnapshot] = useState<TestSnapshot | null>(null);
   const [taskIndex, setTaskIndex] = useState(0);
   const [sessionState, setSessionState] = useState<SessionState | null>(null);
-  const [technicalReason, setTechnicalReason] = useState("This device or provider state cannot continue safely.");
+  const [technicalReason, setTechnicalReason] = useState("This step can't continue on this device or with the current prototype.");
   const [offline, setOffline] = useState(false);
   const [working, setWorking] = useState(false);
   const [feedbackError, setFeedbackError] = useState("");
@@ -287,7 +287,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
       return;
     }
     if (state.status === "technical_blocked") {
-      setTechnicalReason("This session ended because the prototype or runtime could not continue safely.");
+      setTechnicalReason("Something prevented this study from continuing.");
       setStage("technical");
       return;
     }
@@ -326,7 +326,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     void (async () => {
       if (!browserSupported()) {
         if (!cancelled) {
-          setTechnicalReason("This browser does not provide the storage or cryptographic APIs required for a reliable anonymous session.");
+          setTechnicalReason("This browser isn't supported for this study. Try a current browser or another device.");
           setStage("technical");
         }
         return;
@@ -391,8 +391,8 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
           const reason = signal === "login_screen_shown" ? "figma_login_required" : "figma_password_required";
           setTechnicalReason(
             signal === "login_screen_shown"
-              ? "Figma requires a login for this prototype. This is a technical access block, not a usability failure."
-              : "This Figma prototype is password protected. This is a technical access block, not a usability failure.",
+              ? "This prototype requires a Figma sign-in. Ask the study owner for an accessible link."
+              : "This prototype is password protected. Ask the study owner for access.",
           );
           await runtime.lifecycle.technicalBlock(reason);
           void deliver().catch(() => undefined);
@@ -457,7 +457,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
       setTaskIndex(0);
       setStage("task-intro");
     } catch {
-      setTechnicalReason("A secure anonymous session could not be created. No task interaction was started.");
+      setTechnicalReason("We couldn't start the study. Reload the page and try again.");
       setStage("technical");
     } finally {
       setWorking(false);
@@ -472,7 +472,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
       await runtimeRef.current.lifecycle.startTask({ id: currentTask.id });
       await deliver();
       if (!snapshot?.prototype.liveEmbedUrl) {
-        setTechnicalReason("Live Figma Embed API tracking is not configured for this origin. The study is technically blocked rather than recorded with incomplete evidence.");
+        setTechnicalReason("This prototype can't start in the study right now. Contact the study owner.");
         await runtimeRef.current.lifecycle.technicalBlock("embed_api_unconfigured");
         try { await deliver(); } catch { /* durable outbox keeps evidence */ }
         setStage("technical");
@@ -532,7 +532,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
       if (taskIndex + 1 < totalTasks) setStage("transition");
       else await finishSession();
     } catch {
-      setFeedbackError("Your feedback could not be saved yet. Please retry.");
+      setFeedbackError("We couldn't save your feedback. Try again.");
     } finally {
       setWorking(false);
     }
@@ -571,39 +571,39 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
   const openConfig = useMemo(() => currentTask ? questionConfig(currentTask, "open_feedback") : { enabled: false, required: false }, [currentTask]);
 
   if (stage === "access-loading") {
-    return <ParticipantShell progress={0} meta="P01 · Access check"><StatusCard title="Checking study access" body="Confirming the published test and this browser’s anonymous-session capabilities." loading /></ParticipantShell>;
+    return <ParticipantShell progress={0} meta="Access check"><StatusCard title="Checking your access" body="Checking that this study is available." loading /></ParticipantShell>;
   }
 
   if (stage === "invalid") {
-    return <ParticipantShell progress={0} meta="P09 · Unavailable"><StatusCard title="This study link is unavailable" body="The published version may be invalid, closed, expired, or no longer available." /></ParticipantShell>;
+    return <ParticipantShell progress={0} meta="Study unavailable"><StatusCard title="This study isn't available" body="The link may have expired or the study may have closed. Check the link or contact the study owner." /></ParticipantShell>;
   }
 
   if (stage === "declined") {
-    return <ParticipantShell progress={0} meta="P02 · Consent declined"><StatusCard title="You chose not to participate" body="No eligible usability session was created and behavioral tracking did not start." /></ParticipantShell>;
+    return <ParticipantShell progress={0} meta="Consent"><StatusCard title="You chose not to participate" body="The study won't start, and interaction tracking remains off." /></ParticipantShell>;
   }
 
   if (stage === "technical") {
-    return <ParticipantShell progress={progress} meta="P10 · Technical blocked"><StatusCard title="We can’t continue this study" body={technicalReason} technical /></ParticipantShell>;
+    return <ParticipantShell progress={progress} meta="Study status"><StatusCard title="Something prevented the study from continuing" body={technicalReason} technical /></ParticipantShell>;
   }
 
   if (stage === "recovery") {
-    return <ParticipantShell progress={progress} meta="P12 · Recovery"><StatusCard title={offline ? "You’re offline" : "Recovering your session"} body="Your original anonymous session and published test version are preserved. Pending events keep their original IDs for safe retry." loading={!offline}><button className={styles.primaryButton} type="button" onClick={() => void retryRecovery()} disabled={working}>{working ? "Retrying…" : "Retry connection"}</button></StatusCard></ParticipantShell>;
+    return <ParticipantShell progress={progress} meta="Connection"><StatusCard title={offline ? "You're offline" : "Reconnecting"} body="Your completed progress is saved. We'll continue from where you left off." loading={!offline}><button className={styles.primaryButton} type="button" onClick={() => void retryRecovery()} disabled={working}>{working ? "Retrying…" : "Try again"}</button></StatusCard></ParticipantShell>;
   }
 
   if (!snapshot) return null;
 
   if (stage === "consent") {
     return (
-      <ParticipantShell progress={0} meta="P02 · Consent">
+      <ParticipantShell progress={0} meta="Consent">
         <section className={styles.card} aria-labelledby="consent-title">
           <span className={styles.eyebrow}>Before you begin</span>
           <h1 id="consent-title">Take part in “{snapshot.title}”</h1>
-          <p>This study records task interactions, navigation path, pointer evidence, time, task outcome, SEQ responses, and optional comments after you agree.</p>
-          <p>No camera, microphone, screen recording, name, email, or phone number is required in V1.</p>
-          <div className={styles.notice}>Behavioral tracking starts only after you choose <strong>Agree and start</strong>.</div>
+          <p>After you agree, this study records your task interactions, navigation path, pointer activity, time spent, task result, ease ratings, and optional comments.</p>
+          <p>This V1 study doesn't use your camera, microphone, or screen recording. You don't need to provide your name, email, or phone number.</p>
+          <div className={styles.notice}>Interaction tracking starts only after you choose <strong>Agree and start</strong>.</div>
           <div className={styles.actions}>
             <button className={styles.secondaryButton} type="button" onClick={() => setStage("declined")} disabled={working}>Decline</button>
-            <button className={styles.primaryButton} type="button" onClick={() => void acceptConsent()} disabled={working}>{working ? "Creating secure session…" : "Agree and start"}</button>
+            <button className={styles.primaryButton} type="button" onClick={() => void acceptConsent()} disabled={working}>{working ? "Starting…" : "Agree and start"}</button>
           </div>
         </section>
       </ParticipantShell>
@@ -612,13 +612,13 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
 
   if (stage === "task-intro" && currentTask) {
     return (
-      <ParticipantShell progress={progress} meta={`P03 · Task ${taskIndex + 1} of ${totalTasks}`}>
+      <ParticipantShell progress={progress} meta={`Task ${taskIndex + 1} of ${totalTasks}`}>
         <section className={styles.card}>
           <span className={styles.eyebrow}>Task {taskIndex + 1} of {totalTasks}</span>
           <h1>{currentTask.title}</h1>
           {currentTask.scenario ? <p className={styles.scenario}>{currentTask.scenario}</p> : null}
           {currentTask.instruction ? <p>{currentTask.instruction}</p> : null}
-          <p className={styles.helper}>Use the prototype naturally. Expected paths and success targets are intentionally hidden.</p>
+          <p className={styles.helper}>Complete the task as you normally would.</p>
           <div className={styles.actions}><button className={styles.primaryButton} type="button" onClick={() => void startTask()} disabled={working}>{working ? "Starting…" : "Start task"}</button></div>
         </section>
       </ParticipantShell>
@@ -630,11 +630,11 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
       <div className={styles.runnerShell}>
         <header className={styles.runnerHeader}>
           <div><strong>Task {taskIndex + 1} of {totalTasks}</strong><span>{currentTask.title}</span></div>
-          <button className={styles.ghostButton} type="button" onClick={() => setStage("give-up-confirm")}>Give up</button>
+          <button className={styles.ghostButton} type="button" onClick={() => setStage("give-up-confirm")}>Stop task</button>
         </header>
         <div className={styles.runnerProgress}><i style={{ width: `${progress}%` }} /></div>
-        {offline ? <div className={styles.offlineBanner} role="status">Offline — interactions are queued with stable event IDs and will retry when the connection returns.</div> : null}
-        {!providerReady ? <div className={styles.providerLoading} role="status">Connecting to the published prototype…</div> : null}
+        {offline ? <div className={styles.offlineBanner} role="status">You're offline. We'll retry when your connection returns.</div> : null}
+        {!providerReady ? <div className={styles.providerLoading} role="status">Loading the prototype…</div> : null}
         <iframe
           ref={iframeRef}
           className={styles.prototypeFrame}
@@ -645,11 +645,11 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
         {stage === "give-up-confirm" ? (
           <div className={styles.modalBackdrop} role="presentation">
             <section className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="giveup-title">
-              <h2 id="giveup-title">Give up this task?</h2>
-              <p>Your attempt will be recorded as Give Up. You can still answer the post-task questions and continue the study.</p>
+              <h2 id="giveup-title">Stop this task?</h2>
+              <p>You can still answer the follow-up questions and continue the study.</p>
               <div className={styles.actions}>
                 <button className={styles.secondaryButton} type="button" onClick={() => setStage("runner")} disabled={working}>Keep trying</button>
-                <button className={styles.dangerButton} type="button" onClick={() => void confirmGiveUp()} disabled={working}>{working ? "Recording…" : "Give up task"}</button>
+                <button className={styles.dangerButton} type="button" onClick={() => void confirmGiveUp()} disabled={working}>{working ? "Stopping…" : "Stop task"}</button>
               </div>
             </section>
           </div>
@@ -659,15 +659,15 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
   }
 
   if (stage === "timeout") {
-    return <ParticipantShell progress={progress} meta="P11 · Timed out"><StatusCard title="Time is up for this task" body="This attempt is recorded as Timeout, separate from failure. You can continue according to the published study flow."><button className={styles.primaryButton} type="button" onClick={() => void continueFromTimeout()}>Continue</button></StatusCard></ParticipantShell>;
+    return <ParticipantShell progress={progress} meta="Task status"><StatusCard title="Time's up for this task" body="Your time for this task has ended. Continue to see what's next."><button className={styles.primaryButton} type="button" onClick={() => void continueFromTimeout()}>Continue</button></StatusCard></ParticipantShell>;
   }
 
   if (stage === "feedback" && currentTask) {
     return (
-      <ParticipantShell progress={progress} meta="P06 · Post-task feedback">
+      <ParticipantShell progress={progress} meta={`Task ${taskIndex + 1} feedback`}>
         <section className={styles.card}>
           <span className={styles.eyebrow}>Task {taskIndex + 1} feedback</span>
-          <h1>How was that task?</h1>
+          <h1>How easy or difficult was this task?</h1>
           {seqConfig.enabled ? (
             <fieldset className={styles.seqFieldset}>
               <legend>Overall, how difficult or easy was the task?{seqConfig.required ? " *" : ""}</legend>
@@ -686,18 +686,18 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
             <label className={styles.field}><span>What made this task easy or difficult?{openConfig.required ? " *" : ""}</span><textarea value={openFeedback} onChange={(event) => setOpenFeedback(event.target.value)} rows={5} /></label>
           ) : null}
           {feedbackError ? <p className={styles.errorText} role="alert">{feedbackError}</p> : null}
-          <div className={styles.actions}><button className={styles.primaryButton} type="button" onClick={() => void submitFeedback()} disabled={working}>{working ? "Saving…" : "Continue"}</button></div>
+          <div className={styles.actions}><button className={styles.primaryButton} type="button" onClick={() => void submitFeedback()} disabled={working}>{working ? "Saving…" : "Submit feedback"}</button></div>
         </section>
       </ParticipantShell>
     );
   }
 
   if (stage === "transition") {
-    return <ParticipantShell progress={progress} meta="P07 · Next task"><StatusCard title="Task recorded" body={taskIndex + 1 < totalTasks ? `Next: Task ${taskIndex + 2} of ${totalTasks}.` : "Preparing study completion."}><button className={styles.primaryButton} type="button" onClick={() => { setTaskIndex((index) => Math.min(index + 1, totalTasks - 1)); setStage("task-intro"); }}>Continue to next task</button></StatusCard></ParticipantShell>;
+    return <ParticipantShell progress={progress} meta="Next task"><StatusCard title="Ready for the next task?" body="Your progress has been saved."><button className={styles.primaryButton} type="button" onClick={() => { setTaskIndex((index) => Math.min(index + 1, totalTasks - 1)); setStage("task-intro"); }}>Next task</button></StatusCard></ParticipantShell>;
   }
 
   if (stage === "complete") {
-    return <ParticipantShell progress={100} meta="P08 · Complete"><StatusCard title="Thank you" body="Your anonymous usability session is complete. This completion state will not fire again if you reload the page." complete /></ParticipantShell>;
+    return <ParticipantShell progress={100} meta="Complete"><StatusCard title="Study complete" body="Thanks for taking part." complete /></ParticipantShell>;
   }
 
   return null;
@@ -711,7 +711,7 @@ function ParticipantShell({ progress, meta, children }: { progress: number; meta
         <div className={styles.headerMeta}><span>{meta}</span><div className={styles.progressTrack} aria-hidden="true"><i style={{ width: `${progress}%` }} /></div></div>
       </header>
       <main className={styles.main}>{children}</main>
-      <footer className={styles.footer}>Anonymous session · evidence-first usability testing</footer>
+      <footer className={styles.footer}>Interaction tracking starts after you agree to participate.</footer>
     </div>
   );
 }
