@@ -88,7 +88,6 @@ test("publish and edit-after-publish use atomic database RPC boundaries", async 
     Response.json([nextDraft]),
     Response.json([taskRow]),
   ], calls);
-
   const publishedPreview = await store.publish(TEST_ID);
   assert.equal(publishedPreview.lifecycleStatus, "published");
   const draftPreview = await store.createDraftFromPublished(TEST_ID);
@@ -125,15 +124,15 @@ test("review/publish API keeps user JWT + RLS boundary and exposes no service ro
   assert.doesNotMatch(route, /service_role/i);
 });
 
-test("review UI communicates exact version snapshot and edit-after-publish behavior", async () => {
+test("review UI communicates Thai exact-version snapshot and edit-after-publish behavior", async () => {
   const client = await readFile(new URL("../src/app/builder/[testId]/review/review-publish-client.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../src/app/builder/[testId]/review/review-publish.module.css", import.meta.url), "utf8");
-  assert.match(client, /Exact public prototype/);
-  assert.match(client, /Start node/);
-  assert.match(client, /Internal version ID/);
-  assert.match(client, /Publish immutable version/);
-  assert.match(client, /Create editable draft/);
-  assert.match(client, /Figma REST version metadata is not required/i);
+  assert.match(client, /ต้นแบบสาธารณะ/);
+  assert.match(client, /Node เริ่มต้น/);
+  assert.match(client, /รหัสเวอร์ชันภายใน/);
+  assert.match(client, /เผยแพร่เวอร์ชันนี้/);
+  assert.match(client, /สร้างฉบับร่างใหม่/);
+  assert.match(client, /ล็อก snapshot และงานของเวอร์ชันนี้/);
   assert.match(client, /role="alert"/);
   assert.match(css, /@media/);
 });

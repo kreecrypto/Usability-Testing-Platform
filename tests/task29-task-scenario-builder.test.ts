@@ -116,16 +116,16 @@ test("Task 29 migration keeps reorder atomic under RLS and removes anonymous RPC
   assert.doesNotMatch(migration, /security definer/i);
 });
 
-test("Task Editor exposes loading, empty, validation, reorder, unsaved-state, responsive and keyboard-focus states", async () => {
+test("Task Editor exposes Thai loading, empty, validation, reorder, unsaved-state, responsive and keyboard-focus states", async () => {
   const client = await readFile(new URL("../src/app/builder/[testId]/tasks/task-scenario-builder-client.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../src/app/builder/[testId]/tasks/task-scenario-builder.module.css", import.meta.url), "utf8");
-  assert.match(client, /Loading tasks/);
-  assert.match(client, /No tasks yet/);
-  assert.match(client, /Task title/);
-  assert.match(client, /Scenario/);
-  assert.match(client, /Participant instruction/);
-  assert.match(client, /Move task/);
-  assert.match(client, /unsaved field edits were preserved locally/i);
+  assert.match(client, /กำลังโหลดงาน/);
+  assert.match(client, /ยังไม่มีงาน/);
+  assert.match(client, /ชื่องาน/);
+  assert.match(client, /สถานการณ์/);
+  assert.match(client, /คำสั่งที่ผู้เข้าร่วมจะเห็น/);
+  assert.match(client, /เลื่อนงาน/);
+  assert.match(client, /การแก้ไขช่องข้อมูลที่ยังไม่บันทึกยังคงอยู่ในหน้านี้/);
   assert.match(client, /role=\{state === "error" \? "alert" : "status"\}/);
   assert.match(css, /@media/);
   assert.match(css, /:focus-visible/);

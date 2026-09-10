@@ -149,13 +149,14 @@ test("permission denial remains a sanitized authorization failure", async () => 
   );
 });
 
-test("builder UI exposes paste, validate, preview, save, accessibility and responsive states", async () => {
+test("builder UI exposes Thai paste, validate, preview, save, accessibility and responsive states", async () => {
   const client = await readFile(new URL("../src/app/builder/[testId]/prototype/prototype-import-client.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../src/app/builder/[testId]/prototype/prototype-import.module.css", import.meta.url), "utf8");
-  assert.match(client, /Figma prototype URL/);
-  assert.match(client, /Validate prototype/);
-  assert.match(client, /title="Figma prototype preview"/);
-  assert.match(client, /Save prototype configuration/);
+  assert.match(client, /URL ต้นแบบ Figma/);
+  assert.match(client, /ตรวจสอบต้นแบบ/);
+  assert.match(client, /title="พรีวิวต้นแบบ Figma"/);
+  assert.match(client, /บันทึกต้นแบบ/);
+  assert.match(client, /figma\.com\/proto/);
   assert.match(client, /role=\{state === "error" \? "alert" : "status"\}/);
   assert.match(client, /disabled=\{!prototype \|\| busy\}/);
   assert.match(css, /@media/);
