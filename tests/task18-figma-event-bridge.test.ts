@@ -104,3 +104,39 @@ test("does not advance sequence or screen state when the downstream event sink f
   assert.equal(emitted[0].sequence, 1);
   assert.deepEqual(bridge.getState(), { sequence: 1, currentScreenId: "20:1" });
 });
+
+test("concurrent Figma messages retain arrival time, ordered identities and screen context", async () => {
+  const emitted: RawTrackingEvent[] = [];
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  let clock = Date.parse('2026-09-10T00:00:00Z');
+  const bridge = createFigmaInteractionEventBridge({ expectedSource, session, initialScreenId:'10:1',
+    now: () => new Date(clock),
+    emitTrackingEvent: async event => { if (event.sequence === 1) await gate; emitted.push(event); },
+  });
+  const first = bridge.handleMessage(figmaMessage('PRESENTED_NODE_CHANGED', {presentedNodeId:'20:1',isStoredInHistory:true,stateMappings:{}}));
+  clock += 100;
+  const second = bridge.handleMessage(figmaMessage('NEW_STATE', {nodeId:'20:component',currentVariantId:'20:a',newVariantId:'20:b',isStoredInHistory:false,isTimedChange:false}));
+  clock += 5000;
+  release();
+  await Promise.all([first,second]);
+  assert.deepEqual(emitted.map(e => e.sequence), [1,2]);
+  assert.equal(new Set(emitted.map(e => e.idempotencyKey)).size,2);
+  assert.equal(emitted[1].screenId,'20:1');
+  assert.deepEqual(emitted.map(e => e.occurredAt), ['2026-09-10T00:00:00.000Z','2026-09-10T00:00:00.100Z']);
+});
+
+test("a rejected sink does not poison queued Figma messages", async () => {
+  const emitted: RawTrackingEvent[] = [];
+  let fail = true;
+  const bridge = createFigmaInteractionEventBridge({expectedSource,session,emitTrackingEvent:async event => {
+    if (fail) { fail=false; throw new Error('sink unavailable'); }
+    emitted.push(event);
+  }});
+  const first = bridge.handleMessage(figmaMessage('MOUSE_PRESS_OR_RELEASE',mousePayload));
+  const second = bridge.handleMessage(figmaMessage('MOUSE_PRESS_OR_RELEASE',mousePayload));
+  await assert.rejects(first,/sink unavailable/);
+  await second;
+  assert.equal(emitted.length,1);
+  assert.equal(emitted[0].sequence,1);
+});
