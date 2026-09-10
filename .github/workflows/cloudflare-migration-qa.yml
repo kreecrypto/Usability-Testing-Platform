@@ -1,9 +1,6 @@
-name: Cloudflare Workers QA
+name: Cloudflare Workers QA (Historical/Fallback)
 
 on:
-  push:
-    branches: [main, migration/cloudflare-runtime]
-  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -26,6 +23,11 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
+
+      - name: Explain fallback-only boundary
+        run: |
+          echo "Cloudflare Workers is historical/fallback compatibility evidence only."
+          echo "Do not treat this workflow as active production runtime evidence unless Source Governance explicitly reactivates Cloudflare."
 
       - name: Install from committed lockfile
         run: npm ci --no-audit --no-fund
