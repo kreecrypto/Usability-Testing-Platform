@@ -1,34 +1,32 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  createEventCollectorHandler,
-  validateRawTrackingEvent,
-  type PersistAcceptedEvent,
-} from "../src/lib/collector/event-collector.ts";
+import { createEventCollectorHandler } from "../src/lib/collector/event-collector.ts";
 import { createSupabaseEventPersister } from "../src/lib/collector/supabase-event-persistence.ts";
-import type {
-  AcceptedTrackingEvent,
-  RawTrackingEvent,
-} from "../src/lib/tracking/events.ts";
+import type { AcceptedTrackingEvent, RawTrackingEvent } from "../src/lib/tracking/events.ts";
 
-const validEvent: RawTrackingEvent = {
+const validEvent = {
   schemaVersion: 2,
-  eventId: "evt-0001",
+  eventId: "10000000-0000-4000-8000-000000000001",
   idempotencyKey: "session-1:1",
   eventLayer: "raw",
   source: "runner",
-  eventType: "task_started",
+  eventType: "screen_view",
   occurredAt: "2026-09-08T17:10:00.000Z",
   sequence: 1,
-  sessionId: "10000000-0000-4000-8000-000000000001",
-  participantId: "20000000-0000-4000-8000-000000000001",
-  testId: "30000000-0000-4000-8000-000000000001",
-  testVersionId: "40000000-0000-4000-8000-000000000001",
-  taskId: "50000000-0000-4000-8000-000000000001",
+  sessionId: "20000000-0000-4000-8000-000000000001",
+  participantId: "30000000-0000-4000-8000-000000000001",
+  testId: "40000000-0000-4000-8000-000000000001",
+  testVersionId: "50000000-0000-4000-8000-000000000001",
+  screenId: "checkout",
+  metadata: {
+    previousScreenId: "cart",
+    currentScreenId: "checkout",
+    navigationSource: "prototype",
+  },
 };
 
-function request(body: unknown, init?: RequestInit): Request {
+function request(body: unknown, init?: RequestInit) {
   return new Request("https://collector.example/v1/events", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -38,94 +36,92 @@ function request(body: unknown, init?: RequestInit): Request {
 }
 
 test("valid raw canonical event is accepted only after persistence and gets server receivedAt", async () => {
-  const persisted: unknown[] = [];
-  const persist: PersistAcceptedEvent = async (event) => {
-    persisted.push(event);
-  };
+  const persisted: AcceptedTrackingEvent<RawTrackingEvent>[] = [];
   const handler = createEventCollectorHandler({
-    persist,
     now: () => new Date("2026-09-08T17:10:05.000Z"),
+    persist: async (event) => {
+      persisted.push(event);
+      return "accepted";
+    },
   });
 
   const response = await handler(request(validEvent));
   assert.equal(response.status, 202);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(persisted.length, 1);
+  assert.equal(persisted[0].receivedAt, "2026-09-08T17:10:05.000Z");
   assert.deepEqual(await response.json(), {
-    eventId: "evt-0001",
+    eventId: validEvent.eventId,
     receivedAt: "2026-09-08T17:10:05.000Z",
     status: "accepted",
   });
-  assert.equal(persisted.length, 1);
-  assert.equal((persisted[0] as { receivedAt: string }).receivedAt, "2026-09-08T17:10:05.000Z");
 });
 
 test("malformed and derived events are rejected before persistence", async () => {
-  let writes = 0;
-  const handler = createEventCollectorHandler({
-    persist: async () => {
-      writes += 1;
-    },
-  });
+  let persisted = 0;
+  const handler = createEventCollectorHandler({ persist: async () => { persisted += 1; return "accepted"; } });
 
-  const malformed = await handler(
-    request({ ...validEvent, schemaVersion: 1, sequence: -1, sessionId: "not-a-uuid" }),
-  );
-  assert.equal(malformed.status, 400);
+  const missingIdentity = { ...validEvent } as Record<string, unknown>;
+  delete missingIdentity.participantId;
+  assert.equal((await handler(request(missingIdentity))).status, 400);
 
-  const derived = await handler(
-    request({
-      ...validEvent,
-      eventLayer: "derived",
-      eventType: "task_success",
-      source: "analytics",
-    }),
-  );
-  assert.equal(derived.status, 400);
-  assert.equal(writes, 0);
+  const invalidSequence = { ...validEvent, sequence: 0 };
+  assert.equal((await handler(request(invalidSequence))).status, 400);
+
+  const derivedEvent = {
+    ...validEvent,
+    eventLayer: "derived",
+    source: "rules_engine",
+    eventType: "task_success",
+    derivedFromEventIds: [validEvent.eventId],
+    ruleVersion: "success-v1",
+  };
+  assert.equal((await handler(request(derivedEvent))).status, 400);
+  assert.equal(persisted, 0);
 });
 
-test("client cannot spoof collector-owned receivedAt", () => {
-  const validation = validateRawTrackingEvent({
-    ...validEvent,
-    receivedAt: "2000-01-01T00:00:00.000Z",
-  });
-  assert.equal(validation.ok, false);
-  if (!validation.ok) {
-    assert.ok(validation.errors.some((error) => error.field === "receivedAt"));
-  }
+test("client cannot spoof collector-owned receivedAt", async () => {
+  let persisted = 0;
+  const handler = createEventCollectorHandler({ persist: async () => { persisted += 1; return "accepted"; } });
+  const response = await handler(request({ ...validEvent, receivedAt: "2026-09-08T17:09:59.000Z" }));
+  assert.equal(response.status, 400);
+  assert.equal(persisted, 0);
 });
 
 test("invalid JSON, content type, route, and method fail explicitly", async () => {
-  const handler = createEventCollectorHandler({ persist: async () => undefined });
+  const handler = createEventCollectorHandler({ persist: async () => "accepted" });
 
-  const invalidJson = await handler(
-    new Request("https://collector.example/v1/events", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: "{",
-    }),
-  );
-  assert.equal(invalidJson.status, 400);
+  const invalidJson = new Request("https://collector.example/v1/events", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: "{",
+  });
+  assert.equal((await handler(invalidJson)).status, 400);
 
-  const wrongType = await handler(
-    new Request("https://collector.example/v1/events", {
-      method: "POST",
-      headers: { "content-type": "text/plain" },
-      body: "hello",
-    }),
-  );
-  assert.equal(wrongType.status, 415);
+  const wrongContentType = new Request("https://collector.example/v1/events", {
+    method: "POST",
+    headers: { "content-type": "text/plain" },
+    body: JSON.stringify(validEvent),
+  });
+  assert.equal((await handler(wrongContentType)).status, 415);
 
-  const wrongRoute = await handler(new Request("https://collector.example/health"));
-  assert.equal(wrongRoute.status, 404);
+  const wrongRoute = new Request("https://collector.example/not-events", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(validEvent),
+  });
+  assert.equal((await handler(wrongRoute)).status, 404);
 
-  const wrongMethod = await handler(new Request("https://collector.example/v1/events"));
-  assert.equal(wrongMethod.status, 405);
-  assert.equal(wrongMethod.headers.get("allow"), "POST");
+  const wrongMethod = new Request("https://collector.example/v1/events", { method: "GET" });
+  const wrongMethodResponse = await handler(wrongMethod);
+  assert.equal(wrongMethodResponse.status, 405);
+  assert.equal(wrongMethodResponse.headers.get("allow"), "POST");
 });
 
 test("persistence failures return generic 503 without leaking credential or raw provider error", async () => {
-  const secret = "SUPABASE_SECRET_DO_NOT_LEAK";
+  const secret = "service-role-secret-must-not-leak";
   const handler = createEventCollectorHandler({
+    maxPersistenceAttempts: 1,
     persist: async () => {
       throw new Error(`database failed with token ${secret}`);
     },
@@ -173,7 +169,9 @@ test("Supabase persister resolves trusted workspace from session before insertin
 
   assert.equal(calls.length, 2);
   assert.match(calls[0].url, /\/rest\/v1\/sessions\?/);
-  assert.equal((calls[0].init?.headers as Record<string, string>).apikey, secret);
+  const lookupHeaders = new Headers(calls[0].init?.headers);
+  assert.equal(lookupHeaders.get("apikey"), secret);
+  assert.equal(lookupHeaders.has("authorization"), false);
   assert.match(calls[1].url, /\/rest\/v1\/events\?on_conflict=session_id%2Cidempotency_key&select=event_id%2Cidempotency_key$/);
 
   const stored = JSON.parse(String(calls[1].init?.body)) as Record<string, unknown>;
@@ -192,13 +190,12 @@ test("Supabase persister rejects participant/test/version spoofing before event 
     eventId: "60000000-0000-4000-8000-000000000002",
     receivedAt: "2026-09-08T17:10:05.000Z",
   };
-
   const fetchImpl: typeof fetch = async () => {
     calls += 1;
     return Response.json([
       {
         workspace_id: "70000000-0000-4000-8000-000000000001",
-        participant_id: "20000000-0000-4000-8000-000000000099",
+        participant_id: "30000000-0000-4000-8000-000000000099",
         test_id: acceptedEvent.testId,
         test_version_id: acceptedEvent.testVersionId,
       },
