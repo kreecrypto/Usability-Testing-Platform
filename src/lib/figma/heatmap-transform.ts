@@ -13,7 +13,10 @@ export type FigmaPointerGeometryEvidence = Readonly<{
 }>;
 
 export type PinnedFigmaGeometrySnapshot = Readonly<{
-  geometryVersionId: string;
+  /** Canonical V1 identity: exact immutable UTP testVersionId. */
+  geometryVersionId?: string;
+  /** @deprecated Compatibility only for pre-Task39 deterministic fixtures. Production persistence uses geometryVersionId. */
+  figmaVersionId?: string;
   presentedNodeId: string;
   presentedBounds: Rect;
   targetNodeId: string;
@@ -97,13 +100,14 @@ function clean(value: number): number {
  *
  * Simplified V1 intentionally does not require Figma REST file-version metadata.
  * `geometryVersionId` therefore identifies the immutable UTP test_version-bound
- * geometry snapshot, not a guessed Figma version ID.
+ * geometry snapshot, not a guessed Figma version ID. `figmaVersionId` remains a
+ * temporary test-fixture compatibility alias only and is never persisted by Task39.
  */
 export function transformFigmaPointerToCanonicalFrame(
   evidence: FigmaPointerGeometryEvidence,
   snapshot: PinnedFigmaGeometrySnapshot,
 ): CanonicalHeatmapPoint {
-  const geometryVersionId = requiredText(snapshot.geometryVersionId, "geometryVersionId");
+  const geometryVersionId = requiredText(snapshot.geometryVersionId ?? snapshot.figmaVersionId ?? "", "geometryVersionId");
   assertSameId(evidence.presentedNodeId, snapshot.presentedNodeId, "presentedNodeId");
   assertSameId(evidence.targetNodeId, snapshot.targetNodeId, "targetNodeId");
   assertSameId(
