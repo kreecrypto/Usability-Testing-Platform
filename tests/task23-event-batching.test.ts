@@ -227,8 +227,8 @@ test("Supabase persister uses idempotency conflict target and reports ignored du
 
   assert.equal(await persist(acceptedEvent), "duplicate");
   assert.match(calls[1].url, /\/rest\/v1\/events\?on_conflict=session_id%2Cidempotency_key&select=event_id%2Cidempotency_key$/);
-  assert.equal(
-    (calls[1].init?.headers as Record<string, string>).prefer,
-    "resolution=ignore-duplicates,return=representation",
-  );
+  const insertHeaders = new Headers(calls[1].init?.headers);
+  assert.equal(insertHeaders.get("prefer"), "resolution=ignore-duplicates,return=representation");
+  assert.equal(insertHeaders.get("apikey"), "sb_secret_server_only");
+  assert.equal(insertHeaders.has("authorization"), false);
 });

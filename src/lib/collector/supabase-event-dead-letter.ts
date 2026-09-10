@@ -1,4 +1,5 @@
 import type { AcceptedTrackingEvent, RawTrackingEvent } from "../tracking/events.ts";
+import { createSupabaseAdminFetch } from "../supabase-admin-fetch.ts";
 import type { RecordDeadLetter } from "./reliable-event-persistence.ts";
 
 type FetchLike = typeof fetch;
@@ -16,7 +17,7 @@ export function createSupabaseDeadLetterRecorder(options: {
 }): RecordDeadLetter {
   const supabaseUrl = requiredServerValue(options.supabaseUrl, "supabaseUrl").replace(/\/+$/, "");
   const secretKey = requiredServerValue(options.secretKey, "secretKey");
-  const fetchImpl = options.fetchImpl ?? fetch;
+  const fetchImpl = createSupabaseAdminFetch(secretKey, options.fetchImpl ?? fetch);
 
   return async function recordDeadLetter(
     event: AcceptedTrackingEvent<RawTrackingEvent>,
