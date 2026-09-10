@@ -1,28 +1,28 @@
 const modules = [
   {
-    title: "Test Builder",
-    description: "Import a prototype, define tasks, and configure success rules.",
+    title: "สร้างการทดสอบ",
+    description: "เชื่อมต่อต้นแบบ กำหนดงาน เกณฑ์สำเร็จ และคำถามหลังงานในโฟลว์เดียว",
   },
   {
-    title: "Participant Runner",
-    description: "Run focused usability sessions with minimal test UI interference.",
+    title: "ผู้เข้าร่วมทดสอบ",
+    description: "ให้ผู้เข้าร่วมทำงานกับต้นแบบโดยลดสิ่งรบกวนและไม่เปิดเผยเกณฑ์สำเร็จ",
   },
   {
-    title: "Tracking Engine",
-    description: "Capture deterministic session, task, navigation, and interaction events.",
+    title: "บันทึกพฤติกรรม",
+    description: "เก็บเหตุการณ์ของเซสชัน งาน เส้นทาง และการโต้ตอบอย่างตรวจสอบย้อนกลับได้",
   },
   {
-    title: "Analytics",
-    description: "Measure completion, time, misclicks, paths, heatmaps, and drop-off.",
+    title: "วิเคราะห์ผล",
+    description: "ดูความสำเร็จ เวลา การคลิกพลาด เส้นทาง จุดติดขัด และเซสชันที่เกี่ยวข้อง",
   },
   {
-    title: "Findings & Retest",
-    description: "Turn evidence into UX findings and compare results after design changes.",
+    title: "ประเด็นที่พบและทดสอบซ้ำ",
+    description: "เปลี่ยนหลักฐานเป็นประเด็น UX แล้วเปรียบเทียบผลหลังปรับแบบ",
   },
 ];
 
 const reviewLinks = [
-  { label: "Product UI", href: "/high-fi" },
+  { label: "หน้าจอผลิตภัณฑ์", href: "/high-fi" },
 ];
 
 export default function Home() {
@@ -30,8 +30,8 @@ export default function Home() {
     <main className="shell">
       <aside className="sidebar">
         <div className="brand">UT Platform</div>
-        <nav className="nav" aria-label="Primary navigation">
-          <a className="navItem active" href="#overview" aria-current="page">Overview</a>
+        <nav className="nav" aria-label="เมนูหลัก">
+          <a className="navItem active" href="#overview" aria-current="page">ภาพรวม</a>
           {reviewLinks.map((item) => (
             <a className="navItem" href={item.href} key={item.href}>{item.label}</a>
           ))}
@@ -41,33 +41,33 @@ export default function Home() {
       <section className="content">
         <header className="topbar">
           <div>
-            <p className="eyebrow">Usability Testing & UX QA</p>
-            <h1>Prototype → Evidence → Better UX</h1>
+            <p className="eyebrow">ทดสอบการใช้งานและ UX QA</p>
+            <h1>ต้นแบบ → หลักฐาน → การตัดสินใจ UX</h1>
           </div>
-          <a className="primaryButton" href="/high-fi">Open product UI</a>
+          <a className="primaryButton" href="/high-fi">เปิดหน้าจอผลิตภัณฑ์</a>
         </header>
 
         <section id="overview" className="heroCard">
           <div>
-            <span className="status">V1 Foundation</span>
-            <h2>Build the core usability-testing loop first.</h2>
+            <span className="status">โฟลว์หลัก</span>
+            <h2>สร้างการทดสอบ เก็บพฤติกรรม แล้วเปลี่ยนหลักฐานเป็นสิ่งที่ต้องแก้</h2>
             <p>
-              The first release focuses on Figma prototype testing, participant sessions,
-              behavior tracking, analytics, findings, and retest comparison.
+              รุ่นปัจจุบันเน้นการทดสอบต้นแบบ Figma, เซสชันผู้เข้าร่วม, การบันทึกพฤติกรรม,
+              การวิเคราะห์ผล, ประเด็นที่พบ และการเปรียบเทียบการทดสอบซ้ำ
             </p>
           </div>
-          <div className="metricGrid" aria-label="V1 status summary">
-            <div className="metric"><strong>5</strong><span>Core modules</span></div>
-            <div className="metric"><strong>48</strong><span>Canonical screens</span></div>
-            <div className="metric"><strong>170</strong><span>QA states</span></div>
+          <div className="metricGrid" aria-label="สรุปขอบเขตหน้าจอและสถานะ QA">
+            <div className="metric"><strong>5</strong><span>โมดูลหลัก</span></div>
+            <div className="metric"><strong>48</strong><span>หน้าจอหลัก</span></div>
+            <div className="metric"><strong>170</strong><span>สถานะ QA</span></div>
           </div>
         </section>
 
         <section id="modules" className="section">
           <div className="sectionHeading">
             <div>
-              <p className="eyebrow">V1 Product Loop</p>
-              <h2>Core modules</h2>
+              <p className="eyebrow">โฟลว์ผลิตภัณฑ์</p>
+              <h2>จากการทดสอบสู่การปรับ UX</h2>
             </div>
           </div>
 

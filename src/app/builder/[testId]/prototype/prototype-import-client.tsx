@@ -26,9 +26,7 @@ type RequestState = "idle" | "validating" | "valid" | "saving" | "saved" | "erro
 async function jsonRequest<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,
-    headers: init?.body
-      ? { "content-type": "application/json", ...(init.headers ?? {}) }
-      : init?.headers,
+    headers: init?.body ? { "content-type": "application/json", ...(init.headers ?? {}) } : init?.headers,
     cache: "no-store",
   });
   const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
@@ -36,9 +34,7 @@ async function jsonRequest<T>(url: string, init?: RequestInit): Promise<T> {
     window.location.assign("/login");
     throw new Error("authentication_required");
   }
-  if (!response.ok) {
-    throw new Error(typeof body.message === "string" ? body.message : String(body.error ?? "request_failed"));
-  }
+  if (!response.ok) throw new Error(typeof body.message === "string" ? body.message : String(body.error ?? "request_failed"));
   return body as T;
 }
 
@@ -58,16 +54,14 @@ export default function PrototypeImportClient({ testId }: { testId: string }) {
         setPrototype(loaded.prototype);
         setPrototypeUrl(loaded.prototype.sourceUrl);
         setState("saved");
-        setMessage(`Draft v${loaded.versionNo} prototype configuration loaded.`);
+        setMessage(`โหลดการตั้งค่าต้นแบบของฉบับร่าง v${loaded.versionNo} แล้ว`);
       })
       .catch((error) => {
         if (!active || String(error).includes("authentication_required")) return;
         setState("error");
-        setMessage("Unable to load the current draft prototype configuration.");
+        setMessage("โหลดการตั้งค่าต้นแบบของฉบับร่างไม่สำเร็จ");
       });
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [testId]);
 
   async function validate(event: FormEvent<HTMLFormElement>) {
@@ -76,19 +70,16 @@ export default function PrototypeImportClient({ testId }: { testId: string }) {
     setMessage(null);
     setPrototype(null);
     try {
-      const result = await jsonRequest<{ prototype: PrototypeConfig }>(
-        "/api/figma/public-prototype/validate",
-        {
-          method: "POST",
-          body: JSON.stringify({ prototypeUrl }),
-        },
-      );
+      const result = await jsonRequest<{ prototype: PrototypeConfig }>("/api/figma/public-prototype/validate", {
+        method: "POST",
+        body: JSON.stringify({ prototypeUrl }),
+      });
       setPrototype(result.prototype);
       setState("valid");
-      setMessage("Prototype URL is valid. Review the preview, then save it to this test draft.");
+      setMessage("ลิงก์ต้นแบบใช้ได้ ตรวจสอบพรีวิวแล้วบันทึกลงฉบับร่างของการทดสอบนี้");
     } catch (error) {
       setState("error");
-      setMessage(error instanceof Error ? error.message : "Enter a valid public Figma prototype URL.");
+      setMessage(error instanceof Error ? error.message : "กรอก URL ต้นแบบ Figma แบบสาธารณะที่ถูกต้อง");
     }
   }
 
@@ -97,21 +88,18 @@ export default function PrototypeImportClient({ testId }: { testId: string }) {
     setState("saving");
     setMessage(null);
     try {
-      const result = await jsonRequest<{ draft: Draft }>(
-        `/api/tests/${encodeURIComponent(testId)}/prototype`,
-        {
-          method: "PUT",
-          body: JSON.stringify({ prototypeUrl: prototype.sourceUrl }),
-        },
-      );
+      const result = await jsonRequest<{ draft: Draft }>(`/api/tests/${encodeURIComponent(testId)}/prototype`, {
+        method: "PUT",
+        body: JSON.stringify({ prototypeUrl: prototype.sourceUrl }),
+      });
       setDraft(result.draft);
       setPrototype(result.draft.prototype);
       setPrototypeUrl(result.draft.prototype.sourceUrl);
       setState("saved");
-      setMessage(`Saved to draft test version ${result.draft.versionNo}.`);
+      setMessage(`บันทึกลงฉบับร่างเวอร์ชัน ${result.draft.versionNo} แล้ว`);
     } catch (error) {
       setState("error");
-      setMessage(error instanceof Error ? error.message : "Unable to save prototype configuration.");
+      setMessage(error instanceof Error ? error.message : "บันทึกการตั้งค่าต้นแบบไม่สำเร็จ");
     }
   }
 
@@ -120,19 +108,17 @@ export default function PrototypeImportClient({ testId }: { testId: string }) {
   return (
     <main className={styles.shell}>
       <header className={styles.header}>
-        <a href="/projects" className={styles.backLink}>← Projects</a>
-        <p className={styles.eyebrow}>S09–S10 · Prototype import</p>
-        <h1>Connect a public Figma prototype</h1>
-        <p>
-          Paste a participant-accessible <code>figma.com/proto/…</code> URL. V1 validates and embeds the public link; it does not request Researcher OAuth.
-        </p>
+        <a href="/projects" className={styles.backLink}>← โปรเจกต์</a>
+        <p className={styles.eyebrow}>สร้างการทดสอบ · ต้นแบบ</p>
+        <h1>เชื่อมต่อต้นแบบ Figma</h1>
+        <p>วางลิงก์ <code>figma.com/proto/…</code> ที่ผู้เข้าร่วมเปิดได้ ระบบจะตรวจสอบและพรีวิวลิงก์สาธารณะโดยไม่ต้องเชื่อม Researcher OAuth</p>
       </header>
 
       <section className={styles.card} aria-labelledby="import-title">
-        <h2 id="import-title">1. Paste and validate</h2>
+        <h2 id="import-title">1. เพิ่มลิงก์ต้นแบบ</h2>
         <form onSubmit={validate} className={styles.form}>
           <label>
-            <span>Figma prototype URL</span>
+            <span>URL ต้นแบบ Figma</span>
             <textarea
               value={prototypeUrl}
               onChange={(event) => {
@@ -147,61 +133,34 @@ export default function PrototypeImportClient({ testId }: { testId: string }) {
               disabled={busy}
             />
           </label>
-          <button type="submit" disabled={busy || prototypeUrl.trim() === ""}>
-            {state === "validating" ? "Validating…" : "Validate prototype"}
-          </button>
+          <button type="submit" disabled={busy || prototypeUrl.trim() === ""}>{state === "validating" ? "กำลังตรวจสอบ…" : "ตรวจสอบต้นแบบ"}</button>
         </form>
-        {message ? (
-          <div className={state === "error" ? styles.error : styles.notice} role={state === "error" ? "alert" : "status"}>
-            {message}
-          </div>
-        ) : null}
+        {message ? <div className={state === "error" ? styles.error : styles.notice} role={state === "error" ? "alert" : "status"}>{message}</div> : null}
       </section>
 
       <section className={styles.card} aria-labelledby="preview-title">
         <div className={styles.sectionHeading}>
-          <div>
-            <h2 id="preview-title">2. Preview</h2>
-            <p>Preview is enabled only after the URL passes the same server-side parser used during save.</p>
-          </div>
-          <span className={styles.status}>{prototype ? "VALID" : "NOT READY"}</span>
+          <div><h2 id="preview-title">2. พรีวิว</h2><p>พรีวิวจะแสดงเมื่อ URL ผ่านการตรวจสอบเดียวกับที่ใช้ตอนบันทึก</p></div>
+          <span className={styles.status}>{prototype ? "พร้อม" : "ยังไม่พร้อม"}</span>
         </div>
-
         {prototype ? (
           <>
             <dl className={styles.meta}>
               <div><dt>File key</dt><dd>{prototype.fileKey}</dd></div>
-              <div><dt>Node</dt><dd>{prototype.nodeId ?? "Figma default"}</dd></div>
-              <div><dt>Flow start</dt><dd>{prototype.startingPointNodeId ?? "Figma default"}</dd></div>
+              <div><dt>Node</dt><dd>{prototype.nodeId ?? "ค่าเริ่มต้นของ Figma"}</dd></div>
+              <div><dt>จุดเริ่มต้น</dt><dd>{prototype.startingPointNodeId ?? "ค่าเริ่มต้นของ Figma"}</dd></div>
             </dl>
-            <div className={styles.previewFrame}>
-              <iframe
-                title="Figma prototype preview"
-                src={prototype.embedUrl}
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="strict-origin-when-cross-origin"
-              />
-            </div>
+            <div className={styles.previewFrame}><iframe title="พรีวิวต้นแบบ Figma" src={prototype.embedUrl} allowFullScreen loading="lazy" referrerPolicy="strict-origin-when-cross-origin" /></div>
           </>
-        ) : (
-          <div className={styles.empty}>Validate a public Figma prototype URL to show the preview.</div>
-        )}
+        ) : <div className={styles.empty}>ตรวจสอบ URL ต้นแบบ Figma เพื่อแสดงพรีวิว</div>}
       </section>
 
       <section className={styles.card} aria-labelledby="save-title">
         <div className={styles.sectionHeading}>
-          <div>
-            <h2 id="save-title">3. Save draft configuration</h2>
-            <p>
-              Saves only the draft prototype configuration. Publish and immutable versioning remain a separate release step.
-            </p>
-          </div>
-          {draft ? <span className={styles.status}>DRAFT v{draft.versionNo}</span> : null}
+          <div><h2 id="save-title">3. บันทึกลงฉบับร่าง</h2><p>ขั้นตอนนี้บันทึกเฉพาะการตั้งค่าต้นแบบ การเผยแพร่และการล็อกเวอร์ชันจะทำในขั้นตอนตรวจสอบก่อนเผยแพร่</p></div>
+          {draft ? <span className={styles.status}>ฉบับร่าง v{draft.versionNo}</span> : null}
         </div>
-        <button className={styles.primaryButton} type="button" onClick={save} disabled={!prototype || busy}>
-          {state === "saving" ? "Saving…" : "Save prototype configuration"}
-        </button>
+        <button className={styles.primaryButton} type="button" onClick={save} disabled={!prototype || busy}>{state === "saving" ? "กำลังบันทึก…" : "บันทึกต้นแบบ"}</button>
       </section>
     </main>
   );

@@ -8,6 +8,15 @@ import styles from "./findings.module.css";
 type LoadState = "loading" | "ready" | "error";
 type MetricKey = "completionRate" | "misclickRate" | "giveUpRate" | "medianSuccessfulDurationMs";
 
+const metricLabels: Record<MetricKey, string> = {
+  completionRate: "อัตรางานสำเร็จ",
+  misclickRate: "อัตราคลิกพลาด",
+  giveUpRate: "อัตรายุติงาน",
+  medianSuccessfulDurationMs: "เวลามัธยฐานของงานที่สำเร็จ",
+};
+const severityLabels: Record<string, string> = { critical: "วิกฤต", high: "สูง", medium: "กลาง", low: "ต่ำ" };
+const statusLabels: Record<string, string> = { open: "เปิดอยู่", resolved: "แก้ไขแล้ว", closed: "ปิดแล้ว" };
+
 function metricValue(task: TaskDetailResult, key: MetricKey): number | null {
   if (key === "completionRate") return task.completionRate;
   if (key === "misclickRate") return task.misclickRate;
@@ -29,9 +38,7 @@ function snapshot(task: TaskDetailResult, key: MetricKey, testVersionId: string)
   };
 }
 
-function formatMetric(value: number | null): string {
-  return value === null ? "No Data" : String(Math.round(value * 10) / 10);
-}
+function formatMetric(value: number | null): string { return value === null ? "ยังไม่มีข้อมูล" : String(Math.round(value * 10) / 10); }
 
 export default function FindingsPage({ params }: { params: Promise<{ testVersionId: string }> }) {
   const [testVersionId, setVersionId] = useState("");
@@ -58,17 +65,16 @@ export default function FindingsPage({ params }: { params: Promise<{ testVersion
         fetch(`/api/results/${encodeURIComponent(versionId)}`, { cache: "no-store" }),
         fetch(`/api/findings?testVersionId=${encodeURIComponent(versionId)}`, { cache: "no-store" }),
       ]);
-      if (!resultsResponse.ok || !findingsResponse.ok) throw new Error(resultsResponse.status === 401 || findingsResponse.status === 401 ? "Sign in is required." : "Findings data could not be loaded.");
+      if (!resultsResponse.ok || !findingsResponse.ok) throw new Error(resultsResponse.status === 401 || findingsResponse.status === 401 ? "ต้องเข้าสู่ระบบก่อนใช้งาน" : "โหลดข้อมูลประเด็นที่พบไม่สำเร็จ");
       const resultsPayload = await resultsResponse.json() as { results: ResultsModel };
       const findingsPayload = await findingsResponse.json() as { findings: FindingRecord[] };
       setResults(resultsPayload.results); setFindings(findingsPayload.findings);
       setTaskId((current) => current || resultsPayload.results.taskDetails[0]?.taskId || "");
       setState("ready");
-    } catch (value) { setState("error"); setError(value instanceof Error ? value.message : "Findings data could not be loaded."); }
+    } catch (value) { setState("error"); setError(value instanceof Error ? value.message : "โหลดข้อมูลประเด็นที่พบไม่สำเร็จ"); }
   }
 
   useEffect(() => { if (testVersionId) void reload(testVersionId); }, [testVersionId]);
-
   const selectedTask = useMemo(() => results?.taskDetails.find((task) => task.taskId === taskId) ?? null, [results, taskId]);
 
   async function createFinding(event: React.FormEvent) {
@@ -80,10 +86,10 @@ export default function FindingsPage({ params }: { params: Promise<{ testVersion
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ testVersionId, taskId: selectedTask.taskId, screenId: screenId || null, title, problem, severity, metricSnapshot: snapshot(selectedTask, metricKey, testVersionId) }),
       });
-      if (!response.ok) throw new Error("Finding could not be created.");
+      if (!response.ok) throw new Error("สร้างประเด็นที่พบไม่สำเร็จ");
       setTitle(""); setProblem(""); setScreenId("");
       await reload();
-    } catch (value) { setError(value instanceof Error ? value.message : "Finding could not be created."); }
+    } catch (value) { setError(value instanceof Error ? value.message : "สร้างประเด็นที่พบไม่สำเร็จ"); }
     finally { setSaving(false); }
   }
 
@@ -93,36 +99,37 @@ export default function FindingsPage({ params }: { params: Promise<{ testVersion
     const body: Record<string, unknown> = { type, sessionId };
     if (type === "path") {
       const path = results.paths.find((item) => item.sessionId === sessionId && (!finding.taskId || item.taskId === finding.taskId));
-      if (!path) { setError("No canonical path evidence exists for this session/task."); return; }
+      if (!path) { setError("ไม่พบหลักฐานเส้นทางของเซสชันและงานนี้"); return; }
       body.payload = { taskId: path.taskId, expectedPath: path.expectedPath, actualPath: path.actualPath, detourCount: path.detourCount, backtrackCount: path.backtrackCount, terminalOutcome: path.terminalOutcome };
     }
     const response = await fetch(`/api/findings/${finding.id}/evidence`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-    if (!response.ok) { setError("Evidence could not be linked."); return; }
+    if (!response.ok) { setError("เชื่อมหลักฐานไม่สำเร็จ"); return; }
     setError("");
   }
 
   return <main className={styles.page}>
-    <header className={styles.header}><div><span>Findings · exact published version</span><h1>UX Findings</h1><p>Turn observed behavior into a version-traceable issue. Metric snapshots and evidence stay tied to the published version that produced them.</p></div><a href={`/results/${testVersionId}`}>Results</a></header>
-    {state === "loading" ? <div className={styles.state}>Loading findings…</div> : null}
+    <header className={styles.header}><div><span>วิเคราะห์ผล · ประเด็นจากเวอร์ชันที่เผยแพร่</span><h1>ประเด็น UX ที่พบ</h1><p>เปลี่ยนพฤติกรรมที่สังเกตได้เป็นประเด็นที่นำไปแก้ไข โดยเก็บตัวชี้วัดและหลักฐานผูกกับเวอร์ชันที่สร้างข้อมูลนั้น</p></div><a href={`/results/${testVersionId}`}>กลับไปผลการทดสอบ</a></header>
+    {state === "loading" ? <div className={styles.state}>กำลังโหลดประเด็นที่พบ…</div> : null}
     {state === "error" ? <div className={styles.error} role="alert">{error}</div> : null}
     {state === "ready" && results ? <div className={styles.layout}>
       <form className={styles.form} onSubmit={createFinding}>
-        <div><span className={styles.eyebrow}>Create actionable issue</span><h2>New finding</h2></div>
-        <label>Task<select value={taskId} onChange={(event) => setTaskId(event.target.value)}>{results.taskDetails.map((task) => <option key={task.taskId} value={task.taskId}>{task.ordinal}. {task.title}</option>)}</select></label>
-        <label>Primary metric<select value={metricKey} onChange={(event) => setMetricKey(event.target.value as MetricKey)}><option value="completionRate">Completion rate</option><option value="misclickRate">Misclick rate</option><option value="giveUpRate">Give-up rate</option><option value="medianSuccessfulDurationMs">Median successful duration</option></select></label>
-        {selectedTask ? <div className={styles.snapshot}><strong>{formatMetric(metricValue(selectedTask, metricKey))}</strong><span>n={metricKey === "medianSuccessfulDurationMs" ? selectedTask.successfulDuration.sampleSize : selectedTask.eligible} · blocked={selectedTask.technicalBlockedCount}</span></div> : null}
-        <label>Issue title<input required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Short observable issue" /></label>
-        <label>Problem<textarea required value={problem} onChange={(event) => setProblem(event.target.value)} placeholder="What participants struggled with and why it matters" /></label>
-        <div className={styles.twoCol}><label>Severity<select value={severity} onChange={(event) => setSeverity(event.target.value)}><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></label><label>Screen ID<input value={screenId} onChange={(event) => setScreenId(event.target.value)} placeholder="Optional canonical screen ID" /></label></div>
-        <button disabled={saving || !selectedTask}>{saving ? "Creating…" : "Create finding"}</button>
+        <div><span className={styles.eyebrow}>จากหลักฐานสู่สิ่งที่ต้องแก้</span><h2>สร้างประเด็นใหม่</h2></div>
+        <label>งาน<select value={taskId} onChange={(event) => setTaskId(event.target.value)}>{results.taskDetails.map((task) => <option key={task.taskId} value={task.taskId}>{task.ordinal}. {task.title}</option>)}</select></label>
+        <label>ตัวชี้วัดหลัก<select value={metricKey} onChange={(event) => setMetricKey(event.target.value as MetricKey)}>{Object.entries(metricLabels).map(([key, label]) => <option value={key} key={key}>{label}</option>)}</select></label>
+        {selectedTask ? <div className={styles.snapshot}><strong>{formatMetric(metricValue(selectedTask, metricKey))}</strong><span>n={metricKey === "medianSuccessfulDurationMs" ? selectedTask.successfulDuration.sampleSize : selectedTask.eligible} · ติดปัญหาทางเทคนิค={selectedTask.technicalBlockedCount}</span></div> : null}
+        <label>ชื่อประเด็น<input required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="สรุปปัญหาที่สังเกตได้แบบสั้น ๆ" /></label>
+        <label>ปัญหา<textarea required value={problem} onChange={(event) => setProblem(event.target.value)} placeholder="ผู้เข้าร่วมติดขัดตรงไหน และเหตุใดจึงสำคัญ" /></label>
+        <div className={styles.twoCol}><label>ความรุนแรง<select value={severity} onChange={(event) => setSeverity(event.target.value)}><option value="critical">วิกฤต</option><option value="high">สูง</option><option value="medium">กลาง</option><option value="low">ต่ำ</option></select></label><label>Screen ID<input value={screenId} onChange={(event) => setScreenId(event.target.value)} placeholder="ไม่บังคับ · Screen ID มาตรฐาน" /></label></div>
+        <button disabled={saving || !selectedTask}>{saving ? "กำลังสร้าง…" : "สร้างประเด็น"}</button>
       </form>
+
       <section className={styles.list}>
-        <div className={styles.listHeader}><div><span className={styles.eyebrow}>S28 / S29</span><h2>Findings</h2></div><strong>{findings.length}</strong></div>
-        {findings.length === 0 ? <div className={styles.empty}><strong>No findings yet</strong><p>Create one from a task metric snapshot. Empty is not treated as a zero-severity result.</p></div> : findings.map((finding) => <article key={finding.id} className={styles.card}>
-          <div className={styles.cardHeader}><div><span className={styles.severity} data-severity={finding.severity}>{finding.severity}</span><h3>{finding.title}</h3></div><span className={styles.status}>{finding.status}</span></div>
+        <div className={styles.listHeader}><div><span className={styles.eyebrow}>ประเด็นที่ตรวจพบ</span><h2>ประเด็นทั้งหมด</h2></div><strong>{findings.length}</strong></div>
+        {findings.length === 0 ? <div className={styles.empty}><strong>ยังไม่มีประเด็นที่พบ</strong><p>สร้างประเด็นจากตัวชี้วัดและหลักฐานเมื่อพบสิ่งที่ควรแก้ไข การไม่มีประเด็นยังไม่เท่ากับความรุนแรงเป็นศูนย์</p></div> : findings.map((finding) => <article key={finding.id} className={styles.card}>
+          <div className={styles.cardHeader}><div><span className={styles.severity} data-severity={finding.severity}>{severityLabels[finding.severity] ?? finding.severity}</span><h3>{finding.title}</h3></div><span className={styles.status}>{statusLabels[finding.status] ?? finding.status}</span></div>
           <p>{finding.problem}</p>
-          <dl><div><dt>Metric</dt><dd>{finding.metricSnapshot.metricKey}: {formatMetric(finding.metricSnapshot.value)}</dd></div><div><dt>Sample</dt><dd>n={finding.metricSnapshot.sampleSize}, technical blocked={finding.metricSnapshot.technicalBlockedCount}</dd></div><div><dt>Version</dt><dd>{finding.testVersionId}</dd></div>{finding.screenId ? <div><dt>Screen</dt><dd>{finding.screenId}</dd></div> : null}</dl>
-          <div className={styles.evidenceBox}><strong>Link evidence</strong><input value={evidenceSession[finding.id] ?? ""} onChange={(event) => setEvidenceSession((value) => ({ ...value, [finding.id]: event.target.value }))} placeholder="Session UUID" /><div><button type="button" onClick={() => void linkEvidence(finding, "session")}>Link session</button><button type="button" onClick={() => void linkEvidence(finding, "path")}>Link path</button><button type="button" disabled title="Task 47 heatmap remains capability-gated">Heatmap unavailable</button></div></div>
+          <dl><div><dt>ตัวชี้วัด</dt><dd>{metricLabels[finding.metricSnapshot.metricKey as MetricKey] ?? finding.metricSnapshot.metricKey}: {formatMetric(finding.metricSnapshot.value)}</dd></div><div><dt>ตัวอย่าง</dt><dd>n={finding.metricSnapshot.sampleSize}, ติดปัญหาทางเทคนิค={finding.metricSnapshot.technicalBlockedCount}</dd></div><div><dt>เวอร์ชัน</dt><dd>{finding.testVersionId}</dd></div>{finding.screenId ? <div><dt>หน้าจอ</dt><dd>{finding.screenId}</dd></div> : null}</dl>
+          <div className={styles.evidenceBox}><strong>เชื่อมหลักฐาน</strong><input value={evidenceSession[finding.id] ?? ""} onChange={(event) => setEvidenceSession((value) => ({ ...value, [finding.id]: event.target.value }))} placeholder="Session UUID" /><div><button type="button" onClick={() => void linkEvidence(finding, "session")}>เชื่อมเซสชัน</button><button type="button" onClick={() => void linkEvidence(finding, "path")}>เชื่อมเส้นทาง</button><button type="button" disabled title="ฮีตแมปยังติด capability gate">ฮีตแมปยังใช้ไม่ได้</button></div></div>
         </article>)}
       </section>
     </div> : null}
