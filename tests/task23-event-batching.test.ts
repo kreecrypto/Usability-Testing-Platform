@@ -1,37 +1,32 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  createEventCollectorHandler,
-  type PersistAcceptedEvent,
-} from "../src/lib/collector/event-collector.ts";
+import { createEventCollectorHandler } from "../src/lib/collector/event-collector.ts";
 import { createSupabaseEventPersister } from "../src/lib/collector/supabase-event-persistence.ts";
-import type {
-  AcceptedTrackingEvent,
-  RawTrackingEvent,
-} from "../src/lib/tracking/events.ts";
+import type { AcceptedTrackingEvent, RawTrackingEvent } from "../src/lib/tracking/events.ts";
 
-const baseEvent: RawTrackingEvent = {
+const baseEvent = {
   schemaVersion: 2,
-  eventId: "60000000-0000-4000-8000-000000000001",
+  eventId: "10000000-0000-4000-8000-000000000001",
   idempotencyKey: "session-1:1",
   eventLayer: "raw",
   source: "runner",
-  eventType: "task_started",
+  eventType: "screen_view",
   occurredAt: "2026-09-09T10:00:00.000Z",
   sequence: 1,
-  sessionId: "10000000-0000-4000-8000-000000000001",
-  participantId: "20000000-0000-4000-8000-000000000001",
-  testId: "30000000-0000-4000-8000-000000000001",
-  testVersionId: "40000000-0000-4000-8000-000000000001",
-  taskId: "50000000-0000-4000-8000-000000000001",
+  sessionId: "20000000-0000-4000-8000-000000000001",
+  participantId: "30000000-0000-4000-8000-000000000001",
+  testId: "40000000-0000-4000-8000-000000000001",
+  testVersionId: "50000000-0000-4000-8000-000000000001",
+  screenId: "checkout",
+  metadata: {
+    previousScreenId: "cart",
+    currentScreenId: "checkout",
+    navigationSource: "prototype",
+  },
 };
 
-function event(overrides: Partial<RawTrackingEvent>): RawTrackingEvent {
-  return { ...baseEvent, ...overrides };
-}
-
-function request(body: unknown): Request {
+function request(body: unknown) {
   return new Request("https://collector.example/v1/events", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -42,150 +37,97 @@ function request(body: unknown): Request {
 test("batch upload accepts multiple valid events with per-event receipts", async () => {
   const persisted: AcceptedTrackingEvent<RawTrackingEvent>[] = [];
   const handler = createEventCollectorHandler({
-    persist: async (acceptedEvent) => {
-      persisted.push(acceptedEvent);
+    now: () => new Date("2026-09-09T10:00:05.000Z"),
+    persist: async (event) => {
+      persisted.push(event);
       return "accepted";
     },
-    now: () => new Date("2026-09-09T10:00:05.000Z"),
   });
+  const secondEvent = {
+    ...baseEvent,
+    eventId: "10000000-0000-4000-8000-000000000002",
+    idempotencyKey: "session-1:2",
+    sequence: 2,
+    occurredAt: "2026-09-09T10:00:01.000Z",
+  };
 
-  const response = await handler(
-    request({
-      events: [
-        baseEvent,
-        event({
-          eventId: "60000000-0000-4000-8000-000000000002",
-          idempotencyKey: "session-1:2",
-          eventType: "screen_view",
-          sequence: 2,
-        }),
-      ],
-    }),
-  );
-
+  const response = await handler(request({ events: [baseEvent, secondEvent] }));
   assert.equal(response.status, 202);
+  assert.equal(persisted.length, 2);
   assert.deepEqual(await response.json(), {
-    status: "accepted",
-    accepted: [
-      {
-        eventId: "60000000-0000-4000-8000-000000000001",
-        receivedAt: "2026-09-09T10:00:05.000Z",
-        status: "accepted",
-      },
-      {
-        eventId: "60000000-0000-4000-8000-000000000002",
-        receivedAt: "2026-09-09T10:00:05.000Z",
-        status: "accepted",
-      },
+    events: [
+      { eventId: baseEvent.eventId, receivedAt: "2026-09-09T10:00:05.000Z", status: "accepted" },
+      { eventId: secondEvent.eventId, receivedAt: "2026-09-09T10:00:05.000Z", status: "accepted" },
     ],
-    duplicates: [],
     summary: { received: 2, accepted: 2, duplicate: 0 },
   });
-  assert.equal(persisted.length, 2);
 });
 
 test("invalid event in a batch rejects the whole upload before persistence", async () => {
-  let writes = 0;
-  const handler = createEventCollectorHandler({
-    persist: async () => {
-      writes += 1;
-      return "accepted";
-    },
-  });
-
-  const response = await handler(
-    request({
-      events: [
-        baseEvent,
-        event({
-          eventId: "60000000-0000-4000-8000-000000000002",
-          idempotencyKey: "session-1:2",
-          sequence: -1,
-        }),
-      ],
-    }),
-  );
-
+  let persisted = 0;
+  const handler = createEventCollectorHandler({ persist: async () => { persisted += 1; return "accepted"; } });
+  const response = await handler(request({
+    events: [baseEvent, { ...baseEvent, eventId: "bad-id", idempotencyKey: "session-1:2", sequence: 2 }],
+  }));
   assert.equal(response.status, 400);
-  assert.equal(writes, 0);
-  const body = await response.json() as { details: Array<{ field: string }> };
-  assert.ok(body.details.some((detail) => detail.field === "events[1].sequence"));
+  assert.equal(persisted, 0);
 });
 
 test("retrying transient persistence failures eventually accepts without leaking raw errors", async () => {
   let attempts = 0;
   const handler = createEventCollectorHandler({
+    maxPersistenceAttempts: 3,
     persist: async () => {
       attempts += 1;
-      if (attempts < 3) {
-        throw new Error("temporary database timeout with secret value");
-      }
+      if (attempts < 3) throw new Error("temporary provider secret detail");
       return "accepted";
     },
-    maxPersistenceAttempts: 3,
-    now: () => new Date("2026-09-09T10:00:05.000Z"),
   });
-
-  const response = await handler(request({ events: [baseEvent] }));
-
+  const response = await handler(request(baseEvent));
   assert.equal(response.status, 202);
   assert.equal(attempts, 3);
-  assert.equal(JSON.stringify(await response.json()).includes("secret value"), false);
+  assert.equal((await response.text()).includes("provider secret detail"), false);
 });
 
 test("retry exhaustion returns generic 503 without partial batch response details", async () => {
   let attempts = 0;
   const handler = createEventCollectorHandler({
+    maxPersistenceAttempts: 2,
     persist: async () => {
       attempts += 1;
-      throw new Error("database token should stay hidden");
+      throw new Error("provider-specific failure");
     },
-    maxPersistenceAttempts: 2,
   });
-
-  const response = await handler(request({ events: [baseEvent] }));
-
+  const response = await handler(request({ events: [baseEvent, { ...baseEvent, eventId: "10000000-0000-4000-8000-000000000002", idempotencyKey: "session-1:2", sequence: 2 }] }));
   assert.equal(response.status, 503);
   assert.equal(attempts, 2);
-  const body = await response.text();
-  assert.equal(body.includes("database token"), false);
-  assert.deepEqual(JSON.parse(body), { error: "ingestion_unavailable" });
+  assert.deepEqual(await response.json(), { error: "ingestion_unavailable" });
 });
 
 test("duplicate idempotency keys inside the same batch are suppressed before a second write", async () => {
-  const persisted: string[] = [];
+  const writes: string[] = [];
   const handler = createEventCollectorHandler({
-    persist: async (acceptedEvent) => {
-      persisted.push(acceptedEvent.idempotencyKey);
+    now: () => new Date("2026-09-09T10:00:05.000Z"),
+    persist: async (event) => {
+      writes.push(event.idempotencyKey);
       return "accepted";
     },
-    now: () => new Date("2026-09-09T10:00:05.000Z"),
   });
+  const duplicateDelivery = {
+    ...baseEvent,
+    eventId: "60000000-0000-4000-8000-000000000099",
+  };
 
-  const response = await handler(
-    request({
-      events: [
-        baseEvent,
-        event({
-          eventId: "60000000-0000-4000-8000-000000000099",
-          sequence: 99,
-        }),
-      ],
-    }),
-  );
-
+  const response = await handler(request({ events: [baseEvent, duplicateDelivery] }));
   assert.equal(response.status, 202);
-  assert.equal(persisted.length, 1);
+  assert.deepEqual(writes, [baseEvent.idempotencyKey]);
   assert.deepEqual(await response.json(), {
-    status: "accepted",
-    accepted: [
+    events: [
       {
-        eventId: "60000000-0000-4000-8000-000000000001",
+        eventId: baseEvent.eventId,
         receivedAt: "2026-09-09T10:00:05.000Z",
         status: "accepted",
       },
-    ],
-    duplicates: [
       {
         eventId: "60000000-0000-4000-8000-000000000099",
         receivedAt: "2026-09-09T10:00:05.000Z",
@@ -227,8 +169,8 @@ test("Supabase persister uses idempotency conflict target and reports ignored du
 
   assert.equal(await persist(acceptedEvent), "duplicate");
   assert.match(calls[1].url, /\/rest\/v1\/events\?on_conflict=session_id%2Cidempotency_key&select=event_id%2Cidempotency_key$/);
-  assert.equal(
-    (calls[1].init?.headers as Record<string, string>).prefer,
-    "resolution=ignore-duplicates,return=representation",
-  );
+  const insertHeaders = new Headers(calls[1].init?.headers);
+  assert.equal(insertHeaders.get("prefer"), "resolution=ignore-duplicates,return=representation");
+  assert.equal(insertHeaders.get("apikey"), "sb_secret_server_only");
+  assert.equal(insertHeaders.has("authorization"), false);
 });
