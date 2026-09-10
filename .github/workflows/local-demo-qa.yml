@@ -1,0 +1,43 @@
+name: Local Demo QA (No Vercel)
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: local-demo-qa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  demo-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pinned Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install from committed lockfile
+        run: npm ci --no-audit --no-fund
+
+      - name: Guard against production targets
+        run: npm run check:demo-env
+
+      - name: Run GitHub-only full demo QA
+        run: npm run qa:demo:full
+
+      - name: Mark evidence boundary
+        run: |
+          echo "DEMO_QA_PASS"
+          echo "This workflow is engineering/demo evidence only."
+          echo "It MUST NOT be used as Vercel Production or release-gate evidence."
