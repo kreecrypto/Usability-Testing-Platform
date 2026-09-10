@@ -21,17 +21,22 @@ const modules = [
   },
 ];
 
+const reviewLinks = [
+  { label: "Projects", href: "/projects" },
+  { label: "High-fi QA", href: "/high-fi" },
+  { label: "Wireframe QA", href: "/wireframes" },
+];
+
 export default function Home() {
   return (
     <main className="shell">
       <aside className="sidebar">
         <div className="brand">UT Platform</div>
         <nav className="nav" aria-label="Primary navigation">
-          <a className="navItem active" href="#overview">Overview</a>
-          <a className="navItem" href="#modules">Projects</a>
-          <a className="navItem" href="#modules">Tests</a>
-          <a className="navItem" href="#modules">Results</a>
-          <a className="navItem" href="#modules">Participants</a>
+          <a className="navItem active" href="#overview" aria-current="page">Overview</a>
+          {reviewLinks.map((item) => (
+            <a className="navItem" href={item.href} key={item.href}>{item.label}</a>
+          ))}
         </nav>
       </aside>
 
@@ -41,7 +46,7 @@ export default function Home() {
             <p className="eyebrow">Usability Testing & UX QA</p>
             <h1>Prototype → Evidence → Better UX</h1>
           </div>
-          <button className="primaryButton" type="button">Create test</button>
+          <a className="primaryButton" href="/projects">Open projects</a>
         </header>
 
         <section id="overview" className="heroCard">
@@ -55,15 +60,15 @@ export default function Home() {
           </div>
           <div className="metricGrid" aria-label="V1 status summary">
             <div className="metric"><strong>5</strong><span>Core modules</span></div>
-            <div className="metric"><strong>27</strong><span>Planned screens</span></div>
-            <div className="metric"><strong>V1</strong><span>Prototype first</span></div>
+            <div className="metric"><strong>48</strong><span>Canonical screens</span></div>
+            <div className="metric"><strong>170</strong><span>QA states</span></div>
           </div>
         </section>
 
         <section id="modules" className="section">
           <div className="sectionHeading">
             <div>
-              <p className="eyebrow">Architecture</p>
+              <p className="eyebrow">V1 Product Loop</p>
               <h2>Core modules</h2>
             </div>
           </div>
