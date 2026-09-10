@@ -33,9 +33,11 @@ Task detail reuses the exact Task 25 aggregate for completion, Median/P75/P90, m
 
 Task 47 remains blocked by Task 39's source/capability gap. GWD-05 has a deterministic transform, but the current simplified V1 publish path has no source-approved immutable Figma geometry snapshot. Results must not substitute browser CSS coordinates.
 
-## Task 48 — Funnel & Drop-off — SOURCE GAP
+## Task 48 — Funnel & Drop-off — IMPLEMENTED / DEPENDENCY BLOCKED
 
-The analytics contract defines the transition formula but explicitly requires funnel configuration to be stored with the published test version. The current `test_versions` schema/publish snapshot has no canonical funnel configuration. Therefore the Results model marks funnel analytics unsupported rather than inventing steps. Task 48 requires a Source-of-Truth decision and persisted funnel definition before implementation can claim acceptance.
+Task 48 implementation is present and independently QA-covered. `test_versions.funnel_config` stores the versioned ordered funnel definition, `src/lib/analytics/funnel.ts` computes deterministic ordered progression, Largest Drop and No Data semantics, and `tests/task48-funnel.test.ts` covers schema validation, technical-block exclusion, conversion/drop-off formulas and tie-breaking. The hosted migration `20260909123000_task48_funnel_definition.sql` has already been applied according to the current task evidence.
+
+Task 48 must still remain dependency-blocked in planning because its Sheet dependency includes Task 40, which is not yet release-complete. This is a dependency gate, not a missing Task 48 implementation. Do not reimplement funnel configuration while Task 40 is blocked; re-run Task 48 QA when Task 40 clears, then update the task status from the planning source.
 
 ## Task 49 — Session Timeline & Response Detail
 
@@ -48,3 +50,5 @@ The Results API uses the existing researcher access token plus the Supabase publ
 ## QA
 
 `tests/task44-49-results.test.ts` recomputes the required metrics from deterministic accepted-event fixtures and verifies technical-block exclusion, No Data behavior, raw SEQ scale preservation, expected-vs-actual path behavior, derived backtrack evidence and session feedback timeline coverage.
+
+Task 48 additionally has `tests/task48-funnel.test.ts` plus its dedicated migration and documentation. Dependency-blocked status must not be interpreted as absent implementation.
