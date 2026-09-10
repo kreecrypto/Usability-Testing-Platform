@@ -37,10 +37,11 @@ test("current product surface does not expose researcher login", () => {
 test("authorization backend remains available while login UI is deferred", () => {
   const session = read("src/lib/auth/session.ts");
   const authRoute = read("src/app/api/auth/session/route.ts");
-  const projectApi = read("src/app/api/projects/route.ts");
+  const projectApi = read("src/lib/project-test-api.ts");
 
   assert.match(session, /accessTokenFromRequest/);
   assert.match(session, /validateAccessToken/);
   assert.match(authRoute, /validateAccessToken|session/i);
-  assert.match(projectApi, /accessTokenFromRequest|authentication_required|accessToken/i);
+  assert.match(projectApi, /accessTokenFromRequest/);
+  assert.match(projectApi, /authentication_required/);
 });
