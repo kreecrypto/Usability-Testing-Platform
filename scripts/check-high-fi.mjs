@@ -107,8 +107,8 @@ for (const signal of predeploySignals) {
 
 const homeSignals = [
   'href="/projects"',
-  'href="/high-fi"',
-  'href="/wireframes"',
+  'href: "/high-fi"',
+  'href: "/wireframes"',
   'Open projects',
   'Canonical screens',
   'QA states',
