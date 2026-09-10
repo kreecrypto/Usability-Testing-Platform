@@ -148,7 +148,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
   const [snapshot, setSnapshot] = useState<TestSnapshot | null>(null);
   const [taskIndex, setTaskIndex] = useState(0);
   const [sessionState, setSessionState] = useState<SessionState | null>(null);
-  const [technicalReason, setTechnicalReason] = useState("This step can't continue on this device or with the current prototype.");
+  const [technicalReason, setTechnicalReason] = useState("ขั้นตอนนี้ยังดำเนินการต่อไม่ได้บนอุปกรณ์หรือต้นแบบปัจจุบัน");
   const [offline, setOffline] = useState(false);
   const [working, setWorking] = useState(false);
   const [feedbackError, setFeedbackError] = useState("");
@@ -156,6 +156,8 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
   const [openFeedback, setOpenFeedback] = useState("");
   const [providerReady, setProviderReady] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const giveUpTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const giveUpCancelRef = useRef<HTMLButtonElement | null>(null);
   const runtimeRef = useRef<Runtime | null>(null);
   const initialCredentialRef = useRef<IngestionCredential | null>(null);
 
@@ -199,9 +201,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     });
     const lifecycle = createRunnerLifecycle({
       session: context,
-      emit: async (event) => {
-        await outbox.enqueue(event);
-      },
+      emit: async (event) => { await outbox.enqueue(event); },
       initialSequence: sequence,
       initialSessionStarted: Boolean(state && state.lastSequence > 0) || pendingStarted,
       initialSessionTerminal: Boolean(state && state.status !== "active"),
@@ -272,9 +272,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     const taskState = latest.state.taskStates.find((item) => item.taskId === currentTask.id);
     if (taskState?.outcome) {
       const runtime = runtimeRef.current;
-      if (runtime && !runtime.lifecycle.getState().activeTaskTerminal) {
-        runtime.lifecycle.markTaskTerminal(currentTask.id);
-      }
+      if (runtime && !runtime.lifecycle.getState().activeTaskTerminal) runtime.lifecycle.markTaskTerminal(currentTask.id);
       await moveAfterTerminal(taskIndex, latest.state);
     }
   }, [currentTask, fetchState, moveAfterTerminal, taskIndex]);
@@ -282,28 +280,18 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
   const inferStageFromState = useCallback(async (state: SessionState) => {
     if (!snapshot) return;
     setSessionState(state);
-    if (state.status === "completed") {
-      setStage("complete");
-      return;
-    }
+    if (state.status === "completed") { setStage("complete"); return; }
     if (state.status === "technical_blocked") {
-      setTechnicalReason("Something prevented this study from continuing.");
+      setTechnicalReason("มีปัญหาทางเทคนิคที่ทำให้แบบทดสอบดำเนินการต่อไม่ได้");
       setStage("technical");
       return;
     }
-    if (state.status === "abandoned") {
-      setStage("invalid");
-      return;
-    }
+    if (state.status === "abandoned") { setStage("invalid"); return; }
 
     const active = state.taskStates.find((task) => task.outcome === null);
     if (active) {
       const index = snapshot.tasks.findIndex((task) => task.id === active.taskId);
-      if (index >= 0) {
-        setTaskIndex(index);
-        setStage("runner");
-        return;
-      }
+      if (index >= 0) { setTaskIndex(index); setStage("runner"); return; }
     }
 
     let terminalIndex = -1;
@@ -326,7 +314,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     void (async () => {
       if (!browserSupported()) {
         if (!cancelled) {
-          setTechnicalReason("This browser isn't supported for this study. Try a current browser or another device.");
+          setTechnicalReason("เบราว์เซอร์นี้ยังไม่รองรับแบบทดสอบ โปรดลองใช้เบราว์เซอร์รุ่นปัจจุบันหรืออุปกรณ์อื่น");
           setStage("technical");
         }
         return;
@@ -338,10 +326,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
         setSnapshot(body.test);
         const existing = await fetchState();
         if (cancelled) return;
-        if (!existing) {
-          setStage("consent");
-          return;
-        }
+        if (!existing) { setStage("consent"); return; }
         setStage("recovery");
         await configureRuntime(existing.context, existing.state);
         try { await deliver(); } catch { return; }
@@ -372,10 +357,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     const runtime = runtimeRef.current;
     const bridge = createFigmaInteractionEventBridge({
       expectedSource: source,
-      session: {
-        ...runtime.context,
-        taskId: currentTask.id,
-      },
+      session: { ...runtime.context, taskId: currentTask.id },
       initialScreenId: snapshot.prototype.startNodeId,
       initialSequence: runtime.lifecycle.getState().sequence,
       emitTrackingEvent: async (event) => {
@@ -383,16 +365,13 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
         void deliver().then(syncTerminalState).catch(() => undefined);
       },
       onOperationalSignal: async (signal) => {
-        if (signal === "initial_load") {
-          setProviderReady(true);
-          return;
-        }
+        if (signal === "initial_load") { setProviderReady(true); return; }
         if (signal === "login_screen_shown" || signal === "password_screen_shown") {
           const reason = signal === "login_screen_shown" ? "figma_login_required" : "figma_password_required";
           setTechnicalReason(
             signal === "login_screen_shown"
-              ? "This prototype requires a Figma sign-in. Ask the study owner for an accessible link."
-              : "This prototype is password protected. Ask the study owner for access.",
+              ? "ต้นแบบนี้ต้องเข้าสู่ระบบ Figma โปรดติดต่อผู้ที่ส่งแบบทดสอบนี้มาเพื่อขอลิงก์ที่เปิดได้"
+              : "ต้นแบบนี้มีรหัสผ่าน โปรดติดต่อผู้ที่ส่งแบบทดสอบนี้มาเพื่อขอสิทธิ์เข้าถึง",
           );
           await runtime.lifecycle.technicalBlock(reason);
           void deliver().catch(() => undefined);
@@ -401,9 +380,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
       },
     });
 
-    const handler = (message: MessageEvent) => {
-      void bridge.handleMessage({ origin: message.origin, source: message.source, data: message.data });
-    };
+    const handler = (message: MessageEvent) => { void bridge.handleMessage({ origin: message.origin, source: message.source, data: message.data }); };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
   }, [currentTask, deliver, snapshot, stage, syncTerminalState]);
@@ -428,6 +405,19 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     return () => window.clearTimeout(timeout);
   }, [currentTask, deliver, fetchState, stage]);
 
+  useEffect(() => {
+    if (stage !== "give-up-confirm") return;
+    giveUpCancelRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setStage("runner");
+      window.setTimeout(() => giveUpTriggerRef.current?.focus(), 0);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [stage]);
+
   async function acceptConsent() {
     if (!snapshot || working) return;
     setWorking(true);
@@ -435,33 +425,19 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
       const response = await fetch(`/api/public/tests/${encodeURIComponent(snapshot.testVersionId)}/session`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          accepted: true,
-          consentVersion: CONSENT_VERSION,
-          locale: navigator.language || null,
-        }),
+        body: JSON.stringify({ accepted: true, consentVersion: CONSENT_VERSION, locale: navigator.language || null }),
       });
       const body = await readJson<{ session: SessionResponse }>(response);
       const session = body.session;
-      const context: RunnerContext = {
-        sessionId: session.sessionId,
-        participantId: session.participantId,
-        testId: session.testId,
-        testVersionId: session.testVersionId,
-      };
-      await configureRuntime(context, null, {
-        token: session.ingestionToken,
-        expiresAt: session.ingestionTokenExpiresAt,
-      });
+      const context: RunnerContext = { sessionId: session.sessionId, participantId: session.participantId, testId: session.testId, testVersionId: session.testVersionId };
+      await configureRuntime(context, null, { token: session.ingestionToken, expiresAt: session.ingestionTokenExpiresAt });
       try { await deliver(); } catch { setStage("recovery"); return; }
       setTaskIndex(0);
       setStage("task-intro");
     } catch {
-      setTechnicalReason("We couldn't start the study. Reload the page and try again.");
+      setTechnicalReason("เริ่มแบบทดสอบไม่สำเร็จ โปรดโหลดหน้าใหม่แล้วลองอีกครั้ง");
       setStage("technical");
-    } finally {
-      setWorking(false);
-    }
+    } finally { setWorking(false); }
   }
 
   async function startTask() {
@@ -472,7 +448,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
       await runtimeRef.current.lifecycle.startTask({ id: currentTask.id });
       await deliver();
       if (!snapshot?.prototype.liveEmbedUrl) {
-        setTechnicalReason("This prototype can't start in the study right now. Contact the study owner.");
+        setTechnicalReason("ยังเปิดต้นแบบสำหรับแบบทดสอบนี้ไม่ได้ โปรดติดต่อผู้ที่ส่งแบบทดสอบนี้มา");
         await runtimeRef.current.lifecycle.technicalBlock("embed_api_unconfigured");
         try { await deliver(); } catch { /* durable outbox keeps evidence */ }
         setStage("technical");
@@ -481,9 +457,12 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
       setStage("runner");
     } catch {
       setStage("recovery");
-    } finally {
-      setWorking(false);
-    }
+    } finally { setWorking(false); }
+  }
+
+  function cancelGiveUp() {
+    setStage("runner");
+    window.setTimeout(() => giveUpTriggerRef.current?.focus(), 0);
   }
 
   async function confirmGiveUp() {
@@ -502,23 +481,15 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
       }
     } catch {
       setStage("recovery");
-    } finally {
-      setWorking(false);
-    }
+    } finally { setWorking(false); }
   }
 
   async function submitFeedback() {
     if (!currentTask || working) return;
     const seqConfig = questionConfig(currentTask, "seq");
     const openConfig = questionConfig(currentTask, "open_feedback");
-    if (seqConfig.required && seq === null) {
-      setFeedbackError("Please choose an ease rating before continuing.");
-      return;
-    }
-    if (openConfig.required && !openFeedback.trim()) {
-      setFeedbackError("Please add feedback before continuing.");
-      return;
-    }
+    if (seqConfig.required && seq === null) { setFeedbackError("โปรดให้คะแนนความง่ายของงานก่อนดำเนินการต่อ"); return; }
+    if (openConfig.required && !openFeedback.trim()) { setFeedbackError("โปรดเพิ่มความคิดเห็นก่อนดำเนินการต่อ"); return; }
     setWorking(true);
     setFeedbackError("");
     try {
@@ -532,10 +503,8 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
       if (taskIndex + 1 < totalTasks) setStage("transition");
       else await finishSession();
     } catch {
-      setFeedbackError("We couldn't save your feedback. Try again.");
-    } finally {
-      setWorking(false);
-    }
+      setFeedbackError("บันทึกคำตอบไม่สำเร็จ โปรดลองอีกครั้ง");
+    } finally { setWorking(false); }
   }
 
   async function continueFromTimeout() {
@@ -548,9 +517,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
       } else {
         await moveAfterTerminal(taskIndex, sessionState);
       }
-    } catch {
-      setStage("recovery");
-    }
+    } catch { setStage("recovery"); }
   }
 
   async function retryRecovery() {
@@ -562,48 +529,41 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
       else setStage("invalid");
     } catch {
       setOffline(true);
-    } finally {
-      setWorking(false);
-    }
+    } finally { setWorking(false); }
   }
 
   const seqConfig = useMemo(() => currentTask ? questionConfig(currentTask, "seq") : { enabled: false, required: false }, [currentTask]);
   const openConfig = useMemo(() => currentTask ? questionConfig(currentTask, "open_feedback") : { enabled: false, required: false }, [currentTask]);
 
   if (stage === "access-loading") {
-    return <ParticipantShell progress={0} meta="Access check"><StatusCard title="Checking your access" body="Checking that this study is available." loading /></ParticipantShell>;
+    return <ParticipantShell progress={0} meta="กำลังตรวจสอบ"><StatusCard title="กำลังตรวจสอบแบบทดสอบ" body="กำลังตรวจสอบว่าแบบทดสอบนี้พร้อมใช้งาน" loading /></ParticipantShell>;
   }
-
   if (stage === "invalid") {
-    return <ParticipantShell progress={0} meta="Study unavailable"><StatusCard title="This study isn't available" body="The link may have expired or the study may have closed. Check the link or contact the study owner." /></ParticipantShell>;
+    return <ParticipantShell progress={0} meta="ใช้งานไม่ได้"><StatusCard title="แบบทดสอบนี้ใช้งานไม่ได้" body="ลิงก์อาจหมดอายุหรือแบบทดสอบอาจถูกปิด โปรดตรวจสอบลิงก์หรือติดต่อผู้ที่ส่งแบบทดสอบนี้มา" /></ParticipantShell>;
   }
-
   if (stage === "declined") {
-    return <ParticipantShell progress={0} meta="Consent"><StatusCard title="You chose not to participate" body="The study won't start, and interaction tracking remains off." /></ParticipantShell>;
+    return <ParticipantShell progress={0} meta="ความยินยอม"><StatusCard title="คุณเลือกไม่เข้าร่วม" body="แบบทดสอบจะไม่เริ่ม และจะไม่มีการบันทึกการโต้ตอบ" /></ParticipantShell>;
   }
-
   if (stage === "technical") {
-    return <ParticipantShell progress={progress} meta="Study status"><StatusCard title="Something prevented the study from continuing" body={technicalReason} technical /></ParticipantShell>;
+    return <ParticipantShell progress={progress} meta="สถานะแบบทดสอบ"><StatusCard title="แบบทดสอบยังดำเนินการต่อไม่ได้" body={technicalReason} technical /></ParticipantShell>;
   }
-
   if (stage === "recovery") {
-    return <ParticipantShell progress={progress} meta="Connection"><StatusCard title={offline ? "You're offline" : "Reconnecting"} body="Your completed progress is saved. We'll continue from where you left off." loading={!offline}><button className={styles.primaryButton} type="button" onClick={() => void retryRecovery()} disabled={working}>{working ? "Retrying…" : "Try again"}</button></StatusCard></ParticipantShell>;
+    return <ParticipantShell progress={progress} meta="การเชื่อมต่อ"><StatusCard title={offline ? "คุณออฟไลน์อยู่" : "กำลังเชื่อมต่ออีกครั้ง"} body="งานที่ทำเสร็จแล้วถูกบันทึกไว้ เราจะกลับไปยังจุดเดิมเมื่อเชื่อมต่อได้" loading={!offline}><button className={styles.primaryButton} type="button" onClick={() => void retryRecovery()} disabled={working}>{working ? "กำลังลองอีกครั้ง…" : "ลองอีกครั้ง"}</button></StatusCard></ParticipantShell>;
   }
-
   if (!snapshot) return null;
 
   if (stage === "consent") {
     return (
-      <ParticipantShell progress={0} meta="Consent">
+      <ParticipantShell progress={0} meta="ความยินยอม">
         <section className={styles.card} aria-labelledby="consent-title">
-          <span className={styles.eyebrow}>Before you begin</span>
-          <h1 id="consent-title">Take part in “{snapshot.title}”</h1>
-          <p>After you agree, this study records your task interactions, navigation path, pointer activity, time spent, task result, ease ratings, and optional comments.</p>
-          <p>This V1 study doesn't use your camera, microphone, or screen recording. You don't need to provide your name, email, or phone number.</p>
-          <div className={styles.notice}>Interaction tracking starts only after you choose <strong>Agree and start</strong>.</div>
+          <span className={styles.eyebrow}>ก่อนเริ่ม</span>
+          <h1 id="consent-title">เข้าร่วม “{snapshot.title}”</h1>
+          <p>หลังจากคุณยินยอม แบบทดสอบจะบันทึกการโต้ตอบกับงาน เส้นทางที่ใช้งาน ตำแหน่งที่คุณคลิกหรือแตะ เวลาที่ใช้ ผลของงาน คะแนนความง่าย และความคิดเห็นที่คุณเลือกส่ง</p>
+          <p>แบบทดสอบนี้ไม่ใช้กล้อง ไมโครโฟน หรือการบันทึกหน้าจอ และคุณไม่จำเป็นต้องให้ชื่อ อีเมล หรือหมายเลขโทรศัพท์</p>
+          <div className={styles.notice}>การบันทึกการโต้ตอบจะเริ่มหลังจากคุณเลือก <strong>ยินยอมและเริ่ม</strong></div>
           <div className={styles.actions}>
-            <button className={styles.secondaryButton} type="button" onClick={() => setStage("declined")} disabled={working}>Decline</button>
-            <button className={styles.primaryButton} type="button" onClick={() => void acceptConsent()} disabled={working}>{working ? "Starting…" : "Agree and start"}</button>
+            <button className={styles.secondaryButton} type="button" onClick={() => setStage("declined")} disabled={working}>ไม่ยินยอม</button>
+            <button className={styles.primaryButton} type="button" onClick={() => void acceptConsent()} disabled={working}>{working ? "กำลังเริ่ม…" : "ยินยอมและเริ่ม"}</button>
           </div>
         </section>
       </ParticipantShell>
@@ -612,14 +572,14 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
 
   if (stage === "task-intro" && currentTask) {
     return (
-      <ParticipantShell progress={progress} meta={`Task ${taskIndex + 1} of ${totalTasks}`}>
+      <ParticipantShell progress={progress} meta={`งาน ${taskIndex + 1} จาก ${totalTasks}`}>
         <section className={styles.card}>
-          <span className={styles.eyebrow}>Task {taskIndex + 1} of {totalTasks}</span>
+          <span className={styles.eyebrow}>งาน {taskIndex + 1} จาก {totalTasks}</span>
           <h1>{currentTask.title}</h1>
           {currentTask.scenario ? <p className={styles.scenario}>{currentTask.scenario}</p> : null}
           {currentTask.instruction ? <p>{currentTask.instruction}</p> : null}
-          <p className={styles.helper}>Complete the task as you normally would.</p>
-          <div className={styles.actions}><button className={styles.primaryButton} type="button" onClick={() => void startTask()} disabled={working}>{working ? "Starting…" : "Start task"}</button></div>
+          <p className={styles.helper}>ทำงานนี้ตามวิธีที่คุณทำตามปกติ</p>
+          <div className={styles.actions}><button className={styles.primaryButton} type="button" onClick={() => void startTask()} disabled={working}>{working ? "กำลังเริ่ม…" : "เริ่มงาน"}</button></div>
         </section>
       </ParticipantShell>
     );
@@ -629,27 +589,21 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     return (
       <div className={styles.runnerShell}>
         <header className={styles.runnerHeader}>
-          <div><strong>Task {taskIndex + 1} of {totalTasks}</strong><span>{currentTask.title}</span></div>
-          <button className={styles.ghostButton} type="button" onClick={() => setStage("give-up-confirm")}>Stop task</button>
+          <div><strong>งาน {taskIndex + 1} จาก {totalTasks}</strong><span>{currentTask.title}</span></div>
+          <button ref={giveUpTriggerRef} className={styles.ghostButton} type="button" onClick={() => setStage("give-up-confirm")}>ทำงานนี้ต่อไม่ได้</button>
         </header>
-        <div className={styles.runnerProgress}><i style={{ width: `${progress}%` }} /></div>
-        {offline ? <div className={styles.offlineBanner} role="status">You're offline. We'll retry when your connection returns.</div> : null}
-        {!providerReady ? <div className={styles.providerLoading} role="status">Loading the prototype…</div> : null}
-        <iframe
-          ref={iframeRef}
-          className={styles.prototypeFrame}
-          src={snapshot.prototype.liveEmbedUrl ?? snapshot.prototype.embedUrl}
-          title={`${snapshot.title} prototype task ${taskIndex + 1}`}
-          allow="fullscreen"
-        />
+        <div className={styles.runnerProgress} role="progressbar" aria-label="ความคืบหน้าของแบบทดสอบ" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><i style={{ width: `${progress}%` }} /></div>
+        {offline ? <div className={styles.offlineBanner} role="status">คุณออฟไลน์อยู่ ระบบจะลองส่งข้อมูลอีกครั้งเมื่อกลับมาเชื่อมต่อ</div> : null}
+        {!providerReady ? <div className={styles.providerLoading} role="status">กำลังโหลดต้นแบบ…</div> : null}
+        <iframe ref={iframeRef} className={styles.prototypeFrame} src={snapshot.prototype.liveEmbedUrl ?? snapshot.prototype.embedUrl} title={`${snapshot.title} ต้นแบบสำหรับงาน ${taskIndex + 1}`} allow="fullscreen" />
         {stage === "give-up-confirm" ? (
           <div className={styles.modalBackdrop} role="presentation">
             <section className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="giveup-title">
-              <h2 id="giveup-title">Stop this task?</h2>
-              <p>You can still answer the follow-up questions and continue the study.</p>
+              <h2 id="giveup-title">ต้องการยุติงานนี้หรือไม่?</h2>
+              <p>หากยุติงาน คุณยังตอบคำถามหลังงานและทำแบบทดสอบต่อได้</p>
               <div className={styles.actions}>
-                <button className={styles.secondaryButton} type="button" onClick={() => setStage("runner")} disabled={working}>Keep trying</button>
-                <button className={styles.dangerButton} type="button" onClick={() => void confirmGiveUp()} disabled={working}>{working ? "Stopping…" : "Stop task"}</button>
+                <button ref={giveUpCancelRef} className={styles.secondaryButton} type="button" onClick={cancelGiveUp} disabled={working}>ลองต่อ</button>
+                <button className={styles.dangerButton} type="button" onClick={() => void confirmGiveUp()} disabled={working}>{working ? "กำลังยุติ…" : "ยุติงานนี้"}</button>
               </div>
             </section>
           </div>
@@ -659,18 +613,18 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
   }
 
   if (stage === "timeout") {
-    return <ParticipantShell progress={progress} meta="Task status"><StatusCard title="Time's up for this task" body="Your time for this task has ended. Continue to see what's next."><button className={styles.primaryButton} type="button" onClick={() => void continueFromTimeout()}>Continue</button></StatusCard></ParticipantShell>;
+    return <ParticipantShell progress={progress} meta="สถานะงาน"><StatusCard title="หมดเวลาสำหรับงานนี้แล้ว" body="เวลาของงานนี้สิ้นสุดแล้ว ดำเนินการต่อเพื่อดูขั้นตอนถัดไป"><button className={styles.primaryButton} type="button" onClick={() => void continueFromTimeout()}>ดำเนินการต่อ</button></StatusCard></ParticipantShell>;
   }
 
   if (stage === "feedback" && currentTask) {
     return (
-      <ParticipantShell progress={progress} meta={`Task ${taskIndex + 1} feedback`}>
+      <ParticipantShell progress={progress} meta={`คำถามหลังงาน ${taskIndex + 1}`}>
         <section className={styles.card}>
-          <span className={styles.eyebrow}>Task {taskIndex + 1} feedback</span>
-          <h1>How easy or difficult was this task?</h1>
+          <span className={styles.eyebrow}>หลังทำงาน {taskIndex + 1}</span>
+          <h1>งานนี้ทำได้ง่ายหรือยากเพียงใด?</h1>
           {seqConfig.enabled ? (
             <fieldset className={styles.seqFieldset}>
-              <legend>Overall, how difficult or easy was the task?{seqConfig.required ? " *" : ""}</legend>
+              <legend>ให้คะแนนความง่ายของงานนี้{seqConfig.required ? " *" : ""}</legend>
               <div className={styles.seqScale}>
                 {[1, 2, 3, 4, 5, 6, 7].map((value) => (
                   <label key={value} className={seq === value ? styles.seqChoiceSelected : styles.seqChoice}>
@@ -679,27 +633,25 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
                   </label>
                 ))}
               </div>
-              <div className={styles.scaleAnchors}><span>Very difficult</span><span>Very easy</span></div>
+              <div className={styles.scaleAnchors}><span>ยากมาก</span><span>ง่ายมาก</span></div>
             </fieldset>
           ) : null}
           {openConfig.enabled ? (
-            <label className={styles.field}><span>What made this task easy or difficult?{openConfig.required ? " *" : ""}</span><textarea value={openFeedback} onChange={(event) => setOpenFeedback(event.target.value)} rows={5} /></label>
+            <label className={styles.field}><span>อะไรทำให้งานนี้ง่ายหรือยาก?{openConfig.required ? " *" : ""}</span><textarea value={openFeedback} onChange={(event) => setOpenFeedback(event.target.value)} rows={5} /></label>
           ) : null}
           {feedbackError ? <p className={styles.errorText} role="alert">{feedbackError}</p> : null}
-          <div className={styles.actions}><button className={styles.primaryButton} type="button" onClick={() => void submitFeedback()} disabled={working}>{working ? "Saving…" : "Submit feedback"}</button></div>
+          <div className={styles.actions}><button className={styles.primaryButton} type="button" onClick={() => void submitFeedback()} disabled={working}>{working ? "กำลังบันทึก…" : "ส่งคำตอบ"}</button></div>
         </section>
       </ParticipantShell>
     );
   }
 
   if (stage === "transition") {
-    return <ParticipantShell progress={progress} meta="Next task"><StatusCard title="Ready for the next task?" body="Your progress has been saved."><button className={styles.primaryButton} type="button" onClick={() => { setTaskIndex((index) => Math.min(index + 1, totalTasks - 1)); setStage("task-intro"); }}>Next task</button></StatusCard></ParticipantShell>;
+    return <ParticipantShell progress={progress} meta="งานถัดไป"><StatusCard title="พร้อมทำงานถัดไปหรือยัง?" body="ความคืบหน้าของคุณถูกบันทึกแล้ว"><button className={styles.primaryButton} type="button" onClick={() => { setTaskIndex((index) => Math.min(index + 1, totalTasks - 1)); setStage("task-intro"); }}>ไปงานถัดไป</button></StatusCard></ParticipantShell>;
   }
-
   if (stage === "complete") {
-    return <ParticipantShell progress={100} meta="Complete"><StatusCard title="Study complete" body="Thanks for taking part." complete /></ParticipantShell>;
+    return <ParticipantShell progress={100} meta="เสร็จสิ้น"><StatusCard title="แบบทดสอบเสร็จสมบูรณ์" body="ขอบคุณที่เข้าร่วม" complete /></ParticipantShell>;
   }
-
   return null;
 }
 
@@ -708,10 +660,13 @@ function ParticipantShell({ progress, meta, children }: { progress: number; meta
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.brand}>UT Study</div>
-        <div className={styles.headerMeta}><span>{meta}</span><div className={styles.progressTrack} aria-hidden="true"><i style={{ width: `${progress}%` }} /></div></div>
+        <div className={styles.headerMeta}>
+          <span>{meta}</span>
+          <div className={styles.progressTrack} role="progressbar" aria-label="ความคืบหน้าของแบบทดสอบ" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><i style={{ width: `${progress}%` }} /></div>
+        </div>
       </header>
       <main className={styles.main}>{children}</main>
-      <footer className={styles.footer}>Interaction tracking starts after you agree to participate.</footer>
+      <footer className={styles.footer}>แบบทดสอบการใช้งาน</footer>
     </div>
   );
 }

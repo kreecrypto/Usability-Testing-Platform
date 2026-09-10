@@ -199,7 +199,7 @@ test("Task42 time metrics derive from occurredAt and do not invent idle-adjusted
   assert.equal(metrics.idleRuleVersion, null);
 });
 
-test("Tasks 34-37 runner UI covers participant states without exposing internal research language", async () => {
+test("Tasks 34-37 runner UI covers participant states in Thai without exposing internal research language", async () => {
   const client = await readFile(new URL("../src/app/t/[testVersionId]/participant-runner-client.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../src/app/t/[testVersionId]/participant-runner.module.css", import.meta.url), "utf8");
 
@@ -208,26 +208,32 @@ test("Tasks 34-37 runner UI covers participant states without exposing internal 
   }
 
   for (const copy of [
-    "Checking your access",
-    "Agree and start",
-    "Complete the task as you normally would.",
-    "Stop this task?",
-    "Very difficult",
-    "Very easy",
-    "Submit feedback",
-    "This study isn't available",
-    "Something prevented the study from continuing",
-    "Time's up for this task",
-    "Reconnecting",
-    "Study complete",
+    "กำลังตรวจสอบแบบทดสอบ",
+    "ยินยอมและเริ่ม",
+    "ทำงานนี้ตามวิธีที่คุณทำตามปกติ",
+    "ต้องการยุติงานนี้หรือไม่?",
+    "ยากมาก",
+    "ง่ายมาก",
+    "ส่งคำตอบ",
+    "แบบทดสอบนี้ใช้งานไม่ได้",
+    "แบบทดสอบยังดำเนินการต่อไม่ได้",
+    "หมดเวลาสำหรับงานนี้แล้ว",
+    "กำลังเชื่อมต่ออีกครั้ง",
+    "แบบทดสอบเสร็จสมบูรณ์",
   ]) {
-    assert.match(client, new RegExp(copy.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")));
+    assert.ok(client.includes(copy), `missing Thai participant copy: ${copy}`);
   }
 
   assert.doesNotMatch(client, /P0[1-9] ·|P1[0-2] ·/);
   assert.doesNotMatch(client, /Expected paths and success targets are intentionally hidden/);
   assert.doesNotMatch(client, /recorded as Timeout|recorded as Give Up|not a usability failure|stable event IDs|anonymous-session capabilities/);
   assert.doesNotMatch(client, /expectedPath|successRule|failureRule/);
+  assert.doesNotMatch(client, /เส้นทางที่คาดไว้|เกณฑ์สำเร็จ/);
+  assert.match(client, /role="progressbar"/);
+  assert.match(client, /aria-valuenow=\{progress\}/);
+  assert.match(client, /event\.key !== "Escape"/);
+  assert.match(client, /giveUpTriggerRef/);
+  assert.match(client, /giveUpCancelRef/);
   assert.match(css, /var\(--ut-/);
   assert.match(css, /@media \(max-width:575px\)/);
   assert.doesNotMatch(css, /#[0-9a-f]{3,8}/i);

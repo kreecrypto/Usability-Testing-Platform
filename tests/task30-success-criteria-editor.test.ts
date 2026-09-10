@@ -134,18 +134,18 @@ test("database RPC independently rejects conflicting terminal targets under call
   assert.doesNotMatch(migration, /security definer/i);
 });
 
-test("S14 editor exposes target selection, conflict validation, unsupported-rule protection and responsive accessibility states", async () => {
+test("S14 editor exposes Thai target selection, conflict validation, unsupported-rule protection and responsive accessibility states", async () => {
   const client = await readFile(new URL("../src/app/builder/[testId]/criteria/success-criteria-client.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../src/app/builder/[testId]/criteria/success-criteria.module.css", import.meta.url), "utf8");
-  assert.match(client, /Start target node ID/);
-  assert.match(client, /Success target node IDs/);
-  assert.match(client, /Failure target node IDs/);
-  assert.match(client, /cannot be both success and failure/i);
-  assert.match(client, /UNSUPPORTED RULE/);
-  assert.match(client, /will not be overwritten automatically/i);
-  assert.match(client, /Loading criteria/);
-  assert.match(client, /No tasks are available/);
-  assert.match(client, /Save criteria/);
+  assert.match(client, /Node เริ่มต้น/);
+  assert.match(client, /Node ที่ถือว่าสำเร็จ/);
+  assert.match(client, /Node ที่ถือว่าไม่สำเร็จ/);
+  assert.match(client, /Node เดียวกันเป็นทั้งสำเร็จและไม่สำเร็จไม่ได้/);
+  assert.match(client, /เกณฑ์นี้ยังไม่รองรับ/);
+  assert.match(client, /ระบบจะไม่เขียนทับเกณฑ์เดิมโดยอัตโนมัติ/);
+  assert.match(client, /กำลังโหลดเกณฑ์/);
+  assert.match(client, /ยังไม่มีงาน/);
+  assert.match(client, /บันทึกเกณฑ์/);
   assert.match(client, /role="alert"/);
   assert.match(client, /role="status"/);
   assert.match(css, /@media/);

@@ -1,0 +1,30 @@
+{
+  "name": "Desktop CRM Case Creation",
+  "status": "prototype_source_verified",
+  "source": {
+    "provider": "figma",
+    "fileKey": "4dNgvws0LP3dtpiLg9VKix",
+    "prototypeUrl": "https://www.figma.com/proto/4dNgvws0LP3dtpiLg9VKix/sCRM-Case-Creation?node-id=728-8780&viewport=671%2C225%2C0.05&t=TJo1ojxqucZBfck8-1&scaling=min-zoom&content-scaling=fixed&starting-point-node-id=728%3A8780&page-id=728%3A6742",
+    "pageId": "728:6742",
+    "pageName": "05-08 Prototype",
+    "sectionId": "728:6743",
+    "sectionName": "Customer Journey - ดูกรมธรรม์ (Inbound)",
+    "startNodeId": "728:8780",
+    "startFrameName": "CRM — Case Detail View"
+  },
+  "verifiedFlowEvidence": {
+    "firstTransition": {
+      "fromNodeId": "728:8780",
+      "toNodeId": "728:6744",
+      "toFrameName": "Step 1 — เลือกประเภทผู้ติดต่อ (v1)",
+      "trigger": "ON_CLICK"
+    },
+    "reachableTopLevelFrameCount": 25,
+    "topLevelReactionEdgeCount": 52,
+    "note": "The prototype contains multiple branching outcomes from the review/submit step. The graph proves reachable interactions but does not identify a single canonical task goal or expected path."
+  },
+  "expectedPath": null,
+  "expectedPathStatus": "SOURCE_GAP",
+  "sourceGap": "Task 53 requires an expected path, but the supplied prototype graph contains multiple valid branches and no source-backed task instruction identifies which branch is the canonical expected path. Do not infer one.",
+  "scope": "Task 53 seed 1 of 3; Mobile Checkout and Mobile Banking prototype artifacts are still missing."
+}
