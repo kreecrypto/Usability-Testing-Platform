@@ -7,7 +7,7 @@ import styles from "./results.module.css";
 type View = "overview" | "tasks" | "paths" | "funnel" | "sessions";
 type LoadState = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; results: ResultsModel };
 
-const viewLabels: Record<View, string> = { overview: "ภาพรวม", tasks: "รายงาน", paths: "เส้นทาง", funnel: "Funnel", sessions: "ผู้เข้าร่วม" };
+const viewLabels: Record<View, string> = { overview: "ภาพรวม", tasks: "งานทดสอบ", paths: "เส้นทาง", funnel: "Funnel", sessions: "ผู้เข้าร่วม" };
 const outcomeLabels: Record<string, string> = {
   success_direct: "สำเร็จตามเส้นทาง", success_indirect: "สำเร็จด้วยเส้นทางอื่น", failed: "ไม่สำเร็จ", give_up: "ยุติงาน", timeout: "หมดเวลา", abandoned: "ออกจากแบบทดสอบ", technical_blocked: "ติดปัญหาทางเทคนิค", active: "กำลังทำ",
 };
@@ -46,7 +46,7 @@ function Overview({ results }: { results: ResultsModel }) {
 }
 
 function Tasks({ results }: { results: ResultsModel }) {
-  if (results.taskDetails.length === 0) return <EmptyState title="ยังไม่มีผลรายงาน">ยังไม่มีหลักฐานของงานที่นำมาคำนวณได้ในเวอร์ชันนี้</EmptyState>;
+  if (results.taskDetails.length === 0) return <EmptyState title="ยังไม่มีผลงานทดสอบ">ยังไม่มีหลักฐานของงานที่นำมาคำนวณได้ในเวอร์ชันนี้</EmptyState>;
   return <div className={styles.taskList}>{results.taskDetails.map((task) => <article key={task.taskId} className={styles.panel}>
     <div className={styles.panelHeader}><div><span className={styles.eyebrow}>งาน {task.ordinal}</span><h2>{task.title}</h2></div><span className={styles.badge}>n={task.eligible}</span></div>
     <div className={styles.metricsGrid}>
