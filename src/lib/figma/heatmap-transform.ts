@@ -13,7 +13,7 @@ export type FigmaPointerGeometryEvidence = Readonly<{
 }>;
 
 export type PinnedFigmaGeometrySnapshot = Readonly<{
-  figmaVersionId: string;
+  geometryVersionId: string;
   presentedNodeId: string;
   presentedBounds: Rect;
   targetNodeId: string;
@@ -24,7 +24,7 @@ export type PinnedFigmaGeometrySnapshot = Readonly<{
 
 export type CanonicalHeatmapPoint = Readonly<{
   transformVersion: typeof FIGMA_HEATMAP_TRANSFORM_VERSION;
-  figmaVersionId: string;
+  geometryVersionId: string;
   presentedNodeId: string;
   x: number;
   y: number;
@@ -93,16 +93,17 @@ function clean(value: number): number {
 
 /**
  * Transform documented Figma pointer evidence into stable coordinates relative
- * to the pinned presented node (top-level frame or topmost overlay).
+ * to the immutable geometry snapshot stored on one UTP test_version.
  *
- * The transform accepts geometry as an immutable caller-supplied snapshot. It
- * deliberately does not acquire geometry or resolve "latest" Figma state.
+ * Simplified V1 intentionally does not require Figma REST file-version metadata.
+ * `geometryVersionId` therefore identifies the immutable UTP test_version-bound
+ * geometry snapshot, not a guessed Figma version ID.
  */
 export function transformFigmaPointerToCanonicalFrame(
   evidence: FigmaPointerGeometryEvidence,
   snapshot: PinnedFigmaGeometrySnapshot,
 ): CanonicalHeatmapPoint {
-  const figmaVersionId = requiredText(snapshot.figmaVersionId, "figmaVersionId");
+  const geometryVersionId = requiredText(snapshot.geometryVersionId, "geometryVersionId");
   assertSameId(evidence.presentedNodeId, snapshot.presentedNodeId, "presentedNodeId");
   assertSameId(evidence.targetNodeId, snapshot.targetNodeId, "targetNodeId");
   assertSameId(
@@ -121,16 +122,11 @@ export function transformFigmaPointerToCanonicalFrame(
   );
   const scrollOffset = point(evidence.nearestScrollingFrameOffset, "nearestScrollingFrameOffset");
 
-  // Figma documents target-node coordinates as local to the target. When the
-  // target itself is the scrolling frame, add its scroll offset to obtain the
-  // click in scrolling content bounds.
   const targetCanvasPoint = Object.freeze({
     x: target.x + targetMouse.x + (evidence.targetNodeId === evidence.nearestScrollingFrameId ? scrollOffset.x : 0),
     y: target.y + targetMouse.y + (evidence.targetNodeId === evidence.nearestScrollingFrameId ? scrollOffset.y : 0),
   });
 
-  // Figma also provides a local point in the nearest scrolling frame plus that
-  // frame's scroll offset. This independently reconstructs the content point.
   const scrollerContentCanvasPoint = Object.freeze({
     x: scroller.x + scrollerMouse.x + scrollOffset.x,
     y: scroller.y + scrollerMouse.y + scrollOffset.y,
@@ -161,7 +157,7 @@ export function transformFigmaPointerToCanonicalFrame(
 
   return Object.freeze({
     transformVersion: FIGMA_HEATMAP_TRANSFORM_VERSION,
-    figmaVersionId,
+    geometryVersionId,
     presentedNodeId: snapshot.presentedNodeId,
     x,
     y,
