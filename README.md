@@ -43,18 +43,20 @@ Create a focused workflow for UX teams:
 UTP uses three active platform boundaries:
 
 - Source / CI: GitHub
-- Frontend + runtime: Cloudflare Workers
+- Frontend + runtime: Vercel Production
 - Main database / auth: Supabase PostgreSQL
-- Event collector: Cloudflare-hosted Next.js route handler
+- Event collector: Vercel-hosted Next.js route handler (`/v1/events`)
 - Event aggregation: Supabase/PostgreSQL-derived analytics pipeline
-- Storage: Supabase-backed application data stores; Cloudflare R2 is optional only when a current task explicitly requires object storage
-- Prototype integration: Figma Embed / OAuth
+- Storage: Supabase-backed application data stores; external object storage is optional only when a current task explicitly requires it
+- Prototype integration: Figma public prototype embed / Embed API
 
-Vercel and Netlify are no longer active architecture targets. Existing Vercel URLs may remain in historical QA evidence until Cloudflare production cutover is verified.
+Production is deployed from `main` through the connected Vercel project. The canonical production origin is:
 
-Cloudflare's current recommended migration path for an existing Next.js 16 application is vinext on Workers. The migration must pass compatibility, build and runtime QA before the old production runtime is retired.
+`https://usability-testing-platform.vercel.app/`
 
-See [`docs/architecture.md`](docs/architecture.md) for the system model and [`docs/cloudflare-runtime.md`](docs/cloudflare-runtime.md) for migration/cutover rules.
+Cloudflare Workers and Netlify are not active production targets. Existing Cloudflare/Netlify artifacts may remain as historical or fallback compatibility evidence, but they must not override the current Sheet runtime governance.
+
+See [`docs/architecture.md`](docs/architecture.md) for the system model, [`docs/vercel-runtime.md`](docs/vercel-runtime.md) for the active deployment/release contract, and [`docs/cloudflare-runtime.md`](docs/cloudflare-runtime.md) for historical/fallback notes.
 
 ## Core modules
 
@@ -75,11 +77,11 @@ Open `http://localhost:3000`.
 
 ## Environment
 
-Copy `.env.example` to `.env.local` and add development credentials when integrations are enabled. Production secrets must be stored in Cloudflare Workers / GitHub secret stores and must never be committed.
+Copy `.env.example` to `.env.local` and add development credentials when integrations are enabled. Production secrets must be configured in Vercel Environment Variables and must never be committed. Supabase server credentials remain server-only; browser-visible values must use only the existing `NEXT_PUBLIC_*` contract.
 
 ## Source of truth
 
-Product planning and execution order are maintained in the Google Sheet **Usability Testing Platform — Task List**. GitHub is the source of truth for implementation and technical documentation. Cloudflare production is runtime evidence only; Supabase remains the authority for canonical persisted application data.
+Product planning and execution order are maintained in the Google Sheet **Usability Testing Platform — Task List**. GitHub is the source of truth for implementation and technical documentation. Vercel Production is the active runtime evidence source; Supabase remains the authority for canonical persisted application data and Auth.
 
 ## Low-fidelity wireframes (Task 12)
 

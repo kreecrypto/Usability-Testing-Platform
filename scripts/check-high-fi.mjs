@@ -9,6 +9,8 @@ const paths = {
   map: 'docs/design-system/screen-component-map.json',
   page: 'src/app/high-fi/page.tsx',
   css: 'src/app/high-fi/high-fi.css',
+  predeployCss: 'src/app/high-fi/predeploy-fixes.css',
+  home: 'src/app/page.tsx',
   tokens: 'src/styles/tokens.css',
 };
 
@@ -19,6 +21,8 @@ for (const [name, file] of Object.entries(paths)) {
 const map = JSON.parse(read(paths.map));
 const page = read(paths.page);
 const css = read(paths.css);
+const predeployCss = read(paths.predeployCss);
+const home = read(paths.home);
 const tokens = read(paths.tokens);
 const fail = (message) => {
   console.error(`FAIL: ${message}`);
@@ -51,15 +55,18 @@ const pageSignals = [
   'StateNotice',
   'Heatmap',
   'Retest comparison',
+  'ComponentDrivenSpecimen',
+  'navKeyForScreen',
+  'mobileNavToggle',
+  'BuildLifecycle',
+  'Share · Locked',
+  'aria-current="step"',
+  'predeploy-fixes.css',
 ];
 for (const signal of pageSignals) {
   if (!page.includes(signal)) fail(`high-fi page missing signal: ${signal}`);
 }
 
-// Participant-only screens are data-driven from screen-component-map.json. Verify
-// their canonical IDs/names in the map and separately verify that the high-fi page
-// renders ParticipantContent from screenMap.screens. Literal names do not need to
-// be duplicated in page.tsx, otherwise this check creates false negatives.
 const requiredMappedParticipantScreens = [
   ['P05', 'Give Up Confirmation'],
   ['P10', 'Technical Blocked'],
@@ -87,6 +94,35 @@ for (const signal of cssSignals) {
   if (!css.includes(signal)) fail(`high-fi CSS missing signal: ${signal}`);
 }
 
+const predeploySignals = [
+  '.appSidebar.appSidebar--open nav',
+  '.mobileNavToggle',
+  '.builderStep.isCurrent',
+  '.lifecycleStep.isLocked',
+  'var(--ut-touch-target-min)',
+];
+for (const signal of predeploySignals) {
+  if (!predeployCss.includes(signal)) fail(`predeploy UX CSS missing signal: ${signal}`);
+}
+
+const homeSignals = [
+  'href="/projects"',
+  'href: "/high-fi"',
+  'href: "/wireframes"',
+  'Open projects',
+  'Canonical screens',
+  'QA states',
+];
+for (const signal of homeSignals) {
+  if (!home.includes(signal)) fail(`home page missing predeploy UX signal: ${signal}`);
+}
+if (home.includes('<strong>27</strong><span>Planned screens</span>')) {
+  fail('home page still reports stale 27-screen inventory');
+}
+if ((home.match(/href="#modules"/g) ?? []).length > 1) {
+  fail('home page still contains duplicate module-only navigation targets');
+}
+
 const requiredTokenSignals = [
   '--ut-color-brand',
   '--ut-color-text-primary',
@@ -100,14 +136,11 @@ for (const signal of requiredTokenSignals) {
   if (!tokens.includes(signal)) fail(`tokens missing ${signal}`);
 }
 
-// Prevent Task 14 from silently regressing to a few showcase screens.
 for (const screen of map.screens) {
   if (!screen.componentFamilies?.length) fail(`${screen.id} has no component-family mapping`);
   if (!screen.states?.length) fail(`${screen.id} has no state coverage`);
 }
 
-// The artifact is explicitly a review implementation. Runtime integrations remain
-// separate engineering tasks and must not be falsely claimed here.
 if (!page.includes('no production-data claim')) {
   fail('high-fi route must retain explicit non-production-data boundary');
 }
@@ -117,6 +150,8 @@ if (!process.exitCode) {
   console.log('PASS researcher + participant renderer signals');
   console.log('PASS canonical participant screens: P05 Give Up Confirmation / P10 Technical Blocked');
   console.log('PASS desktop/mobile responsive signals');
+  console.log('PASS mobile researcher navigation and S09 lifecycle/selection signals');
+  console.log('PASS actionable root navigation and canonical coverage summary');
   console.log('PASS focus, disabled, loading, empty, error, restricted and reduced-motion signals');
   console.log('PASS Task 14 review-artifact boundary');
 }

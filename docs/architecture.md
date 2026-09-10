@@ -7,7 +7,7 @@ GitHub
   ├─ source code
   └─ CI / QA
 
-Cloudflare Workers
+Vercel Production
   ├─ Next.js runtime
   └─ Event Collector
 
@@ -16,7 +16,7 @@ Supabase
   └─ Auth
 ```
 
-Vercel and Netlify are not active architecture targets. Their URLs/configuration may remain only as historical migration evidence until Cloudflare production cutover is verified.
+The active production origin is `https://usability-testing-platform.vercel.app/` and production must be built from the repository `main` branch. Cloudflare Workers and Netlify are historical/fallback runtime evidence only unless the Google Sheet Source Governance explicitly reactivates them.
 
 ## Product loop
 
@@ -46,7 +46,7 @@ Retest Comparison
 
 ### 1. Researcher application
 
-Next.js application running on Cloudflare Workers and used by UX designers and researchers to:
+Next.js application running on Vercel Production and used by UX designers and researchers to:
 
 - manage projects and tests
 - import Figma prototypes
@@ -70,7 +70,7 @@ A minimal test runtime that:
 
 ### 3. Event collector
 
-Cloudflare-hosted Next.js route-handler boundary responsible for:
+Vercel-hosted Next.js route-handler boundary responsible for:
 
 - validating single-event and batch event payloads
 - rejecting malformed or unauthorized payloads
@@ -82,11 +82,11 @@ Cloudflare-hosted Next.js route-handler boundary responsible for:
 
 Participant clients must not write raw events directly to the main database.
 
-The application-facing collector contract remains provider-neutral (`/v1/events`). Hosting changes must not leak a Cloudflare-specific identifier into analytics contracts.
+The application-facing collector contract remains provider-neutral (`/v1/events`). Hosting changes must not leak provider-specific identifiers into analytics contracts.
 
 ### 4. Main database
 
-Supabase PostgreSQL stores application state and canonical research data. Supabase remains the database/auth boundary after the hosting migration.
+Supabase PostgreSQL stores application state and canonical research data. Supabase remains the database/Auth boundary independently of the hosting provider.
 
 Baseline entities:
 
@@ -148,12 +148,12 @@ Figma-specific identifiers should not leak into analytics contracts when an inte
 ## Data flow
 
 ```text
-Participant Runner (Cloudflare Workers)
+Participant Runner (Vercel)
     │
     ├─ local event buffer
     │
     ▼
-Cloudflare Event Collector
+Vercel Event Collector (/v1/events)
     │
     ├─ validate
     ├─ authorize / rate-limit
@@ -173,27 +173,25 @@ Aggregation Pipeline
     └─ heatmap dataset
     │
     ▼
-Researcher Results UI (Cloudflare Workers)
+Researcher Results UI (Vercel)
 ```
 
-## Cloudflare runtime migration
+## Vercel production deployment
 
-UTP is a Next.js 16 application. The current Cloudflare-supported target is Workers using vinext.
+UTP is a Next.js 16 application connected to Vercel through Git integration.
 
-Migration order:
+Production sequence:
 
-1. Keep the existing Next.js source runnable during migration.
-2. Run `vinext check` against the current repository.
-3. Initialize the Cloudflare Workers target with vinext.
-4. Run the existing repository QA gate.
-5. Build the Workers-compatible output.
-6. Configure Cloudflare runtime secrets without committing them.
-7. Deploy a Cloudflare preview and verify core flows.
-8. Deploy production and verify runtime/event-ingestion evidence.
-9. Update the Sheet runtime URL only after production verification.
-10. Retire Vercel/Netlify as active runtime dependencies only after a rollback-safe cutover.
+1. Work on a non-production branch and obtain the Vercel Preview deployment.
+2. Run the existing repository QA gates on the exact branch head.
+3. Verify preview routes and UX/runtime behavior required by the change.
+4. Merge the verified branch into `main`.
+5. Confirm the exact merged-main deployment reaches Vercel `READY` with target `production`.
+6. Smoke-test the canonical production origin and required API/health routes.
+7. Check production runtime errors/logs for regressions.
+8. Record release evidence without treating HTTP smoke as a substitute for browser/device-matrix or UAT gates.
 
-See [`cloudflare-runtime.md`](cloudflare-runtime.md) for the operational contract.
+See [`vercel-runtime.md`](vercel-runtime.md) for the operational contract. [`cloudflare-runtime.md`](cloudflare-runtime.md) is retained for historical/fallback compatibility only.
 
 ## Versioning rule
 
@@ -220,4 +218,4 @@ V1 cannot ship unless:
 4. Participant Runner works on the supported mobile/desktop matrix.
 5. Workspace isolation and public-link access are security-tested.
 6. Critical UX issues in the platform itself are zero at release gate.
-7. The active Cloudflare production runtime has passed build, route, event-ingestion, responsive and regression QA.
+7. The exact-main Vercel production deployment is `READY` and required route, event-ingestion, responsive and regression QA evidence has passed.
