@@ -3,14 +3,17 @@
 import { useMemo, useState } from "react";
 import screenMap from "../../../docs/design-system/screen-component-map.json";
 import "./high-fi.css";
+import "./predeploy-fixes.css";
 
 type Screen = (typeof screenMap.screens)[number];
 type Viewport = "desktop" | "mobile";
 type StateTone = "neutral" | "loading" | "error" | "restricted" | "unsupported" | "empty" | "warning" | "success";
 
+type NavKey = "Projects" | "Tests" | "Results" | "Participants" | "Settings" | null;
+
 const screens = screenMap.screens as Screen[];
 const totalStates = screens.reduce((sum, screen) => sum + screen.states.length, 0);
-const researcherNav = ["Projects", "Tests", "Results", "Participants", "Settings"];
+const researcherNav = ["Projects", "Tests", "Results", "Participants", "Settings"] as const;
 
 function stateKind(state: string): StateTone {
   const value = state.toLowerCase();
@@ -22,6 +25,17 @@ function stateKind(state: string): StateTone {
   if (["warning", "low sample", "blocked", "timeout", "timed out", "give up"].some((token) => value.includes(token))) return "warning";
   if (["pass", "ready", "complete", "published", "connected", "valid", "success"].some((token) => value.includes(token))) return "success";
   return "neutral";
+}
+
+function navKeyForScreen(id: string): NavKey {
+  if (!id.startsWith("S")) return null;
+  const number = Number(id.slice(1));
+  if (number >= 3 && number <= 6) return "Projects";
+  if (number >= 7 && number <= 20) return "Tests";
+  if (number >= 21 && number <= 30) return "Results";
+  if (number === 31) return "Participants";
+  if (number >= 32 && number <= 36) return "Settings";
+  return null;
 }
 
 function StateNotice({ state }: { state: string }) {
@@ -83,17 +97,136 @@ function RetestComparison() {
 }
 
 function ResearcherShell({ screen, children }: { screen: Screen; children: React.ReactNode }) {
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const activeNav = navKeyForScreen(screen.id);
+
   return (
     <div className="appFrame">
-      <aside className="appSidebar">
+      <aside className={mobileNavOpen ? "appSidebar appSidebar--open" : "appSidebar"}>
         <div className="axaMark" aria-label="UT Platform">UT<span>•</span></div>
-        <nav aria-label="Primary navigation">{researcherNav.map((item, index) => <a key={item} href="#" className={index === 0 ? "sideNavItem isActive" : "sideNavItem"}>{item}</a>)}</nav>
+        <button
+          type="button"
+          className="mobileNavToggle"
+          aria-controls="review-primary-nav"
+          aria-expanded={mobileNavOpen}
+          onClick={() => setMobileNavOpen((open) => !open)}
+        >
+          {mobileNavOpen ? "Close menu" : "Menu"}
+        </button>
+        <nav id="review-primary-nav" aria-label="Primary navigation">
+          {researcherNav.map((item) => (
+            <a
+              key={item}
+              href="#review-stage"
+              className={activeNav === item ? "sideNavItem isActive" : "sideNavItem"}
+              aria-current={activeNav === item ? "page" : undefined}
+              onClick={() => setMobileNavOpen(false)}
+            >
+              {item}
+            </a>
+          ))}
+        </nav>
       </aside>
       <div className="appMain">
         <header className="appTopbar"><div><span className="crumb">Usability Testing Platform / V1</span><strong>{screen.id} · {screen.name}</strong></div><ReviewButton variant="secondary">Preview</ReviewButton></header>
         <main className="screenCanvas">{children}</main>
       </div>
     </div>
+  );
+}
+
+function BuildLifecycle() {
+  return (
+    <div className="lifecycleRail" aria-label="Test lifecycle">
+      <span className="lifecycleStep isCurrent">Build · Current</span>
+      <span className="lifecycleStep">Preview</span>
+      <span className="lifecycleStep">Validate</span>
+      <span className="lifecycleStep">Publish</span>
+      <span className="lifecycleStep isLocked" aria-disabled="true">Share · Locked</span>
+      <span className="lifecycleStep isLocked" aria-disabled="true">Results · Locked</span>
+    </div>
+  );
+}
+
+function BuildWorkspaceSpecimen({ kind }: { kind: StateTone }) {
+  const blocked = kind === "error" || kind === "restricted" || kind === "unsupported";
+  return (
+    <>
+      <BuildLifecycle />
+      <div className="builderWorkspace">
+        <section className="panel" aria-label="Test flow">
+          <div className="panelHeader"><div><h2>Test flow</h2><p>Selected step stays visible while editing.</p></div><span className="tag">Draft</span></div>
+          <div className="builderStepList">
+            <button type="button" className="builderStep"><strong>Welcome & consent</strong><small>Configured</small></button>
+            <button type="button" className="builderStep"><strong>Prototype</strong><small>Connection required</small></button>
+            <button type="button" className="builderStep isCurrent" aria-current="step"><strong>Task 1 · Checkout</strong><small>Editing · scenario and success rules</small></button>
+            <button type="button" className="builderStep"><strong>Post-task feedback</strong><small>SEQ + open response</small></button>
+          </div>
+        </section>
+        <section className="panel formPanel" aria-label="Selected task editor">
+          <div className="panelHeader"><div><h2>Task 1 · Checkout</h2><p>Editing · required configuration remains visible.</p></div><span className="tag">Selected</span></div>
+          <label className="field"><span className="fieldLabel">Scenario</span><textarea className="fieldControl fieldTextarea" defaultValue="Find the canvas bag and place an order." /></label>
+          <div className="screenContractGrid">
+            <div className="screenContractCard"><strong>Prototype</strong><span>Connect and select a start point before publish.</span></div>
+            <div className="screenContractCard"><strong>Success criteria</strong><span>Define terminal success/failure rules before publish.</span></div>
+          </div>
+          <div className="formActions"><ReviewButton variant="secondary">Preview draft</ReviewButton><ReviewButton disabled={blocked}>Review validation</ReviewButton></div>
+          <p className="hint">Share and Results stay locked until a version passes validation and is published.</p>
+        </section>
+      </div>
+    </>
+  );
+}
+
+function ComponentDrivenSpecimen({ screen, state, kind }: { screen: Screen; state: string; kind: StateTone }) {
+  const families = new Set<string>(screen.componentFamilies);
+  const showSearch = families.has("SearchField");
+  const showTextInput = families.has("TextInput");
+  const showTextarea = families.has("Textarea");
+  const showTable = families.has("Table") || families.has("TableOrCardList");
+  const showMetrics = families.has("MetricCard");
+  const showValidation = families.has("ValidationSummary") || families.has("ValidationChecklist") || families.has("PublishChecklist");
+  const showPrototype = families.has("PrototypeCanvas") || families.has("PrototypeFramePicker");
+  const showChoices = families.has("ChoiceCard") || families.has("RadioGroup") || families.has("SEQScale");
+  const disabled = kind === "error" || kind === "restricted" || kind === "unsupported";
+
+  return (
+    <section className="panel formPanel">
+      <div className="panelHeader"><div><h2>{screen.name}</h2><p>{screen.componentFamilies.join(" · ")}</p></div><span className="tag">{state}</span></div>
+
+      {showSearch ? <label className="field"><span className="fieldLabel">Search</span><input className="fieldControl" placeholder={`Search ${screen.name.toLowerCase()}`} /></label> : null}
+      {showTextInput ? <label className="field"><span className="fieldLabel">Primary field</span><input className={kind === "error" ? "fieldControl fieldControl--error" : "fieldControl"} aria-invalid={kind === "error"} placeholder={`${screen.name} input`} /></label> : null}
+      {showTextarea ? <label className="field"><span className="fieldLabel">Supporting details</span><textarea className="fieldControl fieldTextarea" placeholder={`Add ${screen.name.toLowerCase()} details`} /></label> : null}
+
+      {showChoices ? (
+        <fieldset className="seqFieldset"><legend>Review choice state</legend><div className="seqScale">{[1, 2, 3].map((value) => <label key={value}><input type="radio" name={`choice-${screen.id}`} value={value} /><span>{value}</span></label>)}</div></fieldset>
+      ) : null}
+
+      {showValidation ? (
+        <div className="screenContractGrid" aria-label="Validation summary">
+          <div className="screenContractCard"><strong>Required configuration</strong><span>Represent pass, warning and blocked outcomes without hiding context.</span></div>
+          <div className="screenContractCard"><strong>Recovery path</strong><span>Keep the corrective action adjacent to the affected state.</span></div>
+        </div>
+      ) : null}
+
+      {showPrototype ? <div className="prototypeReviewSurface" aria-label="Prototype review surface">Prototype / frame review surface</div> : null}
+
+      {showMetrics ? <div className="metricsGrid"><MetricCard label="Eligible sessions" value="—" detail="Review-state placeholder" /><MetricCard label="Completion" value="—" detail="Unavailable until evidence exists" /><MetricCard label="Median time" value="—" detail="Successful eligible sessions only" /></div> : null}
+
+      {showTable ? (
+        <div className="tableWrap" tabIndex={0} aria-label={`${screen.name} table review`}>
+          <table className="specimenTable"><thead><tr><th scope="col">Item</th><th scope="col">State</th><th scope="col">Evidence</th></tr></thead><tbody><tr><td>Review row</td><td>{state}</td><td>Source-backed placeholder</td></tr></tbody></table>
+        </div>
+      ) : null}
+
+      {!showSearch && !showTextInput && !showTextarea && !showTable && !showMetrics && !showValidation && !showPrototype && !showChoices ? (
+        <div className="screenContractGrid" aria-label="Component contract">
+          {screen.componentFamilies.map((family) => <div className="screenContractCard" key={family}><strong>{family}</strong><span>Required by the canonical screen-component map.</span></div>)}
+        </div>
+      ) : null}
+
+      <div className="formActions"><ReviewButton variant="secondary">Back</ReviewButton><ReviewButton disabled={disabled}>Continue review</ReviewButton></div>
+    </section>
   );
 }
 
@@ -106,17 +239,10 @@ function ScreenContent({ screen, state }: { screen: Screen; state: string }) {
     <ResearcherShell screen={screen}>
       <div className="pageIntro"><div><span className="eyebrow">Researcher · {screen.id}</span><h1>{screen.name}</h1><p>High-fidelity review mapped to the canonical screen inventory and selected state.</p></div><span className="versionPill">Draft v3</span></div>
       <StateNotice state={state} />
+      {screen.id === "S09" ? <BuildWorkspaceSpecimen kind={kind} /> : null}
       {screen.id === "S25" ? <section className="panel"><h2>Heatmap</h2><p>Canonical-coordinate review surface with explicit unsupported/no-data handling.</p><Heatmap /></section> : null}
       {screen.id === "S30" ? <RetestComparison /> : null}
-      {screen.id !== "S25" && screen.id !== "S30" ? (
-        <section className="panel formPanel">
-          <div className="panelHeader"><div><h2>{screen.name}</h2><p>{screen.componentFamilies.join(" · ")}</p></div><span className="tag">{state}</span></div>
-          <label className="field"><span className="fieldLabel">Study name</span><input className={kind === "error" ? "fieldControl fieldControl--error" : "fieldControl"} defaultValue="Checkout usability study" aria-invalid={kind === "error"} /></label>
-          <label className="field"><span className="fieldLabel">Context</span><textarea className="fieldControl fieldTextarea" defaultValue="Evidence-first V1 review specimen." /></label>
-          <div className="metricsGrid"><MetricCard label="Eligible sessions" value="22" detail="Technical blocks excluded" /><MetricCard label="Completion" value="77%" detail="17 / 22 eligible" /><MetricCard label="Median time" value="42s" detail="Successful sessions" /></div>
-          <div className="formActions"><ReviewButton variant="secondary">Cancel</ReviewButton><ReviewButton disabled={kind === "error" || kind === "restricted" || kind === "unsupported"}>Continue</ReviewButton></div>
-        </section>
-      ) : null}
+      {screen.id !== "S09" && screen.id !== "S25" && screen.id !== "S30" ? <ComponentDrivenSpecimen screen={screen} state={state} kind={kind} /> : null}
     </ResearcherShell>
   );
 }
@@ -167,7 +293,7 @@ export default function HighFiReview() {
         <div className="componentSummary"><span>Component families</span><strong title={selectedScreen.componentFamilies.join(", ")}>{selectedScreen.componentFamilies.join(" · ")}</strong></div>
       </section>
 
-      <section className={viewport === "mobile" ? "reviewStage reviewStage--mobile" : "reviewStage"} aria-label={`${selectedScreen.id} ${selectedScreen.name} ${selectedState} ${viewport}`}>
+      <section id="review-stage" className={viewport === "mobile" ? "reviewStage reviewStage--mobile" : "reviewStage"} aria-label={`${selectedScreen.id} ${selectedScreen.name} ${selectedState} ${viewport}`}>
         <div className="deviceFrame">{selectedScreen.id.startsWith("P") ? <ParticipantContent screen={selectedScreen} state={selectedState} /> : <ScreenContent screen={selectedScreen} state={selectedState} />}</div>
       </section>
     </main>
