@@ -18,7 +18,7 @@ const evidence: FigmaPointerGeometryEvidence = {
 };
 
 const snapshot: PinnedFigmaGeometrySnapshot = {
-  figmaVersionId: "figma-version-123",
+  geometryVersionId: "test-version-123",
   presentedNodeId: "10:1",
   presentedBounds: { x: 100, y: 200, width: 400, height: 800 },
   targetNodeId: "10:99",
@@ -29,7 +29,7 @@ const snapshot: PinnedFigmaGeometrySnapshot = {
 
 test("combines target/scroller coordinates and scroll offset into canonical frame coordinates", () => {
   const point = transformFigmaPointerToCanonicalFrame(evidence, snapshot);
-  assert.equal(point.figmaVersionId, "figma-version-123");
+  assert.equal(point.geometryVersionId, "test-version-123");
   assert.equal(point.presentedNodeId, "10:1");
   assert.deepEqual(point.targetCanvasPoint, { x: 170, y: 410 });
   assert.deepEqual(point.scrollerContentCanvasPoint, { x: 170, y: 410 });
@@ -74,7 +74,7 @@ test("handles a device-sized frame at a non-zero canvas origin", () => {
       nearestScrollingFrameOffset: { x: 0, y: 200 },
     },
     {
-      figmaVersionId: "device-v1",
+      geometryVersionId: "device-v1",
       presentedNodeId: "device:frame",
       presentedBounds: { x: 1000, y: 500, width: 390, height: 844 },
       targetNodeId: "device:target",
@@ -101,7 +101,7 @@ test("uses the pinned topmost overlay as the canonical heatmap frame", () => {
       nearestScrollingFrameOffset: { x: 0, y: 0 },
     },
     {
-      figmaVersionId: "overlay-v1",
+      geometryVersionId: "overlay-v1",
       presentedNodeId: "overlay:1",
       presentedBounds: { x: 400, y: 300, width: 300, height: 200 },
       targetNodeId: "overlay:target",
@@ -128,7 +128,7 @@ test("adds scroll offset when the target itself is the scrolling frame", () => {
       nearestScrollingFrameOffset: { x: 0, y: 150 },
     },
     {
-      figmaVersionId: "scroll-v1",
+      geometryVersionId: "scroll-v1",
       presentedNodeId: "frame:1",
       presentedBounds: { x: 100, y: 200, width: 400, height: 800 },
       targetNodeId: "scroll:1",

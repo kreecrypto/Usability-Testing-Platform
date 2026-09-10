@@ -1,5 +1,6 @@
 import { aggregateAnalytics, type TaskMetricAggregate } from "./aggregation.ts";
 import { deriveFunnel, type FunnelDefinition, type FunnelResult } from "./funnel.ts";
+import { buildScreenHeatmap, type ScreenHeatmapDataset } from "./heatmap.ts";
 import { deriveTaskTimeMetrics } from "./time-metrics.ts";
 import { median, percentage } from "./metrics.ts";
 import type { AcceptedTrackingEvent, TaskOutcome } from "../tracking/events.ts";
@@ -108,9 +109,10 @@ export type ResultsModel = Readonly<{
   taskDetails: readonly TaskDetailResult[];
   paths: readonly TaskPathResult[];
   sessions: readonly SessionDetailResult[];
+  heatmap: ScreenHeatmapDataset;
   funnel: FunnelResult | null;
   unsupported: Readonly<{
-    heatmap: true;
+    heatmap: boolean;
     funnel: boolean;
     reasons: readonly string[];
   }>;
@@ -357,9 +359,10 @@ export function buildResultsModel(input: Readonly<{
     });
   }).sort((a, b) => a.ordinal - b.ordinal || a.taskId.localeCompare(b.taskId));
 
+  const heatmap = buildScreenHeatmap(input.testVersionId, scopedEvents);
   const funnel = input.funnelDefinition ? deriveFunnel(scopedEvents, input.funnelDefinition) : null;
   const unsupportedReasons = [
-    "Task 47 requires canonical pinned geometry from Task 39 before heatmap output can be claimed.",
+    ...(heatmap.status === "unsupported" ? ["Canonical heatmap geometry is unavailable for the recorded pointer evidence."] : []),
     ...(funnel ? [] : ["No funnel definition is stored with this published test version."]),
   ];
 
@@ -385,9 +388,10 @@ export function buildResultsModel(input: Readonly<{
     taskDetails: Object.freeze(taskDetails),
     paths: Object.freeze(buildPaths(scopedEvents, input.tasks)),
     sessions: Object.freeze(buildSessionDetails(scopedEvents, answers)),
+    heatmap,
     funnel,
     unsupported: Object.freeze({
-      heatmap: true,
+      heatmap: heatmap.status === "unsupported",
       funnel: funnel === null,
       reasons: Object.freeze(unsupportedReasons),
     }),
