@@ -5,7 +5,7 @@ import { createEventCollectorHandler } from "../src/lib/collector/event-collecto
 import { createSupabaseEventPersister } from "../src/lib/collector/supabase-event-persistence.ts";
 import type { AcceptedTrackingEvent, RawTrackingEvent } from "../src/lib/tracking/events.ts";
 
-const baseEvent = {
+const baseEvent: RawTrackingEvent = {
   schemaVersion: 2,
   eventId: "10000000-0000-4000-8000-000000000001",
   idempotencyKey: "session-1:1",
