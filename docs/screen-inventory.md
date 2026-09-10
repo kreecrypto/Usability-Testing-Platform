@@ -2,11 +2,13 @@
 
 The inventory maps directly to `docs/user-flows.md` and is the input to low-fidelity wireframes.
 
+> Current build decision (2026-09-10): Researcher login UI is deferred and must not be surfaced yet. Supabase Auth/RLS and server authorization remain implemented for later activation. S01 is therefore an unauthenticated App Entry review state, not a sign-in form.
+
 ## Researcher app
 
 | ID | Screen | Required states |
 | --- | --- | --- |
-| S01 | Login | default, loading, auth error |
+| S01 | App Entry | default, loading, error |
 | S02 | Create Workspace | default, validation, loading, error |
 | S03 | Home | default, empty, loading, error |
 | S04 | Projects Index | default, empty, search/filter, loading, error |

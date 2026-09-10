@@ -45,6 +45,14 @@ for (const id of expectedIds) {
   if (!ids.has(id)) fail(`missing screen ID ${id}`);
 }
 
+const entryScreen = map.screens.find((screen) => screen.id === 'S01');
+if (!entryScreen) fail('missing canonical S01 App Entry screen');
+else {
+  if (entryScreen.name !== 'App Entry') fail(`S01 expected deferred App Entry, got ${entryScreen.name}`);
+  if (entryScreen.componentFamilies?.includes('AuthShell')) fail('S01 must not expose AuthShell while login UI is deferred');
+  if (entryScreen.componentFamilies?.includes('TextInput')) fail('S01 must not expose login text inputs while login UI is deferred');
+}
+
 const pageSignals = [
   'screenMap.screens',
   'selectedState',
@@ -106,15 +114,19 @@ for (const signal of predeploySignals) {
 }
 
 const homeSignals = [
-  'href="/projects"',
   'href: "/high-fi"',
-  'href: "/wireframes"',
-  'Open projects',
+  'Open product UI',
   'Canonical screens',
   'QA states',
 ];
 for (const signal of homeSignals) {
   if (!home.includes(signal)) fail(`home page missing predeploy UX signal: ${signal}`);
+}
+if (home.includes('href="/projects"') || home.includes('href: "/projects"')) {
+  fail('home page exposes Projects while researcher login UI is deferred');
+}
+if (home.includes('href="/login"') || home.includes('href: "/login"')) {
+  fail('home page exposes Login while researcher login UI is deferred');
 }
 if (home.includes('<strong>27</strong><span>Planned screens</span>')) {
   fail('home page still reports stale 27-screen inventory');
@@ -147,6 +159,7 @@ if (!page.includes('no production-data claim')) {
 
 if (!process.exitCode) {
   console.log(`PASS high-fi inventory: ${screenCount} screens / ${stateCount} states`);
+  console.log('PASS deferred S01 App Entry without researcher login controls');
   console.log('PASS researcher + participant renderer signals');
   console.log('PASS canonical participant screens: P05 Give Up Confirmation / P10 Technical Blocked');
   console.log('PASS desktop/mobile responsive signals');

@@ -22,9 +22,7 @@ const modules = [
 ];
 
 const reviewLinks = [
-  { label: "Projects", href: "/projects" },
-  { label: "High-fi QA", href: "/high-fi" },
-  { label: "Wireframe QA", href: "/wireframes" },
+  { label: "Product UI", href: "/high-fi" },
 ];
 
 export default function Home() {
@@ -46,7 +44,7 @@ export default function Home() {
             <p className="eyebrow">Usability Testing & UX QA</p>
             <h1>Prototype → Evidence → Better UX</h1>
           </div>
-          <a className="primaryButton" href="/projects">Open projects</a>
+          <a className="primaryButton" href="/high-fi">Open product UI</a>
         </header>
 
         <section id="overview" className="heroCard">
