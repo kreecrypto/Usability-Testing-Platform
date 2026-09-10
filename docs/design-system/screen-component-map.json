@@ -9,7 +9,7 @@
     "states": 170
   },
   "screens": [
-    {"id":"S01","name":"Login","states":["Default","Loading","Auth Error"],"componentFamilies":["AuthShell","TextInput","PrimaryButton","Message","Loader"]},
+    {"id":"S01","name":"App Entry","states":["Default","Loading","Error"],"componentFamilies":["AppEntryShell","PrimaryButton","Message","Loader"]},
     {"id":"S02","name":"Create Workspace","states":["Default","Validation","Submit Loading","Error"],"componentFamilies":["AppEntryShell","TextInput","Textarea","PrimaryButton","FieldMessage","Message","Loader"]},
     {"id":"S03","name":"Home","states":["Default","Empty","Loading","Error"],"componentFamilies":["AppShell","SidebarNav","PageHeader","Card","EmptyState","Loader","Message"]},
     {"id":"S04","name":"Projects Index","states":["Default","Empty","Search/Filter","Loading","Error"],"componentFamilies":["AppShell","SidebarNav","SearchField","FilterControls","TableOrCardList","EmptyState","Loader","Message"]},
