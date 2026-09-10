@@ -8,6 +8,7 @@ import "./predeploy-fixes.css";
 type Screen = (typeof screenMap.screens)[number];
 type Viewport = "desktop" | "mobile";
 type Tone = "neutral" | "loading" | "error" | "restricted" | "unsupported" | "empty" | "warning" | "success";
+type Audience = "researcher" | "participant";
 type NavKey = "Projects" | "Tests" | "Results" | "Participants" | "Settings" | null;
 
 const screens = screenMap.screens as Screen[];
@@ -57,18 +58,29 @@ function Button({ children, variant = "primary", disabled = false }: { children:
   return <button type="button" className={`hfButton hfButton--${variant}`} disabled={disabled}>{children}</button>;
 }
 
-function StateNotice({ state }: { state: string }) {
+function StateNotice({ state, audience = "researcher" }: { state: string; audience?: Audience }) {
   const kind = stateKind(state);
-  const copy: Record<Tone, string> = {
-    neutral: "Current task context and the next action remain explicit.",
-    loading: "Context stays visible while duplicate actions are prevented.",
-    error: "The problem stays adjacent to recovery and entered context is preserved.",
-    restricted: "Access is restricted; unavailable evidence is never approximated.",
-    unsupported: "This capability is unsupported for the current provider or evidence source.",
-    empty: "No eligible evidence is available. No Data is not presented as zero.",
-    warning: "Review is required before continuing; this is separate from a usability failure.",
-    success: "Required checks for this review state are satisfied.",
+  const researcherCopy: Record<Tone, string> = {
+    neutral: "Review the current state and available action.",
+    loading: "Loading current content…",
+    error: "Something went wrong. Fix the issue and try again.",
+    restricted: "You don't have access to this content.",
+    unsupported: "This capability isn't available for the current prototype.",
+    empty: "There isn't enough data to show this result yet.",
+    warning: "Review this issue before continuing.",
+    success: "This state is ready.",
   };
+  const participantCopy: Record<Tone, string> = {
+    neutral: "Continue when you're ready.",
+    loading: "This step is loading. Keep this page open.",
+    error: "Something went wrong. Try again.",
+    restricted: "This step isn't available with the current access.",
+    unsupported: "This step isn't available in this study.",
+    empty: "There's nothing to show for this step.",
+    warning: "Check the message below before continuing.",
+    success: "This step is ready.",
+  };
+  const copy = audience === "participant" ? participantCopy : researcherCopy;
   return <div className={`stateNotice stateNotice--${kind}`} role={kind === "error" ? "alert" : "status"}><div><span className="stateDot" aria-hidden="true" /><strong>{state}</strong></div><p>{copy[kind]}</p></div>;
 }
 
@@ -76,12 +88,12 @@ function Skeleton({ rows = 4 }: { rows?: number }) {
   return <div className="skeletonStack" aria-label="Loading content">{Array.from({ length: rows }, (_, i) => <span key={i} />)}</div>;
 }
 
-function ErrorCard() {
-  return <div className="inlineError" role="alert"><strong>Action required</strong><span>Resolve the highlighted issue and retry without losing context.</span></div>;
+function ErrorCard({ title = "Something needs attention", body = "Fix the highlighted issue, then try again." }: { title?: string; body?: string }) {
+  return <div className="inlineError" role="alert"><strong>{title}</strong><span>{body}</span></div>;
 }
 
-function Empty({ title = "No eligible data" }: { title?: string }) {
-  return <section className="emptyState"><div className="emptyIcon" aria-hidden="true">○</div><h3>{title}</h3><p>This state intentionally shows no fabricated data.</p><Button variant="secondary">Return</Button></section>;
+function Empty({ title = "No data yet", body = "Results will appear when eligible data is available." }: { title?: string; body?: string }) {
+  return <section className="emptyState"><div className="emptyIcon" aria-hidden="true">○</div><h3>{title}</h3><p>{body}</p><Button variant="secondary">Back to overview</Button></section>;
 }
 
 function Header({ title, state, detail }: { title: string; state?: string; detail?: string }) {
@@ -122,133 +134,146 @@ function Lifecycle({ current = "Build" }: { current?: string }) {
   return <div className="lifecycleRail" aria-label="Test lifecycle">{steps.map((step, i) => <span key={step} className={`lifecycleStep ${step === current ? "isCurrent" : ""} ${i > 3 ? "isLocked" : ""}`.trim()} aria-current={step === current ? "step" : undefined} aria-disabled={i > 3 ? "true" : undefined}>{step}{step === current ? " · Current" : i > 3 ? " · Locked" : ""}</span>)}</div>;
 }
 
+const formCopy: Record<string, { primary: string; secondary?: string; action: string }> = {
+  S02: { primary: "Workspace name", action: "Create workspace" },
+  S05: { primary: "Project name", secondary: "Project description", action: "Create project" },
+  S08: { primary: "Test name", action: "Create test" },
+  S33: { primary: "Workspace name", secondary: "Workspace description", action: "Save changes" },
+};
+
 function FormSpec({ screen, state }: { screen: Screen; state: string }) {
   const kind = stateKind(state);
+  const copy = formCopy[screen.id] ?? { primary: "Name", secondary: "Details", action: "Save" };
   const choice = screen.id === "S08";
-  return <section className="panel formPanel formPanel--wide"><Header title={screen.name} state={state} detail="Form anatomy follows the canonical screen contract." />{kind === "loading" ? <Skeleton /> : <>{choice ? <fieldset className="choiceGrid"><legend>Choose one option</legend>{[1,2,3].map((n) => <label key={n}><input type="radio" name={`${screen.id}-choice`} /><span><strong>Option {n}</strong><small>Review-only choice treatment</small></span></label>)}</fieldset> : <label className="field"><span className="fieldLabel">Primary field</span><input className={kind === "error" ? "fieldControl fieldControl--error" : "fieldControl"} aria-invalid={kind === "error"} aria-describedby={kind === "error" ? `${screen.id}-error` : undefined} />{kind === "error" ? <span id={`${screen.id}-error`} className="fieldMessage fieldMessage--error">Check this field before continuing.</span> : null}</label>}{screen.componentFamilies.includes("Textarea") ? <label className="field"><span className="fieldLabel">Supporting details</span><textarea className="fieldControl fieldTextarea" /></label> : null}<div className="formActions"><Button variant="secondary">Back</Button><Button disabled={["error","restricted","unsupported"].includes(kind)}>Continue</Button></div></>}</section>;
+  return <section className="panel formPanel formPanel--wide"><Header title={screen.name} state={state} detail="Complete the required information to continue." />{kind === "loading" ? <Skeleton /> : <>{choice ? <fieldset className="choiceGrid"><legend>Test setup</legend>{[1,2,3].map((n) => <label key={n}><input type="radio" name={`${screen.id}-choice`} aria-label={`Choice ${n}`} /><span><strong>Choice {n}</strong><small>Select an option</small></span></label>)}</fieldset> : <label className="field"><span className="fieldLabel">{copy.primary}</span><input className={kind === "error" ? "fieldControl fieldControl--error" : "fieldControl"} aria-invalid={kind === "error"} aria-describedby={kind === "error" ? `${screen.id}-error` : undefined} />{kind === "error" ? <span id={`${screen.id}-error`} className="fieldMessage fieldMessage--error">Check this field before continuing.</span> : null}</label>}{screen.componentFamilies.includes("Textarea") ? <label className="field"><span className="fieldLabel">{copy.secondary ?? "Details"}</span><textarea className="fieldControl fieldTextarea" /></label> : null}<div className="formActions"><Button variant="secondary">Cancel</Button><Button disabled={["error","restricted","unsupported"].includes(kind)}>{copy.action}</Button></div></>}</section>;
 }
 
 function DashboardSpec({ screen, state }: { screen: Screen; state: string }) {
   const kind = stateKind(state);
-  return <div className="dashboardStack"><MetricSkeletons count={4} /><section className="panel operationalPanel"><Header title={screen.name} state={state} detail="Operational content stays skeleton-only until display-safe runtime data exists." />{kind === "loading" ? <Skeleton rows={6} /> : kind === "empty" ? <Empty /> : <TableSkeleton label={`${screen.name} evidence layout`} />}</section></div>;
+  const detail = screen.id === "S03" ? "See recent work and activity." : "Review this project's tests and activity.";
+  return <div className="dashboardStack"><MetricSkeletons count={4} /><section className="panel operationalPanel"><Header title={screen.name} state={state} detail={detail} />{kind === "loading" ? <Skeleton rows={6} /> : kind === "empty" ? <Empty /> : <TableSkeleton label={`${screen.name} data table`} />}</section></div>;
 }
+
+const listingDetails: Record<string, string> = {
+  S04: "Find and manage projects.", S07: "Find and manage usability tests.", S21: "Review available test results.", S26: "Review participant sessions for this test.", S31: "Review participant and session activity.",
+};
 
 function ListingSpec({ screen, state }: { screen: Screen; state: string }) {
   const kind = stateKind(state);
-  return <section className="panel operationalPanel"><Header title={screen.name} state={state} detail="Shared compact filter and enterprise-table geometry." /><FilterBar />{kind === "loading" ? <Skeleton rows={7} /> : kind === "empty" ? <Empty /> : <>{kind === "error" ? <ErrorCard /> : null}<TableSkeleton label={`${screen.name} table layout`} /></>}</section>;
+  return <section className="panel operationalPanel"><Header title={screen.name} state={state} detail={listingDetails[screen.id] ?? "Find and review items in this workspace."} /><FilterBar />{kind === "loading" ? <Skeleton rows={7} /> : kind === "empty" ? <Empty /> : <>{kind === "error" ? <ErrorCard /> : null}<TableSkeleton label={`${screen.name} table`} /></>}</section>;
 }
 
 function BuildWorkspace({ state }: { state: string }) {
   const kind = stateKind(state);
-  return <><Lifecycle /><div className="builderWorkspace"><section className="panel"><Header title="Test flow" state="Draft" detail="Selection stays visible while editing." /><div className="builderStepList">{["Welcome & consent","Prototype","Task","Post-task feedback"].map((label,i) => <button type="button" key={label} className={i === 2 ? "builderStep isCurrent" : "builderStep"} aria-current={i === 2 ? "step" : undefined}><strong>{label}</strong><small>{i === 2 ? "Editing" : "Configured"}</small></button>)}</div></section><section className="panel formPanel formPanel--wide"><Header title="Selected task" state={state} detail="Required configuration and validation remain adjacent." />{kind === "loading" ? <Skeleton /> : <><label className="field"><span className="fieldLabel">Task instruction</span><textarea className="fieldControl fieldTextarea" /></label><div className="screenContractGrid"><div className="screenContractCard"><strong>Prototype</strong><span>Connection and start point are reviewed here.</span></div><div className="screenContractCard"><strong>Success criteria</strong><span>Terminal rules are reviewed before publishing.</span></div></div>{["warning","error"].includes(kind) ? <ErrorCard /> : null}<div className="formActions"><Button variant="secondary">Preview draft</Button><Button disabled={["error","restricted","unsupported"].includes(kind)}>Review validation</Button></div></>}</section></div></>;
+  return <><Lifecycle /><div className="builderWorkspace"><section className="panel"><Header title="Test flow" state="Draft" detail="Choose a step to edit." /><div className="builderStepList">{["Welcome & consent","Prototype","Task","Post-task feedback"].map((label,i) => <button type="button" key={label} className={i === 2 ? "builderStep isCurrent" : "builderStep"} aria-current={i === 2 ? "step" : undefined}><strong>{label}</strong><small>{i === 2 ? "Editing" : "Configured"}</small></button>)}</div></section><section className="panel formPanel formPanel--wide"><Header title="Selected task" state={state} detail="Complete the required setup before validation." />{kind === "loading" ? <Skeleton /> : <><label className="field"><span className="fieldLabel">Task instruction</span><textarea className="fieldControl fieldTextarea" /></label><div className="screenContractGrid"><div className="screenContractCard"><strong>Prototype</strong><span>Connect a prototype and choose a start point.</span></div><div className="screenContractCard"><strong>Success criteria</strong><span>Define success, failure, and timeout rules before publishing.</span></div></div>{["warning","error"].includes(kind) ? <ErrorCard /> : null}<div className="formActions"><Button variant="secondary">Preview draft</Button><Button disabled={["error","restricted","unsupported"].includes(kind)}>Review validation</Button></div></>}</section></div></>;
 }
 
 function ImportSpec({ state }: { state: string }) {
   const kind = stateKind(state);
-  return <><Lifecycle /><section className="panel formPanel formPanel--wide"><Header title="Figma Connect / Import" state={state} detail="Prototype access remains separate from task configuration." /><label className="field"><span className="fieldLabel">Prototype URL</span><input className={kind === "error" ? "fieldControl fieldControl--error" : "fieldControl"} aria-invalid={kind === "error"} placeholder="https://www.figma.com/..." />{kind === "error" ? <span className="fieldMessage fieldMessage--error">Enter a supported URL or resolve provider access.</span> : null}</label><div className="integrationRow"><div><strong>Figma</strong><span>{kind === "loading" ? "Checking access…" : kind === "success" ? "Connected" : "Connection required"}</span></div><Button disabled={kind === "loading" || kind === "restricted"}>Check access</Button></div></section></>;
+  return <><Lifecycle /><section className="panel formPanel formPanel--wide"><Header title="Figma Connect / Import" state={state} detail="Connect a public Figma prototype to this test." /><label className="field"><span className="fieldLabel">Prototype URL</span><input className={kind === "error" ? "fieldControl fieldControl--error" : "fieldControl"} aria-invalid={kind === "error"} placeholder="https://www.figma.com/..." />{kind === "error" ? <span className="fieldMessage fieldMessage--error">Enter a supported public Figma prototype URL, or check access.</span> : null}</label><div className="integrationRow"><div><strong>Figma</strong><span>{kind === "loading" ? "Checking access…" : kind === "success" ? "Connected" : "Connection required"}</span></div><Button disabled={kind === "loading" || kind === "restricted"}>Check prototype</Button></div></section></>;
 }
 
 function ValidationSpec({ screen, state }: { screen: Screen; state: string }) {
   const kind = stateKind(state);
-  return <><Lifecycle current={screen.id === "S19" ? "Publish" : "Validate"} /><section className="panel validationPanel"><Header title={screen.name} state={state} detail="Validation outcomes are explicit and recoverable." /><div className="checklist">{["Required configuration","Prototype access","Success/failure rules"].map((label,i) => <div key={label} className={kind === "success" ? "checkOk" : i === 0 && ["warning","error"].includes(kind) ? "checkError" : "checkWarn"}><strong>{label}</strong><span>{kind === "success" ? "Pass" : i === 0 ? "Needs attention" : "Review"}</span></div>)}</div>{["warning","error"].includes(kind) ? <ErrorCard /> : null}<div className="formActions"><Button variant="secondary">Back to edit</Button><Button disabled={kind !== "success"}>Continue</Button></div></section></>;
+  return <><Lifecycle current={screen.id === "S19" ? "Publish" : "Validate"} /><section className="panel validationPanel"><Header title={screen.name} state={state} detail="Fix blocking issues before continuing." /><div className="checklist">{["Required configuration","Prototype access","Success/failure rules"].map((label,i) => <div key={label} className={kind === "success" ? "checkOk" : i === 0 && ["warning","error"].includes(kind) ? "checkError" : "checkWarn"}><strong>{label}</strong><span>{kind === "success" ? "Pass" : i === 0 ? "Needs attention" : "Review"}</span></div>)}</div>{["warning","error"].includes(kind) ? <ErrorCard /> : null}<div className="formActions"><Button variant="secondary">Back to edit</Button><Button disabled={kind !== "success"}>{screen.id === "S19" ? "Publish test" : "Continue"}</Button></div></section></>;
 }
 
 function PrototypeSpec({ screen, state }: { screen: Screen; state: string }) {
   const kind = stateKind(state);
-  return <><Lifecycle current={screen.id === "S18" ? "Preview" : "Build"} /><section className="panel"><Header title={screen.name} state={state} detail="Provider conditions stay separate from usability outcomes." />{kind === "loading" ? <Skeleton rows={6} /> : <><div className="prototypeMock" aria-label="Prototype review surface"><div className="prototypeChrome"><span /><span /><span /></div><div className="prototypeBody"><div className="prototypeSidebar" /><div className="prototypeContent"><span className="prototypeLine prototypeLine--wide" /><span className="prototypeLine" /><div className="prototypeCards"><span /><span /></div></div></div></div>{["warning","unsupported","error"].includes(kind) ? <ErrorCard /> : null}<div className="formActions"><Button variant="secondary">Back</Button><Button disabled={["unsupported","error"].includes(kind)}>Continue</Button></div></>}</section></>;
+  return <><Lifecycle current={screen.id === "S18" ? "Preview" : "Build"} /><section className="panel"><Header title={screen.name} state={state} detail="Open the prototype and check access before continuing." />{kind === "loading" ? <Skeleton rows={6} /> : <><div className="prototypeMock" aria-label="Prototype review surface"><div className="prototypeChrome"><span /><span /><span /></div><div className="prototypeBody"><div className="prototypeSidebar" /><div className="prototypeContent"><span className="prototypeLine prototypeLine--wide" /><span className="prototypeLine" /><div className="prototypeCards"><span /><span /></div></div></div></div>{["warning","unsupported","error"].includes(kind) ? <ErrorCard /> : null}<div className="formActions"><Button variant="secondary">Back</Button><Button disabled={["unsupported","error"].includes(kind)}>{screen.id === "S18" ? "Start preview" : "Use prototype"}</Button></div></>}</section></>;
 }
 
 function TaskEditor({ state }: { state: string }) {
   const kind = stateKind(state);
-  return <><Lifecycle /><div className="builderWorkspace"><section className="panel"><Header title="Tasks" state={state} detail="Order and selection stay visible." /><div className="builderStepList">{[1,2,3].map((n) => <button type="button" key={n} className={n === 2 ? "builderStep isCurrent" : "builderStep"}><strong>Task {n}</strong><small>{n === 2 ? "Selected" : "Configured"}</small></button>)}</div><div className="reorderActions"><Button variant="secondary">Move up</Button><Button variant="secondary">Move down</Button></div></section><section className="panel formPanel formPanel--wide"><Header title="Task editor" detail="Instruction and validation share one edit context." /><label className="field"><span className="fieldLabel">Task instruction</span><textarea className={kind === "error" ? "fieldControl fieldTextarea fieldControl--error" : "fieldControl fieldTextarea"} aria-invalid={kind === "error"} /></label>{kind === "error" ? <span className="fieldMessage fieldMessage--error">Add a valid task instruction.</span> : null}<div className="formActions"><Button variant="secondary">Cancel</Button><Button disabled={kind === "error"}>Save task</Button></div></section></div></>;
+  return <><Lifecycle /><div className="builderWorkspace"><section className="panel"><Header title="Tasks" state={state} detail="Choose a task to edit or reorder." /><div className="builderStepList">{[1,2,3].map((n) => <button type="button" key={n} className={n === 2 ? "builderStep isCurrent" : "builderStep"}><strong>Task {n}</strong><small>{n === 2 ? "Selected" : "Configured"}</small></button>)}</div><div className="reorderActions"><Button variant="secondary">Move up</Button><Button variant="secondary">Move down</Button></div></section><section className="panel formPanel formPanel--wide"><Header title="Task editor" detail="Write the instruction participants will see." /><label className="field"><span className="fieldLabel">Task instruction</span><textarea className={kind === "error" ? "fieldControl fieldTextarea fieldControl--error" : "fieldControl fieldTextarea"} aria-invalid={kind === "error"} /></label>{kind === "error" ? <span className="fieldMessage fieldMessage--error">Add a task instruction before saving.</span> : null}<div className="formActions"><Button variant="secondary">Cancel</Button><Button disabled={kind === "error"}>Save task</Button></div></section></div></>;
 }
 
 function RuleSpec({ state }: { state: string }) {
   const kind = stateKind(state);
-  return <><Lifecycle /><section className="panel formPanel formPanel--wide"><Header title="Success / Failure Rules" state={state} detail="Success, failure and timeout rules remain distinct." /><div className="ruleRows"><div><span className="ruleType ruleType--success">Success</span><select className="fieldControl" aria-label="Success rule"><option>Choose rule</option></select></div><div><span className="ruleType ruleType--failure">Failure</span><select className="fieldControl" aria-label="Failure rule"><option>Choose rule</option></select></div><div><span className="ruleType">Timeout</span><input className="fieldControl" type="number" aria-label="Timeout value" /></div></div>{["warning","error"].includes(kind) ? <ErrorCard /> : null}<div className="formActions"><Button variant="secondary">Back</Button><Button disabled={kind === "error"}>Save rules</Button></div></section></>;
+  return <><Lifecycle /><section className="panel formPanel formPanel--wide"><Header title="Success / Failure Rules" state={state} detail="Define what ends the task as success, failure, or timeout." /><div className="ruleRows"><div><span className="ruleType ruleType--success">Success</span><select className="fieldControl" aria-label="Success rule"><option>Choose rule</option></select></div><div><span className="ruleType ruleType--failure">Failure</span><select className="fieldControl" aria-label="Failure rule"><option>Choose rule</option></select></div><div><span className="ruleType">Timeout</span><input className="fieldControl" type="number" aria-label="Timeout value" /></div></div>{["warning","error"].includes(kind) ? <ErrorCard /> : null}<div className="formActions"><Button variant="secondary">Back</Button><Button disabled={kind === "error"}>Save rules</Button></div></section></>;
 }
 
 function QuestionSpec({ state }: { state: string }) {
   const kind = stateKind(state);
-  return <><Lifecycle /><section className="panel formPanel formPanel--wide"><Header title="Question Editor" state={state} detail="SEQ and open feedback are separate question types." /><fieldset className="seqFieldset"><legend>SEQ response</legend><div>{[1,2,3,4,5,6,7].map((n) => <label key={n}><input type="radio" name="seq" /><span>{n}</span></label>)}</div><small>Seven-point response control</small></fieldset><label className="field"><span className="fieldLabel">Open feedback</span><textarea className="fieldControl fieldTextarea" /></label>{kind === "error" ? <ErrorCard /> : null}<div className="formActions"><Button variant="secondary">Back</Button><Button>Save question</Button></div></section></>;
+  return <><Lifecycle /><section className="panel formPanel formPanel--wide"><Header title="Question Editor" state={state} detail="Configure the post-task questions participants will answer." /><fieldset className="seqFieldset"><legend>Task ease</legend><div>{[1,2,3,4,5,6,7].map((n) => <label key={n}><input type="radio" name="seq" /><span>{n}</span></label>)}</div><small>1 = Very difficult · 7 = Very easy</small></fieldset><label className="field"><span className="fieldLabel">Open feedback</span><textarea className="fieldControl fieldTextarea" /></label>{kind === "error" ? <ErrorCard /> : null}<div className="formActions"><Button variant="secondary">Back</Button><Button>Save questions</Button></div></section></>;
 }
 
 function PreviewSetup({ state }: { state: string }) {
   const kind = stateKind(state);
-  return <><Lifecycle current="Preview" /><section className="panel validationPanel"><div className="previewBanner"><span>Preview mode</span><strong>{kind === "success" ? "Ready" : "Review required"}</strong></div><Header title="Preview Setup" state={state} detail="Draft validity and provider access are checked before preview." /><div className="checklist"><div className={kind === "success" ? "checkOk" : "checkWarn"}><strong>Draft validation</strong><span>{kind === "success" ? "Ready" : "Needs review"}</span></div><div className={kind === "unsupported" ? "checkError" : "checkOk"}><strong>Prototype access</strong><span>{kind === "unsupported" ? "Provider blocked" : "Available"}</span></div></div>{["warning","unsupported","error"].includes(kind) ? <ErrorCard /> : null}<div className="formActions"><Button variant="secondary">Back to build</Button><Button disabled={kind !== "success"}>Enter preview</Button></div></section></>;
+  return <><Lifecycle current="Preview" /><section className="panel validationPanel"><div className="previewBanner"><span>Preview mode</span><strong>{kind === "success" ? "Ready" : "Review required"}</strong></div><Header title="Preview Setup" state={state} detail="Confirm the draft and prototype are ready to preview." /><div className="checklist"><div className={kind === "success" ? "checkOk" : "checkWarn"}><strong>Draft validation</strong><span>{kind === "success" ? "Ready" : "Needs review"}</span></div><div className={kind === "unsupported" ? "checkError" : "checkOk"}><strong>Prototype access</strong><span>{kind === "unsupported" ? "Access blocked" : "Available"}</span></div></div>{["warning","unsupported","error"].includes(kind) ? <ErrorCard /> : null}<div className="formActions"><Button variant="secondary">Back to build</Button><Button disabled={kind !== "success"}>Enter preview</Button></div></section></>;
 }
 
 function ShareSpec({ state }: { state: string }) {
   const kind = stateKind(state);
-  return <><Lifecycle current="Publish" /><section className="panel sharePanel"><div className={kind === "success" ? "statusIcon" : "statusIcon statusIcon--muted"} aria-hidden="true">{kind === "success" ? "✓" : "i"}</div><h2>Share / Published</h2><p>Published-link layout is shown without fabricating a live study URL.</p><div className="shareUrl"><span className="skeletonCell" aria-hidden="true" /><Button variant="secondary">Copy link</Button></div><div className="formActions"><Button variant="secondary">Back to build</Button><Button disabled={["warning","error"].includes(kind)}>Republish</Button></div></section></>;
+  return <><Lifecycle current="Publish" /><section className="panel sharePanel"><div className={kind === "success" ? "statusIcon" : "statusIcon statusIcon--muted"} aria-hidden="true">{kind === "success" ? "✓" : "i"}</div><h2>Share published test</h2><p>Copy the published study link to share it with participants.</p><div className="shareUrl"><span className="skeletonCell" aria-hidden="true" /><Button variant="secondary">Copy link</Button></div><div className="formActions"><Button variant="secondary">Back to build</Button><Button disabled={["warning","error"].includes(kind)}>Republish</Button></div></section></>;
 }
 
 function ResultsOverview({ state }: { state: string }) {
   const kind = stateKind(state);
-  if (kind === "empty") return <Empty title="No eligible results" />;
-  return <div className="dashboardStack"><MetricSkeletons /><div className="analyticsGrid"><section className="panel"><Header title="Results Overview" state={state} detail="Metrics stay skeleton-only in this review artifact." /><div className="funnelSkeleton"><span /><span /><span /></div></section><section className="panel"><Header title="Evidence status" detail="Technical conditions remain distinct from usability outcomes." /><Skeleton rows={5} /></section></div>{["warning","error"].includes(kind) ? <ErrorCard /> : null}</div>;
+  if (kind === "empty") return <Empty title="No results yet" />;
+  return <div className="dashboardStack"><MetricSkeletons /><div className="analyticsGrid"><section className="panel"><Header title="Results Overview" state={state} detail="Review completion, timing, and available evidence." /><div className="funnelSkeleton"><span /><span /><span /></div></section><section className="panel"><Header title="Evidence status" detail="Review technical and usability outcomes separately." /><Skeleton rows={5} /></section></div>{["warning","error"].includes(kind) ? <ErrorCard /> : null}</div>;
 }
 
 function TaskDetail({ state }: { state: string }) {
   const kind = stateKind(state);
-  if (kind === "empty") return <Empty title="No eligible sessions" />;
-  return <div className="dashboardStack"><MetricSkeletons />{kind === "warning" ? <StateNotice state={state} /> : null}<section className="panel operationalPanel"><Header title="Task Detail" state={state} detail="Eligible-session evidence uses the enterprise table layout." /><TableSkeleton label="Task detail evidence table" /></section></div>;
+  if (kind === "empty") return <Empty title="No eligible sessions yet" />;
+  return <div className="dashboardStack"><MetricSkeletons />{kind === "warning" ? <StateNotice state={state} /> : null}<section className="panel operationalPanel"><Header title="Task Detail" state={state} detail="Review eligible sessions and evidence for this task." /><TableSkeleton label="Task detail evidence table" /></section></div>;
 }
 
 function PathSpec({ state }: { state: string }) {
   const kind = stateKind(state);
-  return <section className="panel"><Header title="Path Analysis" state={state} detail="Expected and actual paths stay visually separate." />{kind === "empty" || kind === "unsupported" ? <Empty title="No eligible path evidence" /> : <div className="pathMock"><span className="pathNode pathNode--active">Start</span><span aria-hidden="true">→</span><span className="pathNode">Step</span><span aria-hidden="true">→</span><span className="pathNode">End</span></div>}</section>;
+  return <section className="panel"><Header title="Path Analysis" state={state} detail="Compare expected and observed navigation paths." />{kind === "empty" || kind === "unsupported" ? <Empty title="No path data yet" /> : <div className="pathMock"><span className="pathNode pathNode--active">Start</span><span aria-hidden="true">→</span><span className="pathNode">Step</span><span aria-hidden="true">→</span><span className="pathNode">End</span></div>}</section>;
 }
 
 function HeatmapSpec({ state }: { state: string }) {
   const kind = stateKind(state);
-  return <section className="panel"><Header title="Heatmap" state={state} detail="Unsupported and no-data handling remain explicit." />{kind === "empty" || kind === "unsupported" ? <Empty title="No eligible click evidence" /> : <div className="heatmapMock" aria-label="Heatmap layout"><span style={{ left: "22%", top: "30%", width: 18, height: 18 }} /><span style={{ left: "52%", top: "44%", width: 28, height: 28 }} /><span style={{ left: "73%", top: "64%", width: 14, height: 14 }} /><div className="heatLegend"><span>Low</span><i /><i /><i /><i /><i /><span>High</span></div></div>}</section>;
+  return <section className="panel"><Header title="Heatmap" state={state} detail="Review eligible click activity on the prototype." />{kind === "empty" || kind === "unsupported" ? <Empty title="No click data yet" /> : <div className="heatmapMock" aria-label="Heatmap layout"><span style={{ left: "22%", top: "30%", width: 18, height: 18 }} /><span style={{ left: "52%", top: "44%", width: 28, height: 28 }} /><span style={{ left: "73%", top: "64%", width: 14, height: 14 }} /><div className="heatLegend"><span>Low</span><i /><i /><i /><i /><i /><span>High</span></div></div>}</section>;
 }
 
 function SessionDetail({ state }: { state: string }) {
   const kind = stateKind(state);
-  return <div className="detailSplit"><section className="panel"><Header title="Session timeline" state={state} detail="Evidence chronology stays readable while restrictions remain explicit." /><div className="timelineList">{[1,2,3,4].map((n) => <div key={n}><span aria-hidden="true" /><div><strong>Event</strong><small>{kind === "restricted" ? "Restricted evidence" : "Session evidence"}</small></div></div>)}</div></section><aside className="panel"><Header title="Evidence" /><Skeleton /></aside></div>;
+  return <div className="detailSplit"><section className="panel"><Header title="Session timeline" state={state} detail="Review the session timeline and available evidence." /><div className="timelineList">{[1,2,3,4].map((n) => <div key={n}><span aria-hidden="true" /><div><strong>Event</strong><small>{kind === "restricted" ? "Evidence unavailable" : "Session evidence"}</small></div></div>)}</div></section><aside className="panel"><Header title="Evidence" /><Skeleton /></aside></div>;
 }
 
 function FindingsList({ state }: { state: string }) {
   const kind = stateKind(state);
-  return <section className="panel operationalPanel"><Header title="Findings List" state={state} detail="Finding cards preserve severity and evidence relationships." /><div className="filterBar"><div className="filterChips"><button type="button" className="filterChip isActive">All</button><button type="button" className="filterChip">Filter</button></div></div>{kind === "empty" ? <Empty title="No findings" /> : <div className="findingGrid findingGrid--skeleton">{[1,2,3].map((n) => <article className="findingCard" key={n}><span className="severity">Severity</span><span className="skeletonCell skeletonCell--title" /><span className="skeletonCell" /><span className="skeletonCell" /></article>)}</div>}</section>;
+  return <section className="panel operationalPanel"><Header title="Findings List" state={state} detail="Review findings by severity and supporting evidence." /><div className="filterBar"><div className="filterChips"><button type="button" className="filterChip isActive">All</button><button type="button" className="filterChip">Filter</button></div></div>{kind === "empty" ? <Empty title="No findings yet" /> : <div className="findingGrid findingGrid--skeleton">{[1,2,3].map((n) => <article className="findingCard" key={n}><span className="severity">Severity</span><span className="skeletonCell skeletonCell--title" /><span className="skeletonCell" /><span className="skeletonCell" /></article>)}</div>}</section>;
 }
 
 function FindingEditor({ state }: { state: string }) {
   const kind = stateKind(state);
-  return <section className="panel formPanel formPanel--wide"><Header title="Finding Detail / Editor" state={state} detail="Finding fields and evidence are reviewed together." /><label className="field"><span className="fieldLabel">Finding title</span><input className="fieldControl" /></label><fieldset className="choiceGrid choiceGrid--compact"><legend>Severity</legend>{["Low","Medium","High"].map((v) => <label key={v}><input type="radio" name="severity" /><span><strong>{v}</strong></span></label>)}</fieldset><label className="field"><span className="fieldLabel">Evidence-backed detail</span><textarea className="fieldControl fieldTextarea" /></label><div className="evidenceCard"><strong>Evidence</strong><span>{kind === "restricted" ? "Evidence unavailable or deleted" : "Attach eligible evidence"}</span></div><div className="formActions"><Button variant="secondary">Cancel</Button><Button disabled={kind === "restricted"}>Save finding</Button></div></section>;
+  return <section className="panel formPanel formPanel--wide"><Header title="Finding Detail / Editor" state={state} detail="Describe the finding and link supporting evidence." /><label className="field"><span className="fieldLabel">Finding title</span><input className="fieldControl" /></label><fieldset className="choiceGrid choiceGrid--compact"><legend>Severity</legend>{["Low","Medium","High"].map((v) => <label key={v}><input type="radio" name="severity" /><span><strong>{v}</strong></span></label>)}</fieldset><label className="field"><span className="fieldLabel">Finding details</span><textarea className="fieldControl fieldTextarea" /></label><div className="evidenceCard"><strong>Evidence</strong><span>{kind === "restricted" ? "Evidence unavailable or deleted" : "Attach eligible evidence"}</span></div><div className="formActions"><Button variant="secondary">Cancel</Button><Button disabled={kind === "restricted"}>Save finding</Button></div></section>;
 }
 
 function Retest({ state }: { state: string }) {
   const kind = stateKind(state);
-  if (kind === "empty") return <Empty title="No eligible baseline" />;
+  if (kind === "empty") return <Empty title="No eligible baseline yet" />;
   return <section className="comparisonGrid comparisonGrid--skeleton" aria-label="Retest comparison"><div className="compareColumn"><span className="eyebrow">Baseline</span><MetricSkeletons count={2} /></div><div className="deltaColumn"><span className="skeletonCell" /><span className="skeletonCell" /></div><div className="compareColumn"><span className="eyebrow">Retest</span><MetricSkeletons count={2} /></div></section>;
 }
 
 function DeleteData({ state }: { state: string }) {
   const kind = stateKind(state);
-  return <div className="modalStage"><section className="deleteModal" role="dialog" aria-modal="true" aria-label="Delete Data confirmation"><Header title="Delete Data" state={state} detail="Review deletion scope before confirming." /><div className="deletionScope"><strong>Deletion scope</strong><span>Selected workspace or study data</span><span>Evidence and derived records</span></div>{kind === "loading" ? <Skeleton /> : kind === "error" ? <ErrorCard /> : <p className="destructiveCopy">This action is destructive. Keep scope and consequences visible before confirmation.</p>}<div className="formActions"><Button variant="secondary">Cancel</Button><Button variant="danger" disabled={kind === "loading"}>Delete data</Button></div></section></div>;
+  return <div className="modalStage"><section className="deleteModal" role="dialog" aria-modal="true" aria-label="Delete Data confirmation"><Header title="Delete Data" state={state} detail="Confirm exactly what will be deleted." /><div className="deletionScope"><strong>Deletion scope</strong><span>Selected workspace or study data</span><span>Evidence and derived records</span></div>{kind === "loading" ? <Skeleton /> : kind === "error" ? <ErrorCard /> : <p className="destructiveCopy">Deleting this scope also removes related session evidence and derived data.</p>}<div className="formActions"><Button variant="secondary">Cancel</Button><Button variant="danger" disabled={kind === "loading"}>Delete data</Button></div></section></div>;
 }
 
 function MembersRoles({ state }: { state: string }) {
   const kind = stateKind(state);
-  return <section className="panel operationalPanel"><Header title="Members & Roles" state={state} detail="Role changes and restricted states remain explicit." />{kind === "restricted" ? <Empty title="Permission required" /> : <><TableSkeleton label="Members and roles table" /><div className="roleEditor"><label className="field"><span className="fieldLabel">Role</span><select className="fieldControl"><option>Role</option></select></label><div className="formActions"><Button variant="secondary">Cancel</Button><Button>Save role</Button></div></div></>}</section>;
+  return <section className="panel operationalPanel"><Header title="Members & Roles" state={state} detail="Manage workspace access and roles." />{kind === "restricted" ? <Empty title="Permission required" body="You don't have permission to manage workspace members." /> : <><TableSkeleton label="Members and roles table" /><div className="roleEditor"><label className="field"><span className="fieldLabel">Role</span><select className="fieldControl"><option>Role</option></select></label><div className="formActions"><Button variant="secondary">Cancel</Button><Button>Save role</Button></div></div></>}</section>;
 }
 
 function Integration({ state }: { state: string }) {
   const kind = stateKind(state);
-  return <section className="panel"><Header title="Integrations / Figma" state={state} detail="Integration state is explicit and recoverable." /><div className="integrationCard"><div><strong>Figma</strong><span>{kind === "success" ? "Connected" : kind === "loading" ? "Connecting…" : "Disconnected"}</span></div><Button disabled={kind === "loading"}>{kind === "success" ? "Manage" : "Connect"}</Button></div>{kind === "error" ? <ErrorCard /> : null}</section>;
+  return <section className="panel"><Header title="Integrations / Figma" state={state} detail="Connect or manage the Figma prototype integration." /><div className="integrationCard"><div><strong>Figma</strong><span>{kind === "success" ? "Connected" : kind === "loading" ? "Connecting…" : "Disconnected"}</span></div><Button disabled={kind === "loading"}>{kind === "success" ? "Manage" : "Connect"}</Button></div>{kind === "error" ? <ErrorCard title="Couldn't connect to Figma" body="Check prototype access and try again." /> : null}</section>;
 }
 
 function Retention({ state }: { state: string }) {
   const kind = stateKind(state);
-  return <section className="panel formPanel formPanel--wide"><Header title="Privacy & Retention" state={state} detail="Retention uses explicit numeric and select controls." /><label className="field"><span className="fieldLabel">Retention period</span><input type="number" className={kind === "error" ? "fieldControl fieldControl--error" : "fieldControl"} aria-invalid={kind === "error"} /></label><label className="field"><span className="fieldLabel">Retention unit</span><select className="fieldControl"><option>Days</option></select></label>{kind === "error" ? <ErrorCard /> : null}<div className="formActions"><Button variant="secondary">Cancel</Button><Button disabled={kind === "restricted" || kind === "error"}>Save</Button></div></section>;
+  return <section className="panel formPanel formPanel--wide"><Header title="Privacy & Retention" state={state} detail="Set the retention period for research data." /><label className="field"><span className="fieldLabel">Retention period</span><input type="number" className={kind === "error" ? "fieldControl fieldControl--error" : "fieldControl"} aria-invalid={kind === "error"} /></label><label className="field"><span className="fieldLabel">Retention unit</span><select className="fieldControl"><option>Days</option></select></label>{kind === "error" ? <ErrorCard title="Check the retention period" body="Enter a valid retention period before saving." /> : null}<div className="formActions"><Button variant="secondary">Cancel</Button><Button disabled={kind === "restricted" || kind === "error"}>Save changes</Button></div></section>;
 }
 
 function ResearcherSpecimen({ screen, state }: { screen: Screen; state: string }) {
   switch (screen.id) {
-    case "S01": return <section className="panel entryPanel"><Header title="App Entry" state={state} detail="Researcher login entry points remain deferred." /><div className="entryAction"><div><strong>Continue to the usability-testing workspace</strong><p>No deferred login controls are exposed here.</p></div><Button>Continue</Button></div>{stateKind(state) === "error" ? <ErrorCard /> : null}</section>;
+    case "S01": return <section className="panel entryPanel"><Header title="App Entry" state={state} detail="Open the workspace to continue." /><div className="entryAction"><div><strong>Usability testing workspace</strong><p>Continue to projects, tests, and results.</p></div><Button>Open workspace</Button></div>{stateKind(state) === "error" ? <ErrorCard /> : null}</section>;
     case "S02": case "S05": case "S08": case "S33": return <FormSpec screen={screen} state={state} />;
     case "S03": case "S06": return <DashboardSpec screen={screen} state={state} />;
     case "S04": case "S07": case "S21": case "S26": case "S31": return <ListingSpec screen={screen} state={state} />;
@@ -293,25 +318,26 @@ function ParticipantActions({ primary = "Continue", secondary = "Back", disabled
 
 function ParticipantSpecimen({ screen, state }: { screen: Screen; state: string }) {
   const kind = stateKind(state);
+  const notice = <StateNotice state={state} audience="participant" />;
   switch (screen.id) {
-    case "P01": return <section className="participantCard centerCard"><span className="eyebrow">Access check</span><h1>Preparing your study</h1><p>We check the study link and required access before the session starts.</p><StateNotice state={state} />{kind === "loading" ? <Skeleton /> : <ParticipantActions primary="Continue" secondary="Exit" />}</section>;
-    case "P02": return <section className="participantCard centerCard"><span className="eyebrow">Consent</span><h1>Before you begin</h1><p>Interaction tracking starts only after consent.</p><label className="consentBox"><input type="checkbox" /><span>I agree to participate in this usability study.</span></label><StateNotice state={state} /><ParticipantActions primary="Agree and start" secondary="Decline" disabled={kind === "loading"} /></section>;
-    case "P03": return <section className="participantCard centerCard"><span className="eyebrow">Task</span><h1>Read the task before starting</h1><div className="scenarioCard"><strong>Task instructions</strong><span>Instructions are shown without revealing expected paths or success targets.</span></div><StateNotice state={state} /><ParticipantActions primary="Start task" /></section>;
-    case "P04": return <section className="participantRunner"><div className="runnerTaskBar"><strong>Task in progress</strong><Button variant="secondary">Give up</Button></div><div className="participantPrototype" aria-label="Prototype canvas"><Skeleton rows={6} /></div><StateNotice state={state} /></section>;
-    case "P05": return <div className="modalStage participantModalStage"><section className="deleteModal" role="dialog" aria-modal="true" aria-label="Give up confirmation"><h1>Give up this task?</h1><p>Your session can continue, but this task will be recorded as given up.</p><StateNotice state={state} /><ParticipantActions primary="Give up task" secondary="Keep trying" danger /></section></div>;
-    case "P06": return <section className="participantCard centerCard"><span className="eyebrow">Post-task feedback</span><h1>How easy or difficult was this task?</h1><fieldset className="seqFieldset"><legend>Task ease</legend><div>{[1,2,3,4,5,6,7].map((n) => <label key={n}><input type="radio" name="participant-seq" /><span>{n}</span></label>)}</div></fieldset><label className="field"><span className="fieldLabel">Optional feedback</span><textarea className="fieldControl fieldTextarea" /></label><StateNotice state={state} /><ParticipantActions /></section>;
-    case "P07": return <section className="participantCard centerCard"><span className="eyebrow">Next task</span><h1>Ready for the next task?</h1><p>Your previous response is saved before the next task begins.</p><StateNotice state={state} />{kind === "loading" ? <Skeleton /> : <ParticipantActions primary="Next task" secondary="Exit" />}</section>;
-    case "P08": return <section className="participantCard centerCard completionCard"><div className="statusIcon" aria-hidden="true">✓</div><h1>Study complete</h1><p>Thank you for completing the session.</p><div className="referenceCode"><span>Reference code</span><span className="skeletonCell" aria-hidden="true" /></div></section>;
-    case "P09": return <section className="participantCard centerCard unavailableCard"><div className="statusIcon statusIcon--muted" aria-hidden="true">!</div><h1>This study link is unavailable</h1><StateNotice state={state} /><p>Use a valid active study link or contact the study owner.</p></section>;
-    case "P10": return <section className="participantCard centerCard"><div className="statusIcon statusIcon--warning" aria-hidden="true">!</div><h1>We can’t continue this step</h1><p>This is a technical or access condition, not a usability failure.</p><StateNotice state={state} /><ParticipantActions primary="Try again" secondary="Exit" disabled={kind === "restricted" && state === "Permission"} /></section>;
-    case "P11": return <section className="participantCard centerCard"><div className="statusIcon statusIcon--warning" aria-hidden="true">!</div><h1>Time limit reached</h1><StateNotice state={state} /><p>The next action follows the study configuration.</p><ParticipantActions primary="Continue" secondary="Exit" /></section>;
-    case "P12": return <section className="participantCard centerCard"><span className="eyebrow">Recovery</span><h1>{kind === "success" ? "Session restored" : "Reconnect to continue"}</h1><p>Your completed progress is preserved when recovery succeeds.</p><StateNotice state={state} />{kind === "loading" ? <Skeleton /> : <ParticipantActions primary={kind === "success" ? "Resume study" : "Reconnect"} secondary="Exit" disabled={kind === "error"} />}</section>;
-    default: return <section className="participantCard centerCard"><h1>{screen.name}</h1><StateNotice state={state} /><ParticipantActions /></section>;
+    case "P01": return <section className="participantCard centerCard"><span className="eyebrow">Access check</span><h1>Checking your access</h1><p>Checking that this study is available.</p>{notice}{kind === "loading" ? <Skeleton /> : <ParticipantActions primary="Continue" secondary="Exit" />}</section>;
+    case "P02": return <section className="participantCard centerCard"><span className="eyebrow">Consent</span><h1>Before you begin</h1><p>Please review and agree before starting.</p><label className="consentBox"><input type="checkbox" /><span>I agree to participate in this usability study.</span></label>{notice}<ParticipantActions primary="Agree and start" secondary="Decline" disabled={kind === "loading"} /></section>;
+    case "P03": return <section className="participantCard centerCard"><span className="eyebrow">Task</span><h1>Your task</h1><div className="scenarioCard"><strong>Task instructions</strong><span className="skeletonCell skeletonCell--title" aria-label="Task instruction placeholder" /></div>{notice}<ParticipantActions primary="Start task" /></section>;
+    case "P04": return <section className="participantRunner"><div className="runnerTaskBar"><strong>Task in progress</strong><Button variant="secondary">Stop task</Button></div><div className="participantPrototype" aria-label="Prototype canvas"><Skeleton rows={6} /></div>{notice}</section>;
+    case "P05": return <div className="modalStage participantModalStage"><section className="deleteModal" role="dialog" aria-modal="true" aria-label="Stop task confirmation"><h1>Stop this task?</h1><p>You can continue the study after stopping this task.</p>{notice}<ParticipantActions primary="Stop task" secondary="Keep trying" danger /></section></div>;
+    case "P06": return <section className="participantCard centerCard"><span className="eyebrow">Post-task feedback</span><h1>How easy or difficult was this task?</h1><fieldset className="seqFieldset"><legend>Task ease</legend><div>{[1,2,3,4,5,6,7].map((n) => <label key={n}><input type="radio" name="participant-seq" /><span>{n}</span></label>)}</div></fieldset><label className="field"><span className="fieldLabel">Optional feedback</span><textarea className="fieldControl fieldTextarea" /></label>{notice}<ParticipantActions primary="Submit feedback" /></section>;
+    case "P07": return <section className="participantCard centerCard"><span className="eyebrow">Next task</span><h1>Ready for the next task?</h1><p>Your previous response has been saved.</p>{notice}{kind === "loading" ? <Skeleton /> : <ParticipantActions primary="Next task" secondary="Exit" />}</section>;
+    case "P08": return <section className="participantCard centerCard completionCard"><div className="statusIcon" aria-hidden="true">✓</div><h1>Study complete</h1><p>Thanks for taking part.</p><div className="referenceCode"><span>Reference code</span><span className="skeletonCell" aria-hidden="true" /></div></section>;
+    case "P09": return <section className="participantCard centerCard unavailableCard"><div className="statusIcon statusIcon--muted" aria-hidden="true">!</div><h1>This study isn't available</h1>{notice}<p>The link may have expired or the study may have closed. Check the link or contact the study owner.</p></section>;
+    case "P10": return <section className="participantCard centerCard"><div className="statusIcon statusIcon--warning" aria-hidden="true">!</div><h1>Something prevented this step from loading</h1><p>Try again. If the problem continues, you can exit the study.</p>{notice}<ParticipantActions primary="Try again" secondary="Exit" disabled={kind === "restricted" && state === "Permission"} /></section>;
+    case "P11": return <section className="participantCard centerCard"><div className="statusIcon statusIcon--warning" aria-hidden="true">!</div><h1>Time's up for this task</h1>{notice}<p>Your time for this task has ended. Continue to see what's next.</p><ParticipantActions primary="Continue" secondary="Exit" /></section>;
+    case "P12": return <section className="participantCard centerCard"><span className="eyebrow">Connection</span><h1>{kind === "success" ? "You're back online" : "Reconnect to continue"}</h1><p>Your completed tasks are saved.</p>{notice}{kind === "loading" ? <Skeleton /> : <ParticipantActions primary={kind === "success" ? "Continue study" : "Reconnect"} secondary="Exit" disabled={kind === "error"} />}</section>;
+    default: return <section className="participantCard centerCard"><h1>{screen.name}</h1>{notice}<ParticipantActions /></section>;
   }
 }
 
 function ParticipantContent({ screen, state }: { screen: Screen; state: string }) {
-  return <div className="participantFrame"><header className="participantHeader"><div className="participantBrand">UT Study</div><ParticipantProgress screen={screen} /></header><main className="participantMain"><ParticipantSpecimen screen={screen} state={state} /></main><footer className="participantFooter">Anonymous session · behavioral tracking starts only after consent.</footer></div>;
+  return <div className="participantFrame"><header className="participantHeader"><div className="participantBrand">UT Study</div><ParticipantProgress screen={screen} /></header><main className="participantMain"><ParticipantSpecimen screen={screen} state={state} /></main><footer className="participantFooter">Interaction tracking starts after you agree to participate.</footer></div>;
 }
 
 export default function HighFiReview() {
