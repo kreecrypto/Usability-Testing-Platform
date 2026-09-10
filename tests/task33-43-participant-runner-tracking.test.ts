@@ -199,22 +199,34 @@ test("Task42 time metrics derive from occurredAt and do not invent idle-adjusted
   assert.equal(metrics.idleRuleVersion, null);
 });
 
-test("Tasks 34-37 runner UI implements P01-P12 contract and never references hidden research rules", async () => {
+test("Tasks 34-37 runner UI covers participant states without exposing internal research language", async () => {
   const client = await readFile(new URL("../src/app/t/[testVersionId]/participant-runner-client.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../src/app/t/[testVersionId]/participant-runner.module.css", import.meta.url), "utf8");
-  assert.match(client, /P01 · Access check/);
-  assert.match(client, /P02 · Consent/);
-  assert.match(client, /P03 · Task/);
-  assert.match(client, /P06 · Post-task feedback/);
-  assert.match(client, /P08 · Complete/);
-  assert.match(client, /P09 · Unavailable/);
-  assert.match(client, /P10 · Technical blocked/);
-  assert.match(client, /P11 · Timed out/);
-  assert.match(client, /P12 · Recovery/);
-  assert.match(client, /Agree and start/);
-  assert.match(client, /Give up this task/);
-  assert.match(client, /Very difficult/);
-  assert.match(client, /Very easy/);
+
+  for (const stage of ["access-loading", "consent", "task-intro", "runner", "give-up-confirm", "feedback", "transition", "complete", "invalid", "technical", "timeout", "recovery"]) {
+    assert.match(client, new RegExp(`\\"${stage}\\"`));
+  }
+
+  for (const copy of [
+    "Checking your access",
+    "Agree and start",
+    "Complete the task as you normally would.",
+    "Stop this task?",
+    "Very difficult",
+    "Very easy",
+    "Submit feedback",
+    "This study isn't available",
+    "Something prevented the study from continuing",
+    "Time's up for this task",
+    "Reconnecting",
+    "Study complete",
+  ]) {
+    assert.match(client, new RegExp(copy.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")));
+  }
+
+  assert.doesNotMatch(client, /P0[1-9] ·|P1[0-2] ·/);
+  assert.doesNotMatch(client, /Expected paths and success targets are intentionally hidden/);
+  assert.doesNotMatch(client, /recorded as Timeout|recorded as Give Up|not a usability failure|stable event IDs|anonymous-session capabilities/);
   assert.doesNotMatch(client, /expectedPath|successRule|failureRule/);
   assert.match(css, /var\(--ut-/);
   assert.match(css, /@media \(max-width:575px\)/);
