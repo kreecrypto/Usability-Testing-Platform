@@ -4,10 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import type { ResultsModel } from "../../../lib/analytics/results.ts";
 import styles from "./results.module.css";
 
-type View = "overview" | "tasks" | "paths" | "funnel" | "sessions";
+type View = "overview" | "tasks" | "paths" | "heatmap" | "funnel" | "sessions";
 type LoadState = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; results: ResultsModel };
 
-const viewLabels: Record<View, string> = { overview: "ภาพรวม", tasks: "งานทดสอบ", paths: "เส้นทาง", funnel: "Funnel", sessions: "ผู้เข้าร่วม" };
+const viewLabels: Record<View, string> = { overview: "ภาพรวม", tasks: "งานทดสอบ", paths: "เส้นทาง", heatmap: "ฮีตแมป", funnel: "Funnel", sessions: "ผู้เข้าร่วม" };
 const outcomeLabels: Record<string, string> = {
   success_direct: "สำเร็จตามเส้นทาง", success_indirect: "สำเร็จด้วยเส้นทางอื่น", failed: "ไม่สำเร็จ", give_up: "ยุติงาน", timeout: "หมดเวลา", abandoned: "ออกจากแบบทดสอบ", technical_blocked: "ติดปัญหาทางเทคนิค", active: "กำลังทำ",
 };
@@ -39,8 +39,8 @@ function Overview({ results }: { results: ResultsModel }) {
       </div>
     </section>
     <section className={styles.warningPanel} role="status">
-      <strong>ข้อจำกัดของหลักฐานภาพ</strong>
-      <p>ฮีตแมปจะแสดงได้เมื่อมีหลักฐานพิกัดมาตรฐานที่ผ่าน release gate แล้ว ส่วน Funnel จะแสดงได้เมื่อเวอร์ชันที่เผยแพร่มีการกำหนดลำดับหน้าจอไว้</p>
+      <strong>คุณภาพของหลักฐานภาพ</strong>
+      <p>ฮีตแมปใช้เฉพาะพิกัดมาตรฐานที่ server สร้างจาก geometry snapshot ของเวอร์ชันนี้เท่านั้น หากไม่มี geometry ระบบจะแสดง Unsupported/No Data แทนการใช้พิกัดจาก browser.</p>
     </section>
   </div>;
 }
@@ -80,6 +80,51 @@ function Paths({ results }: { results: ResultsModel }) {
       <div><strong>{path.repeatedScreenCount}</strong><span>เข้าหน้าซ้ำ</span></div>
     </div>
   </article>)}</div>;
+}
+
+function Heatmap({ results }: { results: ResultsModel }) {
+  const dataset = results.heatmap;
+  const [taskId, setTaskId] = useState("");
+  const [screenId, setScreenId] = useState(dataset.filters.screenIds[0] ?? "");
+  const [deviceClass, setDeviceClass] = useState("");
+  const [outcome, setOutcome] = useState("");
+
+  useEffect(() => {
+    if (!screenId && dataset.filters.screenIds[0]) setScreenId(dataset.filters.screenIds[0]);
+  }, [dataset.filters.screenIds, screenId]);
+
+  if (dataset.status === "unsupported") return <EmptyState title="ฮีตแมปยังไม่พร้อม">พบ {dataset.rawPointerCount} pointer events แต่ไม่มี canonical geometry ที่ตรวจสอบได้ ระบบจึงไม่ใช้พิกัด browser/CSS เป็น fallback.</EmptyState>;
+  if (dataset.status === "no_data") return <EmptyState title="ยังไม่มีข้อมูลฮีตแมป">ยังไม่มี pointer interaction ในเวอร์ชันนี้</EmptyState>;
+
+  const points = dataset.points.filter((point) =>
+    (!taskId || point.taskId === taskId)
+    && (!screenId || point.screenId === screenId)
+    && (!deviceClass || point.deviceClass === deviceClass)
+    && (!outcome || point.terminalOutcome === outcome)
+  );
+  const frame = points[0] ?? dataset.points.find((point) => point.screenId === screenId) ?? dataset.points[0];
+  const taskLabel = (id: string) => results.taskDetails.find((task) => task.taskId === id)?.title ?? id;
+
+  return <div className={styles.stack}>
+    <section className={styles.panel}>
+      <div className={styles.panelHeader}><div><span className={styles.eyebrow}>Screen Heatmap · {dataset.canonicalPointerCount}/{dataset.rawPointerCount} canonical</span><h2>ตำแหน่งคลิกบน Prototype</h2></div><span className={styles.badge}>เวอร์ชัน {results.testVersionId.slice(0, 8)}</span></div>
+      <div className={styles.heatmapFilters}>
+        <label>งาน<select value={taskId} onChange={(event) => setTaskId(event.target.value)}><option value="">ทั้งหมด</option>{dataset.filters.taskIds.map((id) => <option value={id} key={id}>{taskLabel(id)}</option>)}</select></label>
+        <label>หน้าจอ<select value={screenId} onChange={(event) => setScreenId(event.target.value)}>{dataset.filters.screenIds.map((id) => <option value={id} key={id}>{id}</option>)}</select></label>
+        <label>อุปกรณ์<select value={deviceClass} onChange={(event) => setDeviceClass(event.target.value)}><option value="">ทั้งหมด</option>{dataset.filters.deviceClasses.map((value) => <option value={value} key={value}>{value}</option>)}</select></label>
+        <label>ผลลัพธ์<select value={outcome} onChange={(event) => setOutcome(event.target.value)}><option value="">ทั้งหมด</option>{dataset.filters.outcomes.map((value) => <option value={value} key={value}>{outcomeLabel(value)}</option>)}</select></label>
+      </div>
+    </section>
+    {points.length === 0 || !frame ? <EmptyState title="ไม่มีข้อมูลตามตัวกรอง">ลองเปลี่ยนงาน หน้าจอ อุปกรณ์ หรือผลลัพธ์</EmptyState> : <section className={styles.panel}>
+      <div className={styles.panelHeader}><div><span className={styles.eyebrow}>{frame.transformVersion} · geometry {frame.geometryVersionId.slice(0, 8)}</span><h2>หน้าจอ {frame.screenId}</h2></div><span className={styles.badge}>n={points.length}</span></div>
+      <div className={styles.heatmapStageWrap}>
+        <div className={styles.heatmapStage} style={{ aspectRatio: `${frame.frameWidth} / ${frame.frameHeight}` }} aria-label={`ฮีตแมปหน้าจอ ${frame.screenId}`}>
+          {points.map((point) => <span key={point.eventId} className={styles.heatmapPoint} style={{ left: `${point.normalizedX * 100}%`, top: `${point.normalizedY * 100}%` }} title={`session ${point.sessionId.slice(0, 8)} · ${outcomeLabel(point.terminalOutcome)}`} aria-label={`คลิกที่ ${Math.round(point.normalizedX * 100)}%, ${Math.round(point.normalizedY * 100)}%`} />)}
+        </div>
+      </div>
+      <small className={styles.heatmapNote}>จุดทั้งหมดวางจาก canonical normalized coordinates 0–1 ของ geometry snapshot นี้เท่านั้น ไม่ใช้ browser CSS pixels.</small>
+    </section>}
+  </div>;
 }
 
 function Funnel({ results }: { results: ResultsModel }) {
@@ -141,9 +186,9 @@ export default function ResultsPage({ params }: { params: Promise<{ testVersionI
   const title = useMemo(() => versionId ? `เวอร์ชัน ${versionId.slice(0, 8)}` : "วิเคราะห์ผล", [versionId]);
   return <main className={styles.page}>
     <header className={styles.header}><div><span className={styles.eyebrow}>วิเคราะห์ผล · หลักฐานจากเวอร์ชันที่เผยแพร่</span><h1>{title}</h1><p>ผลลัพธ์คำนวณจากเหตุการณ์ที่ระบบยอมรับ ปัญหาทางเทคนิคแยกจากผลด้านการใช้งาน และค่าที่ไม่มีข้อมูลจะไม่แสดงเป็นศูนย์</p></div><a href="/projects" className={styles.backLink}>โปรเจกต์</a></header>
-    <nav className={styles.tabs} aria-label="มุมมองการวิเคราะห์ผล">{(["overview", "tasks", "paths", "funnel", "sessions"] as const).map((item) => <button key={item} type="button" aria-current={view === item ? "page" : undefined} className={view === item ? styles.tabActive : styles.tab} onClick={() => setView(item)}>{viewLabels[item]}</button>)}</nav>
+    <nav className={styles.tabs} aria-label="มุมมองการวิเคราะห์ผล">{(["overview", "tasks", "paths", "heatmap", "funnel", "sessions"] as const).map((item) => <button key={item} type="button" aria-current={view === item ? "page" : undefined} className={view === item ? styles.tabActive : styles.tab} onClick={() => setView(item)}>{viewLabels[item]}</button>)}</nav>
     {state.status === "loading" ? <div className={styles.loading} role="status">กำลังโหลดผลการทดสอบ…</div> : null}
     {state.status === "error" ? <div className={styles.error} role="alert"><strong>ยังเปิดผลการทดสอบไม่ได้</strong><p>{state.message}</p></div> : null}
-    {state.status === "ready" ? <section className={styles.content}>{view === "overview" ? <Overview results={state.results} /> : view === "tasks" ? <Tasks results={state.results} /> : view === "paths" ? <Paths results={state.results} /> : view === "funnel" ? <Funnel results={state.results} /> : <Sessions results={state.results} />}</section> : null}
+    {state.status === "ready" ? <section className={styles.content}>{view === "overview" ? <Overview results={state.results} /> : view === "tasks" ? <Tasks results={state.results} /> : view === "paths" ? <Paths results={state.results} /> : view === "heatmap" ? <Heatmap results={state.results} /> : view === "funnel" ? <Funnel results={state.results} /> : <Sessions results={state.results} />}</section> : null}
   </main>;
 }
