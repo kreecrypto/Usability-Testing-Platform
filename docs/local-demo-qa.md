@@ -1,6 +1,6 @@
 # Local Demo QA — No Vercel Deployment
 
-This workflow exists to exercise the UTP demo and engineering QA without consuming Vercel deployment quota.
+This workflow exists to exercise the UTP demo and engineering QA without requiring Vercel deployment evidence.
 
 ## Authority boundary
 
@@ -10,12 +10,27 @@ This workflow exists to exercise the UTP demo and engineering QA without consumi
 - Vercel Production remains the release/runtime evidence source.
 - Local Demo QA MUST NOT be presented as Vercel release evidence and MUST NOT move a release-gated task to COMPLETE by itself.
 
+## Evidence labels
+
+Use these labels consistently:
+
+- `DEMO_QA_PASS` — local/GitHub engineering demo checks passed. This is not production evidence.
+- `RELEASE_QA_PASS` — reserved for a task whose full Sheet acceptance/release evidence has passed, including required runtime/provider/human evidence.
+
+Never promote `DEMO_QA_PASS` to `RELEASE_QA_PASS` automatically.
+
+## Production safety guard
+
+Every demo QA command runs `npm run check:demo-env` first. The guard fails closed when the environment points at the canonical UTP Production app origin or the canonical UTP Production Supabase project.
+
+The deterministic QA fixture stays in-process test data. Demo QA MUST NOT insert that fixture into Production Supabase.
+
 ## Local demo workflow
 
 1. Install pinned dependencies:
 
    ```bash
-   npm install
+   npm ci
    ```
 
 2. Run the focused provider-neutral demo QA harness:
@@ -24,9 +39,17 @@ This workflow exists to exercise the UTP demo and engineering QA without consumi
    npm run qa:demo
    ```
 
-   The command performs a local Next.js production build, TypeScript typecheck, and the existing non-Figma release QA harness.
+   This performs the production-target guard, local Next.js build, TypeScript typecheck, and the existing provider-neutral Task 54/55/58 QA harness.
 
-3. Start the application locally for interaction review:
+3. Run the complete GitHub/local engineering gate when preparing a larger change:
+
+   ```bash
+   npm run qa:demo:full
+   ```
+
+   This performs the production-target guard, AH Design System v2.6 QA, High-fi QA, build, typecheck, and the full repository test suite.
+
+4. Start the application locally for interaction review:
 
    ```bash
    npm run dev
@@ -34,11 +57,11 @@ This workflow exists to exercise the UTP demo and engineering QA without consumi
 
    Open `http://localhost:3000`.
 
-4. For the full repository QA gate, run:
+## GitHub-only workflow
 
-   ```bash
-   npm run qa
-   ```
+`.github/workflows/local-demo-qa.yml` runs on pull requests and manual dispatch. It uses GitHub-hosted runners only and does not call the Vercel CLI or Vercel APIs.
+
+Important: a connected Vercel Git Integration may independently create a preview deployment when a PR/branch is pushed. This workflow does not control that external integration. If the project owner wants zero Vercel preview consumption, Preview Deployment behavior must be disabled/ignored in the Vercel project integration separately; this repository workflow alone cannot guarantee that.
 
 ## Existing deterministic demo data
 
@@ -62,7 +85,7 @@ This fixture is engineering/demo test data only. It is deliberately not inserted
 
 ## What can be verified without Vercel
 
-Local/GitHub QA can verify build, type safety, deterministic event contracts, analytics aggregation, duplicate suppression, retry/idempotency behavior, non-Figma result calculations, local UI flows, and Supabase-backed development/test behavior when explicitly configured.
+Local/GitHub QA can verify build, type safety, Design System consistency, High-fi static QA, deterministic event contracts, analytics aggregation, duplicate suppression, retry/idempotency behavior, non-Figma result calculations, local UI flows, and explicitly isolated Supabase development/test behavior.
 
 ## What stays blocked until release QA
 
@@ -80,6 +103,6 @@ Do not claim the following from Local Demo QA alone:
 
 Use this sequence during normal implementation:
 
-`Sheet → dependency preflight → GitHub implementation → npm run qa:demo / npm run qa → local interaction review → Supabase QA when required → merge → Vercel only at an explicit release/runtime gate`
+`Sheet → dependency preflight → GitHub implementation → npm run qa:demo / npm run qa:demo:full → local interaction review → isolated Supabase QA when required → merge → Vercel only at an explicit release/runtime gate`
 
-This keeps routine development independent from Vercel build quota while preserving the Sheet's release evidence rules.
+This keeps routine development independent from Vercel runtime evidence while preserving the Sheet's release evidence rules.
