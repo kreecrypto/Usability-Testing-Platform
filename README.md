@@ -75,6 +75,14 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+For a focused local demo/engineering QA cycle that does **not** deploy to Vercel:
+
+```bash
+npm run qa:demo
+```
+
+This uses the existing deterministic provider-neutral QA fixture. It is development/test evidence only and does not replace release-gate evidence from Vercel Production, real Figma access, cross-device QA, or human UAT. See [`docs/local-demo-qa.md`](docs/local-demo-qa.md).
+
 ## Environment
 
 Copy `.env.example` to `.env.local` and add development credentials when integrations are enabled. Production secrets must be configured in Vercel Environment Variables and must never be committed. Supabase server credentials remain server-only; browser-visible values must use only the existing `NEXT_PUBLIC_*` contract.
