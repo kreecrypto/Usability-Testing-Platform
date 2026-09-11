@@ -1,6 +1,6 @@
 {
   "name": "Desktop CRM Case Creation",
-  "status": "prototype_source_verified",
+  "status": "prototype_source_verified_expected_path_derived",
   "source": {
     "provider": "figma",
     "fileKey": "4dNgvws0LP3dtpiLg9VKix",
@@ -21,10 +21,54 @@
     },
     "reachableTopLevelFrameCount": 25,
     "topLevelReactionEdgeCount": 52,
-    "note": "The prototype contains multiple branching outcomes from the review/submit step. The graph proves reachable interactions but does not identify a single canonical task goal or expected path."
+    "successTargetNodeId": "728:7754",
+    "successTargetFrameName": "Modal — เคสแก้ไขสำเร็จ",
+    "successTriggerNodeName": "Btn primary",
+    "derivationRule": "QA expected path is the shortest source-observed reaction path from the configured start node to the explicit success modal. This is derived QA evidence, not a new product requirement."
   },
-  "expectedPath": null,
-  "expectedPathStatus": "SOURCE_GAP",
-  "sourceGap": "Task 53 requires an expected path, but the supplied prototype graph contains multiple valid branches and no source-backed task instruction identifies which branch is the canonical expected path. Do not infer one.",
-  "scope": "Task 53 seed 1 of 3; Mobile Checkout and Mobile Banking prototype artifacts are still missing."
+  "expectedPathStatus": "DERIVED_FROM_SOURCE_GRAPH",
+  "expectedPath": [
+    "728:8780",
+    "728:6744",
+    "728:6794",
+    "728:6852",
+    "728:6911",
+    "739:9736",
+    "739:9838",
+    "728:6974",
+    "728:7040",
+    "728:7093",
+    "728:7146",
+    "728:7192",
+    "728:7269",
+    "728:7453",
+    "728:7518",
+    "728:7361",
+    "728:7407",
+    "728:7564",
+    "728:7754"
+  ],
+  "expectedPathFrames": [
+    "CRM — Case Detail View",
+    "Step 1 — เลือกประเภทผู้ติดต่อ (v1)",
+    "Step 1 — Verify Customer (ค้นหา — ว่าง) (v1)",
+    "Step 1 — Verify Customer (ค้นหา — กรอกข้อมูล) (v1)",
+    "Step 1 — Verified Customer (Privacy check — 0/3)",
+    "Step 1 — Verified Customer (Privacy check — 1/3)",
+    "Step 1 — Verified Customer (Privacy check — 2/3)",
+    "Step 1 — Verified Customer (Privacy check — 3/3)",
+    "Step 1 — Verified Customer (สิทธิ์ — Full Access)",
+    "Step 1 — Verified Customer (สิทธิ์ — Limited Access)",
+    "Step 2 — สร้างเคส (ว่าง)",
+    "Step 2 — สร้างเคส (Dropdown ประเภทเคส เปิด)",
+    "Step 2 — สร้างเคส (เลือกประเภทเคส)",
+    "Step 2 — สร้างเคส (Dropdown ประเภทย่อย เปิด)",
+    "Step 2 — สร้างเคส (เลือกประเภทย่อย + กรอกข้อมูล)",
+    "Step 2 — สร้างเคส (กรอกข้อมูลแล้ว)",
+    "Step 2 — สร้างเคส (พร้อมส่ง — ปานกลาง)",
+    "Step 3 — ตรวจสอบและส่งเคส",
+    "Modal — เคสแก้ไขสำเร็จ"
+  ],
+  "remainingSourceGap": "Mobile Checkout and Mobile Banking prototype artifacts + expected paths are still missing.",
+  "scope": "Task 53 seed 1 of 3; Desktop CRM seed now has a source-derived deterministic QA expected path."
 }
