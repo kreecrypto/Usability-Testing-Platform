@@ -113,7 +113,8 @@ for (const signal of cssSignals) if (!css.includes(signal)) fail(`base high-fi C
 const fixSignals = ['.reviewStage--mobile .appSidebar','width:280px','.navBackdrop','.componentChips','.reviewStepper','.inlineError','.choiceGrid','.hfButton{','border-radius:var(--ut-radius-pill)','.appTopbar h1','.participantPrototype','var(--ut-touch-target-min)'];
 for (const signal of fixSignals) if (!fixes.includes(signal)) fail(`post-review CSS missing ${signal}`);
 
-for (const signal of ['href: "/high-fi"','หน้าจอผลิตภัณฑ์','48','170','ต้นแบบ → หลักฐาน → การตัดสินใจ UX']) if (!home.includes(signal)) fail(`Thai home missing ${signal}`);
+for (const signal of ['href: "/high-fi"','หน้าจอผลิตภัณฑ์','48','170','เป้าหมายทดสอบ → หลักฐาน → การตัดสินใจ UX','Figma Prototype','เว็บไซต์ UAT/Production','เว็บไซต์ภายนอก']) if (!home.includes(signal)) fail(`Thai home missing ${signal}`);
+if (home.includes('รุ่นปัจจุบันเน้นการทดสอบต้นแบบ Figma')) fail('home must not imply Figma is the only test target');
 if (home.includes('href="/projects"') || home.includes('href: "/projects"')) fail('home exposes deferred Projects entry');
 if (home.includes('href="/login"') || home.includes('href: "/login"')) fail('home exposes deferred Login entry');
 if (!layout.includes('<html lang="th">')) fail('document language must be Thai');
@@ -133,4 +134,5 @@ if (!process.exitCode) {
   console.log('PASS retest data remains skeletonized in design-only review');
   console.log('PASS Thai UX writing hides internal researcher/analytics mechanics from participants');
   console.log('PASS consent disclosure remains aligned with the V1 privacy baseline');
+  console.log('PASS home copy uses provider-neutral Test Target mental model');
 }
