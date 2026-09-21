@@ -2,236 +2,114 @@ import { parseFunnelDefinition, type FunnelDefinition } from "../analytics/funne
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+export type TestTargetProvider = "figma_prototype" | "first_party_web" | "external_web";
+export type TestTargetSnapshot = Readonly<{
+  provider: TestTargetProvider;
+  sourceUrl: string;
+  environment: "uat" | "production" | "external" | null;
+  launchMode: "embed" | "new_tab" | "same_tab" | "unsupported";
+  capabilities: Readonly<Record<string, unknown>>;
+  providerConfig: Readonly<Record<string, unknown>>;
+  snapshotVersion: number;
+}>;
+
 export type PublishPreviewTask = Readonly<{
-  id: string;
-  ordinal: number;
-  title: string;
-  scenario: string | null;
-  instruction: string | null;
-  expectedPath: readonly unknown[];
-  successRule: Readonly<Record<string, unknown>>;
-  failureRule: Readonly<Record<string, unknown>>;
-  timeoutSeconds: number | null;
+  id: string; ordinal: number; title: string; scenario: string | null; instruction: string | null;
+  expectedPath: readonly unknown[]; successRule: Readonly<Record<string, unknown>>;
+  failureRule: Readonly<Record<string, unknown>>; timeoutSeconds: number | null;
   postTaskQuestions: Readonly<Record<string, unknown>>;
 }>;
 
 export type PublishPreview = Readonly<{
-  testId: string;
-  testVersionId: string;
-  versionNo: number;
-  lifecycleStatus: "draft" | "published";
-  sourceUrl: string;
-  embedUrl: string;
-  fileKey: string;
-  startNodeId: string;
-  funnelConfig: FunnelDefinition | null;
-  tasks: readonly PublishPreviewTask[];
+  testId: string; testVersionId: string; versionNo: number; lifecycleStatus: "draft" | "published";
+  target: TestTargetSnapshot; funnelConfig: FunnelDefinition | null; tasks: readonly PublishPreviewTask[];
 }>;
 
-type PublishVersioningErrorCode =
-  | "invalid_test_id"
-  | "test_version_not_found"
-  | "permission_denied"
-  | "not_publishable"
-  | "data_request_failed";
-
+type PublishVersioningErrorCode = "invalid_test_id" | "test_version_not_found" | "permission_denied" | "not_publishable" | "data_request_failed";
 export class PublishVersioningError extends Error {
-  readonly code: PublishVersioningErrorCode;
-  readonly status: number;
-
+  readonly code: PublishVersioningErrorCode; readonly status: number;
   constructor(code: PublishVersioningErrorCode, status: number, message: string = code) {
-    super(message);
-    this.name = "PublishVersioningError";
-    this.code = code;
-    this.status = status;
+    super(message); this.name = "PublishVersioningError"; this.code = code; this.status = status;
   }
 }
 
 type VersionRow = Readonly<{
-  id: string;
-  test_id: string;
-  version_no: number;
-  lifecycle_status: "draft" | "published" | "archived";
-  figma_file_key: string | null;
-  figma_start_node_id: string | null;
-  prototype_mapping: Record<string, unknown>;
-  funnel_config: unknown;
+  id: string; test_id: string; version_no: number; lifecycle_status: "draft" | "published" | "archived";
+  target_provider: string | null; target_snapshot: unknown; prototype_mapping: Record<string, unknown>;
+  figma_file_key: string | null; figma_start_node_id: string | null; funnel_config: unknown;
 }>;
-
 type TaskRow = Readonly<{
-  id: string;
-  ordinal: number;
-  title: string;
-  scenario: string | null;
-  instruction: string | null;
-  expected_path: unknown;
-  success_rule: Record<string, unknown>;
-  failure_rule: Record<string, unknown>;
-  timeout_seconds: number | null;
-  post_task_questions: Record<string, unknown>;
+  id: string; ordinal: number; title: string; scenario: string | null; instruction: string | null;
+  expected_path: unknown; success_rule: Record<string, unknown>; failure_rule: Record<string, unknown>;
+  timeout_seconds: number | null; post_task_questions: Record<string, unknown>;
 }>;
 
 function requiredTestId(value: string): string {
   if (!UUID_PATTERN.test(value)) throw new PublishVersioningError("invalid_test_id", 400);
   return value;
 }
-
-function mappingStrings(mapping: Record<string, unknown>): {
-  sourceUrl: string;
-  embedUrl: string;
-  fileKey: string;
-} | null {
-  if (
-    mapping.provider !== "figma" ||
-    typeof mapping.sourceUrl !== "string" ||
-    typeof mapping.embedUrl !== "string" ||
-    typeof mapping.fileKey !== "string" ||
-    !mapping.sourceUrl.trim() ||
-    !mapping.embedUrl.trim() ||
-    !mapping.fileKey.trim()
-  ) return null;
-  return { sourceUrl: mapping.sourceUrl, embedUrl: mapping.embedUrl, fileKey: mapping.fileKey };
+function record(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
 }
-
+function parseTargetSnapshot(value: unknown): TestTargetSnapshot | null {
+  const target = record(value); if (!target) return null;
+  const provider = target.provider;
+  const environment = target.environment;
+  const launchMode = target.launchMode;
+  const capabilities = record(target.capabilities); const providerConfig = record(target.providerConfig);
+  const snapshotVersion = target.snapshotVersion;
+  if ((provider !== "figma_prototype" && provider !== "first_party_web" && provider !== "external_web") ||
+      typeof target.sourceUrl !== "string" || !target.sourceUrl.trim() ||
+      (environment !== null && environment !== "uat" && environment !== "production" && environment !== "external") ||
+      (launchMode !== "embed" && launchMode !== "new_tab" && launchMode !== "same_tab" && launchMode !== "unsupported") ||
+      !capabilities || !providerConfig || typeof snapshotVersion !== "number" || !Number.isInteger(snapshotVersion) || snapshotVersion < 1) return null;
+  return Object.freeze({ provider, sourceUrl: target.sourceUrl, environment, launchMode, capabilities: Object.freeze({ ...capabilities }), providerConfig: Object.freeze({ ...providerConfig }), snapshotVersion });
+}
+function legacyFigmaTarget(version: VersionRow): TestTargetSnapshot | null {
+  const m = version.prototype_mapping;
+  if (m.provider !== "figma" || typeof m.sourceUrl !== "string" || !m.sourceUrl.trim()) return null;
+  const fileKey = typeof m.fileKey === "string" ? m.fileKey : version.figma_file_key;
+  if (!fileKey || !version.figma_start_node_id) return null;
+  return Object.freeze({ provider: "figma_prototype", sourceUrl: m.sourceUrl, environment: null, launchMode: "embed",
+    capabilities: Object.freeze(record(m.capabilities) ?? {}), providerConfig: Object.freeze({ fileKey, startNodeId: version.figma_start_node_id, ...(typeof m.embedUrl === "string" ? { embedUrl: m.embedUrl } : {}) }), snapshotVersion: 1 });
+}
 function cleanFunnelScreenIds(value: readonly string[]): string[] {
   const cleaned = value.map((item) => item.trim());
-  if (cleaned.length < 2 || cleaned.some((item) => !item)) {
-    throw new PublishVersioningError("not_publishable", 400, "funnel_requires_at_least_two_screens");
-  }
-  if (new Set(cleaned).size !== cleaned.length) {
-    throw new PublishVersioningError("not_publishable", 400, "funnel_screen_ids_must_be_unique");
-  }
+  if (cleaned.length < 2 || cleaned.some((item) => !item)) throw new PublishVersioningError("not_publishable", 400, "funnel_requires_at_least_two_screens");
+  if (new Set(cleaned).size !== cleaned.length) throw new PublishVersioningError("not_publishable", 400, "funnel_screen_ids_must_be_unique");
   return cleaned;
 }
 
-export function createPublishVersioningStore(options: {
-  supabaseUrl: string;
-  publicKey: string;
-  accessToken: string;
-  fetchImpl?: typeof fetch;
-}) {
-  const supabaseUrl = options.supabaseUrl.trim().replace(/\/+$/, "");
-  const publicKey = options.publicKey.trim();
-  const accessToken = options.accessToken.trim();
-  const fetchImpl = options.fetchImpl ?? fetch;
-  if (!supabaseUrl.startsWith("https://") || !publicKey || !accessToken) {
-    throw new Error("authenticated Supabase configuration is required");
-  }
-
-  const headers = Object.freeze({
-    apikey: publicKey,
-    authorization: `Bearer ${accessToken}`,
-  });
-
+export function createPublishVersioningStore(options: { supabaseUrl: string; publicKey: string; accessToken: string; fetchImpl?: typeof fetch; }) {
+  const supabaseUrl = options.supabaseUrl.trim().replace(/\/+$/, ""); const publicKey = options.publicKey.trim(); const accessToken = options.accessToken.trim(); const fetchImpl = options.fetchImpl ?? fetch;
+  if (!supabaseUrl.startsWith("https://") || !publicKey || !accessToken) throw new Error("authenticated Supabase configuration is required");
+  const headers = Object.freeze({ apikey: publicKey, authorization: `Bearer ${accessToken}` });
   async function request<T>(path: string, init?: RequestInit): Promise<T> {
-    const response = await fetchImpl(`${supabaseUrl}${path}`, {
-      ...init,
-      headers: {
-        ...headers,
-        accept: "application/json",
-        ...(init?.body ? { "content-type": "application/json" } : {}),
-        ...(init?.headers ?? {}),
-      },
-      cache: "no-store",
-    });
+    const response = await fetchImpl(`${supabaseUrl}${path}`, { ...init, headers: { ...headers, accept: "application/json", ...(init?.body ? { "content-type": "application/json" } : {}), ...(init?.headers ?? {}) }, cache: "no-store" });
     if (response.status === 401) throw new PublishVersioningError("data_request_failed", 401);
     if (response.status === 403) throw new PublishVersioningError("permission_denied", 403);
     const text = await response.text();
-    if (!response.ok) {
-      let message = "data_request_failed";
-      try {
-        const parsed = JSON.parse(text) as Record<string, unknown>;
-        if (typeof parsed.message === "string") message = parsed.message;
-      } catch { /* generic */ }
-      if (/required|publishable|task|funnel/i.test(message)) {
-        throw new PublishVersioningError("not_publishable", 409, message);
-      }
-      throw new PublishVersioningError("data_request_failed", 502, message);
-    }
+    if (!response.ok) { let message = "data_request_failed"; try { const parsed = JSON.parse(text) as Record<string, unknown>; if (typeof parsed.message === "string") message = parsed.message; } catch { /* generic */ }
+      if (/required|publishable|task|funnel|target/i.test(message)) throw new PublishVersioningError("not_publishable", 409, message);
+      throw new PublishVersioningError("data_request_failed", 502, message); }
     return (text.trim() ? JSON.parse(text) : null) as T;
   }
-
   async function preview(testId: string): Promise<PublishPreview> {
     testId = requiredTestId(testId);
-    const params = new URLSearchParams({
-      test_id: `eq.${testId}`,
-      lifecycle_status: "in.(draft,published)",
-      select: "id,test_id,version_no,lifecycle_status,figma_file_key,figma_start_node_id,prototype_mapping,funnel_config",
-      order: "version_no.desc",
-      limit: "1",
-    });
-    const versions = await request<VersionRow[]>(`/rest/v1/test_versions?${params}`);
-    const version = versions[0];
-    if (!version || version.lifecycle_status === "archived") {
-      throw new PublishVersioningError("test_version_not_found", 404);
-    }
-    const mapping = mappingStrings(version.prototype_mapping);
-    if (!mapping || !version.figma_start_node_id) {
-      throw new PublishVersioningError("not_publishable", 409, "publishable_prototype_snapshot_required");
-    }
-
-    const taskParams = new URLSearchParams({
-      test_version_id: `eq.${version.id}`,
-      select: "id,ordinal,title,scenario,instruction,expected_path,success_rule,failure_rule,timeout_seconds,post_task_questions",
-      order: "ordinal.asc",
-    });
+    const params = new URLSearchParams({ test_id: `eq.${testId}`, lifecycle_status: "in.(draft,published)", select: "id,test_id,version_no,lifecycle_status,target_provider,target_snapshot,prototype_mapping,figma_file_key,figma_start_node_id,funnel_config", order: "version_no.desc", limit: "1" });
+    const versions = await request<VersionRow[]>(`/rest/v1/test_versions?${params}`); const version = versions[0];
+    if (!version || version.lifecycle_status === "archived") throw new PublishVersioningError("test_version_not_found", 404);
+    const target = parseTargetSnapshot(version.target_snapshot) ?? legacyFigmaTarget(version);
+    if (!target || (version.target_provider && version.target_provider !== target.provider)) throw new PublishVersioningError("not_publishable", 409, "publishable_target_snapshot_required");
+    const taskParams = new URLSearchParams({ test_version_id: `eq.${version.id}`, select: "id,ordinal,title,scenario,instruction,expected_path,success_rule,failure_rule,timeout_seconds,post_task_questions", order: "ordinal.asc" });
     const taskRows = await request<TaskRow[]>(`/rest/v1/tasks?${taskParams}`);
-    const tasks = taskRows.map((task) => Object.freeze({
-      id: task.id,
-      ordinal: task.ordinal,
-      title: task.title,
-      scenario: task.scenario,
-      instruction: task.instruction,
-      expectedPath: Object.freeze(Array.isArray(task.expected_path) ? [...task.expected_path] : []),
-      successRule: Object.freeze({ ...(task.success_rule ?? {}) }),
-      failureRule: Object.freeze({ ...(task.failure_rule ?? {}) }),
-      timeoutSeconds: task.timeout_seconds,
-      postTaskQuestions: Object.freeze({ ...(task.post_task_questions ?? {}) }),
-    }));
-
+    const tasks = taskRows.map((task) => Object.freeze({ id: task.id, ordinal: task.ordinal, title: task.title, scenario: task.scenario, instruction: task.instruction,
+      expectedPath: Object.freeze(Array.isArray(task.expected_path) ? [...task.expected_path] : []), successRule: Object.freeze({ ...(task.success_rule ?? {}) }), failureRule: Object.freeze({ ...(task.failure_rule ?? {}) }), timeoutSeconds: task.timeout_seconds, postTaskQuestions: Object.freeze({ ...(task.post_task_questions ?? {}) }) }));
     if (tasks.length === 0) throw new PublishVersioningError("not_publishable", 409, "at_least_one_task_required");
-
-    return Object.freeze({
-      testId,
-      testVersionId: version.id,
-      versionNo: version.version_no,
-      lifecycleStatus: version.lifecycle_status,
-      sourceUrl: mapping.sourceUrl,
-      embedUrl: mapping.embedUrl,
-      fileKey: mapping.fileKey,
-      startNodeId: version.figma_start_node_id,
-      funnelConfig: parseFunnelDefinition(version.funnel_config),
-      tasks: Object.freeze(tasks),
-    });
+    return Object.freeze({ testId, testVersionId: version.id, versionNo: version.version_no, lifecycleStatus: version.lifecycle_status, target, funnelConfig: parseFunnelDefinition(version.funnel_config), tasks: Object.freeze(tasks) });
   }
-
-  async function saveFunnel(testId: string, screenIds: readonly string[]): Promise<PublishPreview> {
-    testId = requiredTestId(testId);
-    const cleaned = cleanFunnelScreenIds(screenIds);
-    await request<string>("/rest/v1/rpc/save_draft_funnel_config", {
-      method: "POST",
-      body: JSON.stringify({ p_test_id: testId, p_screen_ids: cleaned }),
-    });
-    return preview(testId);
-  }
-
-  async function publish(testId: string): Promise<PublishPreview> {
-    testId = requiredTestId(testId);
-    await request<string>("/rest/v1/rpc/publish_draft_test_version", {
-      method: "POST",
-      body: JSON.stringify({ p_test_id: testId }),
-    });
-    return preview(testId);
-  }
-
-  async function createDraftFromPublished(testId: string): Promise<PublishPreview> {
-    testId = requiredTestId(testId);
-    await request<string>("/rest/v1/rpc/create_draft_from_published", {
-      method: "POST",
-      body: JSON.stringify({ p_test_id: testId }),
-    });
-    return preview(testId);
-  }
-
+  async function saveFunnel(testId: string, screenIds: readonly string[]): Promise<PublishPreview> { testId = requiredTestId(testId); await request<string>("/rest/v1/rpc/save_draft_funnel_config", { method: "POST", body: JSON.stringify({ p_test_id: testId, p_screen_ids: cleanFunnelScreenIds(screenIds) }) }); return preview(testId); }
+  async function publish(testId: string): Promise<PublishPreview> { testId = requiredTestId(testId); await request<string>("/rest/v1/rpc/publish_draft_test_version", { method: "POST", body: JSON.stringify({ p_test_id: testId }) }); return preview(testId); }
+  async function createDraftFromPublished(testId: string): Promise<PublishPreview> { testId = requiredTestId(testId); await request<string>("/rest/v1/rpc/create_draft_from_published", { method: "POST", body: JSON.stringify({ p_test_id: testId }) }); return preview(testId); }
   return Object.freeze({ preview, saveFunnel, publish, createDraftFromPublished });
 }
