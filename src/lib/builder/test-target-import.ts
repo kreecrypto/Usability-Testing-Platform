@@ -28,12 +28,17 @@ export type TestTargetSnapshotV1 = Readonly<{
 }>;
 
 export class TestTargetImportError extends Error {
+  readonly code: "invalid_url" | "unsupported_scheme" | "invalid_figma_prototype" | "ownership_confirmation_required";
+  readonly status: number;
+
   constructor(
-    readonly code: "invalid_url" | "unsupported_scheme" | "invalid_figma_prototype" | "ownership_confirmation_required",
-    readonly status: number = 400,
+    code: "invalid_url" | "unsupported_scheme" | "invalid_figma_prototype" | "ownership_confirmation_required",
+    status: number = 400,
   ) {
     super(code);
     this.name = "TestTargetImportError";
+    this.code = code;
+    this.status = status;
   }
 }
 
