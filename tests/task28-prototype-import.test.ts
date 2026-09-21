@@ -16,9 +16,12 @@ test("prototype URL validation preserves public source and canonicalizes Figma n
   assert.match(String(config.embedUrl), /^https:\/\/embed\.figma\.com\/proto\/AbCd1234\//); assert.match(String(config.embedUrl), /embed-host=ut-platform-v1/);
 });
 
-test("invalid/non-prototype URLs fail closed before persistence", () => {
-  assert.throws(() => validatePrototypeImport("https://example.com/proto/AbCd1234/Foo"), (error: unknown) => error instanceof PrototypeImportError && error.code === "invalid_prototype_url" && error.status === 400);
+test("generic URL validation accepts external web but rejects invalid/non-prototype Figma targets", () => {
+  const external = validatePrototypeImport("https://example.com/proto/AbCd1234/Foo");
+  assert.equal(external.provider, "external_web");
+  assert.equal(external.sourceUrl, "https://example.com/proto/AbCd1234/Foo");
   assert.throws(() => validatePrototypeImport("https://www.figma.com/design/AbCd1234/Foo"), (error: unknown) => error instanceof PrototypeImportError && error.code === "invalid_prototype_url");
+  assert.throws(() => validatePrototypeImport("javascript:alert(1)"), (error: unknown) => error instanceof PrototypeImportError && error.code === "invalid_prototype_url");
 });
 
 test("saveDraft creates only a draft test version using the authenticated user JWT and existing RLS boundary", async () => {
