@@ -20,7 +20,7 @@ function fixture(consented = true) {
     hasConsent: () => consent,
     enqueue: async (event) => { events.push(event); },
     now: () => "2026-09-22T00:00:00.000Z",
-    randomId: () => `event-${++id}`,
+    randomId: () => `00000000-0000-4000-8000-${String(++id).padStart(12, "0")}`,
   });
   return { adapter, events, setConsent: (value: boolean) => { consent = value; } };
 }
@@ -68,7 +68,7 @@ test("enqueue failure does not fabricate a delivered event", async () => {
     hasConsent: () => true,
     enqueue: async () => { throw new Error("outbox_unavailable"); },
     now: () => "2026-09-22T00:00:00.000Z",
-    randomId: () => "event-fail",
+    randomId: () => "00000000-0000-4000-8000-999999999999",
   });
   await assert.rejects(() => adapter.recordScreenView("/checkout"), /outbox_unavailable/);
 });
