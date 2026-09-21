@@ -13,14 +13,19 @@ const WORKSPACE_ID = "20000000-0000-4000-8000-000000000002";
 const DRAFT_ID = "30000000-0000-4000-8000-000000000003";
 const PROTOTYPE_URL = "https://www.figma.com/proto/AbCd1234/Checkout?node-id=5-3&starting-point-node-id=5-3";
 
+function figmaTarget() {
+  return validatePrototypeImport(PROTOTYPE_URL);
+}
+
 test("prototype URL validation preserves public source and canonicalizes Figma node ids", () => {
-  const prototype = validatePrototypeImport(PROTOTYPE_URL);
-  assert.equal(prototype.provider, "figma");
-  assert.equal(prototype.fileKey, "AbCd1234");
-  assert.equal(prototype.nodeId, "5:3");
-  assert.equal(prototype.startingPointNodeId, "5:3");
-  assert.match(prototype.embedUrl, /^https:\/\/embed\.figma\.com\/proto\/AbCd1234\//);
-  assert.match(prototype.embedUrl, /embed-host=ut-platform-v1/);
+  const target = figmaTarget();
+  const config = target.providerConfig;
+  assert.equal(target.provider, "figma_prototype");
+  assert.equal(config.fileKey, "AbCd1234");
+  assert.equal(config.nodeId, "5:3");
+  assert.equal(config.startNodeId, "5:3");
+  assert.match(String(config.embedUrl), /^https:\/\/embed\.figma\.com\/proto\/AbCd1234\//);
+  assert.match(String(config.embedUrl), /embed-host=ut-platform-v1/);
 });
 
 test("invalid/non-prototype URLs fail closed before persistence", () => {
@@ -35,6 +40,7 @@ test("invalid/non-prototype URLs fail closed before persistence", () => {
 });
 
 test("saveDraft creates only a draft test version using the authenticated user JWT and existing RLS boundary", async () => {
+  const target = figmaTarget();
   const calls: Array<{ url: string; init?: RequestInit }> = [];
   const responses = [
     Response.json([{ id: TEST_ID, workspace_id: WORKSPACE_ID }]),
@@ -46,17 +52,11 @@ test("saveDraft creates only a draft test version using the authenticated user J
       test_id: TEST_ID,
       version_no: 1,
       lifecycle_status: "draft",
+      target_provider: target.provider,
+      target_snapshot: target,
       figma_file_key: "AbCd1234",
       figma_start_node_id: "5:3",
-      prototype_mapping: {
-        schemaVersion: 1,
-        provider: "figma",
-        sourceUrl: PROTOTYPE_URL,
-        embedUrl: "https://embed.figma.com/proto/AbCd1234/Checkout?node-id=5-3&starting-point-node-id=5-3&embed-host=ut-platform-v1",
-        fileKey: "AbCd1234",
-        nodeId: "5:3",
-        startingPointNodeId: "5:3",
-      },
+      prototype_mapping: { schemaVersion: 1, provider: "figma", sourceUrl: PROTOTYPE_URL },
     }]),
   ];
   let index = 0;
@@ -71,9 +71,10 @@ test("saveDraft creates only a draft test version using the authenticated user J
     fetchImpl,
   });
 
-  const saved = await store.saveDraft(TEST_ID, PROTOTYPE_URL);
+  const saved = await store.saveDraft(TEST_ID, { url: PROTOTYPE_URL });
   assert.equal(saved.versionNo, 1);
-  assert.equal(saved.prototype.fileKey, "AbCd1234");
+  assert.equal(saved.target.provider, "figma_prototype");
+  assert.equal(saved.target.providerConfig.fileKey, "AbCd1234");
   assert.equal(calls.length, 4);
   for (const call of calls) {
     const headers = call.init?.headers as Record<string, string>;
@@ -86,6 +87,8 @@ test("saveDraft creates only a draft test version using the authenticated user J
   assert.equal(create.init?.method, "POST");
   const body = JSON.parse(String(create.init?.body));
   assert.equal(body.lifecycle_status, "draft");
+  assert.equal(body.target_provider, "figma_prototype");
+  assert.equal(body.target_snapshot.provider, "figma_prototype");
   assert.equal(body.provider, "figma");
   assert.equal(body.figma_file_key, "AbCd1234");
   assert.equal(body.figma_start_node_id, "5:3");
@@ -94,6 +97,7 @@ test("saveDraft creates only a draft test version using the authenticated user J
 });
 
 test("saveDraft updates an existing draft instead of mutating a published version", async () => {
+  const target = figmaTarget();
   const calls: Array<{ url: string; init?: RequestInit }> = [];
   const existing = {
     id: DRAFT_ID,
@@ -101,16 +105,13 @@ test("saveDraft updates an existing draft instead of mutating a published versio
     test_id: TEST_ID,
     version_no: 2,
     lifecycle_status: "draft",
+    target_provider: "figma_prototype",
+    target_snapshot: target,
     figma_file_key: "Old123",
     figma_start_node_id: "1:1",
     prototype_mapping: {},
   };
-  const updated = {
-    ...existing,
-    figma_file_key: "AbCd1234",
-    figma_start_node_id: "5:3",
-    prototype_mapping: validatePrototypeImport(PROTOTYPE_URL),
-  };
+  const updated = { ...existing, target_snapshot: target, figma_file_key: "AbCd1234", figma_start_node_id: "5:3" };
   const responses = [
     Response.json([{ id: TEST_ID, workspace_id: WORKSPACE_ID }]),
     Response.json([existing]),
@@ -128,8 +129,9 @@ test("saveDraft updates an existing draft instead of mutating a published versio
     fetchImpl,
   });
 
-  const saved = await store.saveDraft(TEST_ID, PROTOTYPE_URL);
+  const saved = await store.saveDraft(TEST_ID, { url: PROTOTYPE_URL });
   assert.equal(saved.versionNo, 2);
+  assert.equal(saved.target.provider, "figma_prototype");
   assert.equal(calls.length, 3);
   assert.match(calls[1].url, /lifecycle_status=eq\.draft/);
   assert.match(calls[2].url, /lifecycle_status=eq\.draft/);
@@ -144,7 +146,7 @@ test("permission denial remains a sanitized authorization failure", async () => 
     fetchImpl: async () => Response.json({ provider: "detail" }, { status: 403 }),
   });
   await assert.rejects(
-    () => store.saveDraft(TEST_ID, PROTOTYPE_URL),
+    () => store.saveDraft(TEST_ID, { url: PROTOTYPE_URL }),
     (error: unknown) => error instanceof PrototypeImportError && error.code === "permission_denied" && error.status === 403,
   );
 });
