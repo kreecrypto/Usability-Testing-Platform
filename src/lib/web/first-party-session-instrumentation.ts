@@ -30,19 +30,23 @@ export function createFirstPartySessionInstrumentation(options: {
     throw new Error("invalid_event_endpoint");
   }
 
+  const senderOptions = {
+    endpoint,
+    ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
+  };
   const outbox = createEventOutbox({
     storage: options.storage,
     refreshCredential: options.refreshCredential,
-    sendBatch: createHttpEventBatchSender({ endpoint, fetchImpl: options.fetchImpl }),
-    maxBatchSize: options.maxBatchSize,
+    sendBatch: createHttpEventBatchSender(senderOptions),
+    ...(options.maxBatchSize !== undefined ? { maxBatchSize: options.maxBatchSize } : {}),
   });
 
   const instrumentation = createFirstPartyWebInstrumentation({
     context: options.context,
     hasConsent: options.hasConsent,
     enqueue: outbox.enqueue,
-    now: options.now,
-    randomId: options.randomId,
+    ...(options.now ? { now: options.now } : {}),
+    ...(options.randomId ? { randomId: options.randomId } : {}),
   });
 
   return Object.freeze({ instrumentation, flush: outbox.flush });
