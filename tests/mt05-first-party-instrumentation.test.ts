@@ -52,7 +52,7 @@ test("normalizes owned-page pointer evidence and fails closed out of bounds", as
   assert.equal(event?.metadata?.normalizedX, 0.5);
   assert.equal(event?.metadata?.normalizedY, 0.5);
   assert.equal(event?.metadata?.coordinateTransformVersion, FIRST_PARTY_WEB_ADAPTER_VERSION);
-  await assert.rejects(() => adapter.recordPointer({ screenId: "/pay", x: 501, y: 1, viewportWidth: 500, viewportHeight: 800 }), /pointer_out_of_bounds/);
+  assert.throws(() => adapter.recordPointer({ screenId: "/pay", x: 501, y: 1, viewportWidth: 500, viewportHeight: 800 }), /pointer_out_of_bounds/);
 });
 
 test("scroll is emitted only from explicit owned-document evidence", async () => {
