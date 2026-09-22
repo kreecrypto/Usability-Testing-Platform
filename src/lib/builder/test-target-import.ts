@@ -1,4 +1,5 @@
 import { parsePublicFigmaPrototypeUrl } from "../figma/public-embed.ts";
+import { resolveExternalTargetBoundary } from "../web/external-target-boundary.ts";
 
 export type TestTargetProvider = "figma_prototype" | "first_party_web" | "external_web";
 export type CapabilityState = "Available" | "Partial" | "Unsupported" | "No Data";
@@ -31,10 +32,7 @@ export class TestTargetImportError extends Error {
   readonly code: "invalid_url" | "unsupported_scheme" | "invalid_figma_prototype" | "ownership_confirmation_required";
   readonly status: number;
 
-  constructor(
-    code: "invalid_url" | "unsupported_scheme" | "invalid_figma_prototype" | "ownership_confirmation_required",
-    status: number = 400,
-  ) {
+  constructor(code: TestTargetImportError["code"], status: number = 400) {
     super(code);
     this.name = "TestTargetImportError";
     this.code = code;
@@ -54,6 +52,8 @@ export function preflightTestTarget(input: {
   url: string;
   ownership?: "owned" | "external";
   environment?: "uat" | "production";
+  externalEmbed?: "unknown" | "allowed" | "blocked";
+  cooperativeBridge?: boolean;
 }): TestTargetSnapshotV1 {
   const url = normalizedHttpUrl(input.url);
   const host = url.hostname.toLowerCase();
@@ -63,22 +63,9 @@ export function preflightTestTarget(input: {
     try { figma = parsePublicFigmaPrototypeUrl(url.toString()); }
     catch { throw new TestTargetImportError("invalid_figma_prototype"); }
     return Object.freeze({
-      provider: "figma_prototype",
-      sourceUrl: figma.sourceUrl,
-      environment: null,
-      launchMode: "embed",
-      capabilities: Object.freeze({
-        access: "Partial", embed: "Partial", instrumentation: "Partial",
-        screen: "Available", path: "Available", pointer: "Available",
-        scroll: "Unsupported", coordinates: "Available", publishBlocked: true,
-        reasons: Object.freeze(["Live public/embed access must pass provider preflight before Publish."]),
-      }),
-      providerConfig: Object.freeze({
-        fileKey: figma.fileKey,
-        embedUrl: figma.embedUrl,
-        ...(figma.nodeId ? { nodeId: figma.nodeId } : {}),
-        ...(figma.startingPointNodeId ? { startNodeId: figma.startingPointNodeId } : {}),
-      }),
+      provider: "figma_prototype", sourceUrl: figma.sourceUrl, environment: null, launchMode: "embed",
+      capabilities: Object.freeze({ access: "Partial", embed: "Partial", instrumentation: "Partial", screen: "Available", path: "Available", pointer: "Available", scroll: "Unsupported", coordinates: "Available", publishBlocked: true, reasons: Object.freeze(["Live public/embed access must pass provider preflight before Publish."]) }),
+      providerConfig: Object.freeze({ fileKey: figma.fileKey, embedUrl: figma.embedUrl, ...(figma.nodeId ? { nodeId: figma.nodeId } : {}), ...(figma.startingPointNodeId ? { startNodeId: figma.startingPointNodeId } : {}) }),
       snapshotVersion: 1,
     });
   }
@@ -86,37 +73,22 @@ export function preflightTestTarget(input: {
   if (input.ownership === "owned") {
     if (!input.environment) throw new TestTargetImportError("ownership_confirmation_required");
     return Object.freeze({
-      provider: "first_party_web",
-      sourceUrl: url.toString(),
-      environment: input.environment,
-      launchMode: "same_tab",
-      capabilities: Object.freeze({
-        access: "Partial", embed: "Partial", instrumentation: "Partial",
-        screen: "Partial", path: "Partial", pointer: "Partial", scroll: "Partial",
-        coordinates: "Partial", publishBlocked: true,
-        reasons: Object.freeze(["Owned target still requires live access/embed/instrumentation preflight before Publish."]),
-      }),
-      providerConfig: Object.freeze({ origin: url.origin }),
-      snapshotVersion: 1,
+      provider: "first_party_web", sourceUrl: url.toString(), environment: input.environment, launchMode: "same_tab",
+      capabilities: Object.freeze({ access: "Partial", embed: "Partial", instrumentation: "Partial", screen: "Partial", path: "Partial", pointer: "Partial", scroll: "Partial", coordinates: "Partial", publishBlocked: true, reasons: Object.freeze(["Owned target still requires live access/embed/instrumentation preflight before Publish."]) }),
+      providerConfig: Object.freeze({ origin: url.origin }), snapshotVersion: 1,
     });
   }
 
+  const boundary = resolveExternalTargetBoundary({ embed: input.externalEmbed ?? "unknown", cooperativeBridge: input.cooperativeBridge === true });
+  const rich = boundary.evidence.screen;
   return Object.freeze({
-    provider: "external_web",
-    sourceUrl: url.toString(),
-    environment: null,
-    launchMode: "new_tab",
+    provider: "external_web", sourceUrl: url.toString(), environment: null, launchMode: boundary.launchMode,
     capabilities: Object.freeze({
-      access: "Partial", embed: "Partial", instrumentation: "Unsupported",
-      screen: "Unsupported", path: "Unsupported", pointer: "Unsupported",
-      scroll: "Unsupported", coordinates: "Unsupported", publishBlocked: false,
-      reasons: Object.freeze([
-        "Cross-origin DOM/event evidence is unavailable unless the target explicitly provides an approved integration.",
-        "Embed capability is unknown until target-specific CSP/X-Frame-Options preflight completes; new-tab launch remains safe fallback.",
-      ]),
+      access: "Partial", embed: boundary.embed, instrumentation: boundary.evidence.screen,
+      screen: rich, path: rich, pointer: boundary.evidence.pointer, scroll: boundary.evidence.scroll,
+      coordinates: boundary.evidence.heatmap, publishBlocked: false, reasons: boundary.reasons,
     }),
-    providerConfig: Object.freeze({ origin: url.origin }),
-    snapshotVersion: 1,
+    providerConfig: Object.freeze({ origin: url.origin, cooperativeBridge: input.cooperativeBridge === true }), snapshotVersion: 1,
   });
 }
 
