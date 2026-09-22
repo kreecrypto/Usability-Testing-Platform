@@ -30,14 +30,14 @@ export function createFirstPartySessionInstrumentation(options: {
     throw new Error("invalid_event_endpoint");
   }
 
-  const senderOptions = {
-    endpoint,
-    ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
-  };
+  const sendBatch = options.fetchImpl
+    ? createHttpEventBatchSender({ endpoint, fetchImpl: options.fetchImpl })
+    : createHttpEventBatchSender({ endpoint });
+
   const outbox = createEventOutbox({
     storage: options.storage,
     refreshCredential: options.refreshCredential,
-    sendBatch: createHttpEventBatchSender(senderOptions),
+    sendBatch,
     ...(options.maxBatchSize !== undefined ? { maxBatchSize: options.maxBatchSize } : {}),
   });
 
