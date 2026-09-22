@@ -51,7 +51,7 @@ test("consent gates evidence and accepted batches clear the outbox", async () =>
   assert.equal(memory.read().length, 0);
   assert.equal(requests.length, 1);
   assert.equal(requests[0]?.authorization, "Bearer session-token");
-  assert.equal(requests[0]?.events[0]?.metadata.targetProvider, "first_party_web");
+  assert.equal(requests[0]?.events[0]?.metadata?.targetProvider, "first_party_web");
 });
 
 test("failed upload retains the same event identity for retry", async () => {
