@@ -47,7 +47,10 @@ export default function ProjectsPage() {
   useEffect(() => {
     void (async () => {
       const session = await fetch("/api/auth/session", { cache: "no-store" });
-      if (!session.ok) { window.location.replace("/login"); return; }
+      if (!session.ok) {
+        const temporary = await fetch("/api/auth/guest", { method: "POST", cache: "no-store" });
+        if (!temporary.ok) { window.location.replace("/login"); return; }
+      }
       await loadWorkspaces();
       setReady(true);
     })().catch(() => setMessage("โหลด Researcher workspace ไม่สำเร็จ"));
@@ -166,7 +169,7 @@ export default function ProjectsPage() {
         <nav className="nav" aria-label="Researcher menu">
           <a className="navItem active" href="/projects">Projects</a>
           <a className="navItem" href="/high-fi">Design QA</a>
-          <button className="navItem" type="button" onClick={() => void signOut()} style={{ border: 0, textAlign: "left", background: "transparent" }}>ออกจากระบบ</button>
+          <button className="navItem" type="button" onClick={() => void signOut()} style={{ border: 0, textAlign: "left", background: "transparent" }}>เริ่ม Session ใหม่</button>
         </nav>
       </aside>
 
