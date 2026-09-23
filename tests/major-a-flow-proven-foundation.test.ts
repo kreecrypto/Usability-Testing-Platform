@@ -16,7 +16,7 @@ test("MAJOR-A zero-state workspace bootstrap stays authenticated and RLS-backed"
   assert.match(migration, /insert into public\.workspaces/);
   assert.match(migration, /insert into public\.workspace_members/);
   assert.match(migration, /'owner'/);
-  assert.match(migration, /grant execute .* authenticated/is);
+  assert.match(migration, /grant execute [\s\S]* authenticated/i);
   assert.doesNotMatch(migration, /security definer/i);
 
   assert.match(route, /accessTokenFromRequest/);
