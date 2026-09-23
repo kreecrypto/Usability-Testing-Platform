@@ -115,8 +115,8 @@ for (const signal of fixSignals) if (!fixes.includes(signal)) fail(`post-review 
 
 for (const signal of ['href: "/high-fi"','หน้าจอผลิตภัณฑ์','48','170','เป้าหมายทดสอบ → หลักฐาน → การตัดสินใจ UX','Figma Prototype','เว็บไซต์ UAT/Production','เว็บไซต์ภายนอก']) if (!home.includes(signal)) fail(`Thai home missing ${signal}`);
 if (home.includes('รุ่นปัจจุบันเน้นการทดสอบต้นแบบ Figma')) fail('home must not imply Figma is the only test target');
-if (home.includes('href="/projects"') || home.includes('href: "/projects"')) fail('home exposes deferred Projects entry');
-if (home.includes('href="/login"') || home.includes('href: "/login"')) fail('home exposes deferred Login entry');
+if (!home.includes('href: "/projects"')) fail('home must expose Researcher Projects entry for Flow Proven');
+if (!home.includes('href="/login"')) fail('home must expose Researcher Login entry for Flow Proven');
 if (!layout.includes('<html lang="th">')) fail('document language must be Thai');
 for (const signal of ['--ut-color-brand','--ut-color-text-primary','--ut-color-bg-surface','--ut-color-focus-ring','--ut-color-outcome-technical','--ut-font-family-sans','--ut-space-4']) if (!tokens.includes(signal)) fail(`tokens missing ${signal}`);
 for (const screen of map.screens) {
