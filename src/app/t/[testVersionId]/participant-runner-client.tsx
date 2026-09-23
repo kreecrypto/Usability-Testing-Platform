@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFigmaInteractionEventBridge } from "../../../lib/figma/event-bridge.ts";
+import { createFirstPartyMessageBridge } from "../../../lib/web/first-party-message-bridge.ts";
 import {
   createBrowserLocalStorageOutboxStorage,
   createEventOutbox,
@@ -159,6 +160,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
   const [openFeedback, setOpenFeedback] = useState("");
   const [providerReady, setProviderReady] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const targetWindowRef = useRef<Window | null>(null);
   const giveUpTriggerRef = useRef<HTMLButtonElement | null>(null);
   const giveUpCancelRef = useRef<HTMLButtonElement | null>(null);
   const runtimeRef = useRef<Runtime | null>(null);
@@ -396,6 +398,42 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
   }, [currentTask, deliver, snapshot, stage, syncTerminalState]);
 
   useEffect(() => {
+    if (
+      stage !== "runner" ||
+      !currentTask ||
+      !snapshot ||
+      snapshot.target.provider !== "first_party_web" ||
+      snapshot.target.instrumentation !== "first_party_bridge" ||
+      !runtimeRef.current
+    ) return;
+
+    const runtime = runtimeRef.current;
+    const bridge = createFirstPartyMessageBridge({
+      expectedOrigin: new URL(snapshot.target.sourceUrl).origin,
+      expectedSource: () => targetWindowRef.current,
+      session: { ...runtime.context, taskId: currentTask.id },
+      initialSequence: runtime.lifecycle.getState().sequence,
+      emitTrackingEvent: async (event) => {
+        await runtime.lifecycle.acceptExternalRaw(event);
+        void deliver().then(syncTerminalState).catch(() => undefined);
+      },
+      onOperationalSignal: async () => {
+        setProviderReady(true);
+      },
+    });
+
+    const handler = (message: MessageEvent) => {
+      void bridge.handleMessage({
+        origin: message.origin,
+        source: message.source,
+        data: message.data,
+      });
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [currentTask, deliver, snapshot, stage, syncTerminalState]);
+
+  useEffect(() => {
     if (stage !== "runner" || !snapshot || snapshot.target.provider === "figma_prototype") return;
     const interval = window.setInterval(() => {
       void syncTerminalState().catch(() => undefined);
@@ -462,6 +500,10 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     if (!currentTask || !runtimeRef.current || working) return;
     setWorking(true);
     setProviderReady(false);
+    if (snapshot?.target.instrumentation === "first_party_bridge") {
+      try { targetWindowRef.current?.close(); } catch { /* best effort */ }
+      targetWindowRef.current = null;
+    }
     try {
       await runtimeRef.current.lifecycle.startTask({ id: currentTask.id });
       await deliver();
@@ -472,11 +514,23 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
         setStage("technical");
         return;
       }
-      if (snapshot?.target.provider !== "figma_prototype") setProviderReady(true);
+      if (snapshot?.target.provider !== "figma_prototype" && snapshot.target.instrumentation !== "first_party_bridge") setProviderReady(true);
       setStage("runner");
     } catch {
       setStage("recovery");
     } finally { setWorking(false); }
+  }
+
+  function openFirstPartyTarget() {
+    if (!snapshot || snapshot.target.instrumentation !== "first_party_bridge") return;
+    const opened = window.open(snapshot.target.sourceUrl, "utp-first-party-target");
+    if (!opened) {
+      setTechnicalReason("เบราว์เซอร์บล็อกหน้าต่าง Test Target กรุณาอนุญาต pop-up แล้วลองอีกครั้ง");
+      setProviderReady(false);
+      return;
+    }
+    targetWindowRef.current = opened;
+    setProviderReady(false);
   }
 
   function cancelGiveUp() {
@@ -638,17 +692,30 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
               ระบบจะใช้เฉพาะหลักฐานที่ Target รองรับและจะไปขั้นถัดไปเมื่อได้รับ outcome
               ที่ตรวจสอบได้ หากทำต่อไม่ได้ให้กลับมาที่หน้านี้แล้วเลือก “ทำงานนี้ต่อไม่ได้”
             </p>
-            <div className={styles.actions}>
-              <a
-                className={styles.primaryButton}
-                href={snapshot.target.sourceUrl}
-                target={snapshot.target.launchMode === "new_tab" ? "_blank" : undefined}
-                rel={snapshot.target.launchMode === "new_tab" ? "noreferrer" : undefined}
-                onClick={() => setProviderReady(true)}
-              >
-                เปิด Test Target
-              </a>
-            </div>
+            {snapshot.target.instrumentation === "first_party_bridge" ? (
+              <>
+                <p role="status">
+                  {providerReady ? "Target เชื่อมต่อกับ UTP แล้ว" : "เปิด Target เพื่อเริ่มรับหลักฐานจาก approved bridge"}
+                </p>
+                <div className={styles.actions}>
+                  <button className={styles.primaryButton} type="button" onClick={openFirstPartyTarget}>
+                    เปิด Test Target
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className={styles.actions}>
+                <a
+                  className={styles.primaryButton}
+                  href={snapshot.target.sourceUrl}
+                  target={snapshot.target.launchMode === "new_tab" ? "_blank" : undefined}
+                  rel={snapshot.target.launchMode === "new_tab" ? "noreferrer" : undefined}
+                  onClick={() => setProviderReady(true)}
+                >
+                  เปิด Test Target
+                </a>
+              </div>
+            )}
           </section>
         )}
         {stage === "give-up-confirm" ? (
