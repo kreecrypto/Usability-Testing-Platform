@@ -71,6 +71,8 @@ type VersionRow = Readonly<{
   lifecycle_status: string;
   target_provider: string | null;
   target_snapshot: unknown;
+  figma_start_node_id: string | null;
+  prototype_mapping: Record<string, unknown> | null;
 }>;
 
 type TestRow = Readonly<{ id: string; title: string; description: string | null; status: string }>;
@@ -118,9 +120,42 @@ function requiredServerValue(value: string, field: string): string {
   return result;
 }
 
+function legacyFigmaTargetSnapshot(version: VersionRow): unknown {
+  const mapping = version.prototype_mapping;
+  if (
+    !mapping ||
+    mapping.provider !== "figma" ||
+    typeof mapping.sourceUrl !== "string" ||
+    !mapping.sourceUrl.trim() ||
+    typeof mapping.embedUrl !== "string" ||
+    !mapping.embedUrl.trim() ||
+    !version.figma_start_node_id
+  ) return null;
+
+  const capabilities =
+    mapping.capabilities !== null &&
+    typeof mapping.capabilities === "object" &&
+    !Array.isArray(mapping.capabilities)
+      ? mapping.capabilities as Record<string, unknown>
+      : {};
+
+  return Object.freeze({
+    provider: "figma_prototype",
+    sourceUrl: mapping.sourceUrl,
+    launchMode: "embed",
+    capabilities: Object.freeze({ ...capabilities }),
+    providerConfig: Object.freeze({
+      embedUrl: mapping.embedUrl,
+      startNodeId: version.figma_start_node_id,
+    }),
+    snapshotVersion: 1,
+  });
+}
+
 function targetFromVersion(version: VersionRow, figmaEmbedClientId: string | null): PublicRunnerTarget {
   try {
-    const target = publicTargetFromSnapshot(version.target_snapshot, figmaEmbedClientId);
+    const source = version.target_snapshot ?? legacyFigmaTargetSnapshot(version);
+    const target = publicTargetFromSnapshot(source, figmaEmbedClientId);
     if (version.target_provider && version.target_provider !== target.provider) {
       throw new RunnerTargetAdapterError("invalid_target_snapshot");
     }
@@ -190,7 +225,7 @@ export function createPublicRunnerStore(options: {
     const versionParams = new URLSearchParams({
       id: `eq.${testVersionId}`,
       lifecycle_status: "eq.published",
-      select: "id,test_id,version_no,lifecycle_status,target_provider,target_snapshot",
+      select: "id,test_id,version_no,lifecycle_status,target_provider,target_snapshot,figma_start_node_id,prototype_mapping",
       limit: "1",
     });
     const versions = await request<VersionRow[]>(`/rest/v1/test_versions?${versionParams}`);
