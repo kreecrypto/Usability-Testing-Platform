@@ -108,3 +108,36 @@ The participant runner never inherits the researcher app shell or workspace navi
 - Privacy-restricted participant/session data is reachable only through authorized routes.
 - Provider-specific capability belongs under Target configuration/integrations; product-level IA remains provider-neutral.
 - Unsupported capability fails closed and never produces synthetic click/path/scroll/heatmap evidence.
+
+### Report synthesis layer
+
+Target-state Results navigation adds **Report** as the first synthesis surface for an exact published test version:
+
+- **Report**
+- Overview
+- Tasks
+- Paths
+- Heatmaps
+- Sessions
+- Findings
+- Retest
+
+The distinction is intentional:
+
+- Overview / Tasks / Paths / Heatmaps / Sessions are investigation surfaces.
+- Findings is the researcher interpretation surface.
+- Report is the stakeholder/decision synthesis surface.
+- Retest validates whether the fix improved comparable evidence.
+
+Report must not implement competing metric formulas. It composes existing evidence-backed metrics and Findings and must drill down to the underlying analysis/evidence.
+
+Minimum Report sections:
+
+1. Study Context — test version, target provider/snapshot, participant/eligible counts, technical blocks, capability coverage.
+2. Executive Summary — overall outcomes, top friction, Critical/High Findings, researcher decision note.
+3. Task Outcomes — outcome distribution, Median/P75/P90, SEQ, supported friction metrics.
+4. Findings — problem, severity, affected sample, metric context, Evidence Bundle, interpretation, recommendation.
+5. Evidence Explorer — sessions, timeline, paths, heatmaps, answers as supported.
+6. Retest — baseline/retest context, compatible metrics, sample context and delta.
+
+See `docs/research-evidence-report-contract.md`.
