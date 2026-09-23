@@ -45,6 +45,33 @@ test("emits stable provider-neutral screen evidence after consent", async () => 
   assert.equal(event?.metadata?.previousScreenId, "checkout:cart");
 });
 
+test("captures normalized URL and route evidence for provider-neutral rules", async () => {
+  const { adapter } = fixture();
+  const event = await adapter.recordScreenView(
+    "checkout:review",
+    "checkout:payment",
+    { url: "https://shop.example.com/checkout/review#summary", route: "/checkout/review" },
+  );
+  assert.equal(event?.eventType, "screen_view");
+  assert.equal(event?.metadata?.url, "https://shop.example.com/checkout/review");
+  assert.equal(event?.metadata?.route, "/checkout/review");
+  assert.throws(
+    () => adapter.recordScreenView("checkout:review", undefined, { route: "checkout review" }),
+    /invalid_navigation_route/,
+  );
+});
+
+test("emits explicit completion signal only after consent", async () => {
+  const { adapter, events, setConsent } = fixture(false);
+  assert.equal(await adapter.recordCompletionSignal("order-confirmed"), null);
+  assert.equal(events.length, 0);
+  setConsent(true);
+  const event = await adapter.recordCompletionSignal("order-confirmed", "checkout:done");
+  assert.equal(event?.eventType, "completion_signal");
+  assert.equal(event?.screenId, "checkout:done");
+  assert.equal(event?.metadata?.signalId, "order-confirmed");
+});
+
 test("normalizes owned-page pointer evidence and fails closed out of bounds", async () => {
   const { adapter } = fixture();
   const event = await adapter.recordPointer({ screenId: "/pay", x: 250, y: 400, viewportWidth: 500, viewportHeight: 800, elementId: "pay-now" });
