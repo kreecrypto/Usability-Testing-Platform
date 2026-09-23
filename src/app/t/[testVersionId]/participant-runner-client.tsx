@@ -30,11 +30,14 @@ type TestSnapshot = {
   versionNo: number;
   title: string;
   description: string | null;
-  prototype: {
+  target: {
+    provider: "figma_prototype" | "first_party_web" | "external_web";
     sourceUrl: string;
-    embedUrl: string;
+    launchMode: "embed" | "new_tab" | "same_tab";
+    embedUrl: string | null;
     liveEmbedUrl: string | null;
-    startNodeId: string;
+    startScreenId: string | null;
+    instrumentation: "figma_embed_api" | "first_party_bridge" | "cooperative_bridge" | "none";
   };
   tasks: RunnerTask[];
 };
@@ -349,7 +352,14 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
   }, [deliver, syncTerminalState]);
 
   useEffect(() => {
-    if (stage !== "runner" || !currentTask || !snapshot || !runtimeRef.current) return;
+    if (
+      stage !== "runner" ||
+      !currentTask ||
+      !snapshot ||
+      snapshot.target.provider !== "figma_prototype" ||
+      !snapshot.target.startScreenId ||
+      !runtimeRef.current
+    ) return;
     const iframe = iframeRef.current;
     const source = iframe?.contentWindow;
     if (!iframe || !source) return;
@@ -358,7 +368,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     const bridge = createFigmaInteractionEventBridge({
       expectedSource: source,
       session: { ...runtime.context, taskId: currentTask.id },
-      initialScreenId: snapshot.prototype.startNodeId,
+      initialScreenId: snapshot.target.startScreenId,
       initialSequence: runtime.lifecycle.getState().sequence,
       emitTrackingEvent: async (event) => {
         await runtime.lifecycle.acceptExternalRaw(event);
@@ -384,6 +394,14 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
   }, [currentTask, deliver, snapshot, stage, syncTerminalState]);
+
+  useEffect(() => {
+    if (stage !== "runner" || !snapshot || snapshot.target.provider === "figma_prototype") return;
+    const interval = window.setInterval(() => {
+      void syncTerminalState().catch(() => undefined);
+    }, 1500);
+    return () => window.clearInterval(interval);
+  }, [snapshot, stage, syncTerminalState]);
 
   useEffect(() => {
     if (stage !== "runner" || !currentTask?.timeoutSeconds || currentTask.timeoutSeconds <= 0) return;
@@ -447,13 +465,14 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     try {
       await runtimeRef.current.lifecycle.startTask({ id: currentTask.id });
       await deliver();
-      if (!snapshot?.prototype.liveEmbedUrl) {
+      if (snapshot?.target.provider === "figma_prototype" && !snapshot.target.liveEmbedUrl) {
         setTechnicalReason("ยังเปิดต้นแบบสำหรับแบบทดสอบนี้ไม่ได้ โปรดติดต่อผู้ที่ส่งแบบทดสอบนี้มา");
         await runtimeRef.current.lifecycle.technicalBlock("embed_api_unconfigured");
         try { await deliver(); } catch { /* durable outbox keeps evidence */ }
         setStage("technical");
         return;
       }
+      if (snapshot?.target.provider !== "figma_prototype") setProviderReady(true);
       setStage("runner");
     } catch {
       setStage("recovery");
@@ -594,8 +613,44 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
         </header>
         <div className={styles.runnerProgress} role="progressbar" aria-label="ความคืบหน้าของแบบทดสอบ" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><i style={{ width: `${progress}%` }} /></div>
         {offline ? <div className={styles.offlineBanner} role="status">คุณออฟไลน์อยู่ ระบบจะลองส่งข้อมูลอีกครั้งเมื่อกลับมาเชื่อมต่อ</div> : null}
-        {!providerReady ? <div className={styles.providerLoading} role="status">กำลังโหลดต้นแบบ…</div> : null}
-        <iframe ref={iframeRef} className={styles.prototypeFrame} src={snapshot.prototype.liveEmbedUrl ?? snapshot.prototype.embedUrl} title={`${snapshot.title} ต้นแบบสำหรับงาน ${taskIndex + 1}`} allow="fullscreen" />
+        {snapshot.target.provider === "figma_prototype" ? (
+          <>
+            {!providerReady ? <div className={styles.providerLoading} role="status">กำลังโหลดต้นแบบ…</div> : null}
+            <iframe
+              ref={iframeRef}
+              className={styles.prototypeFrame}
+              src={snapshot.target.liveEmbedUrl ?? snapshot.target.embedUrl ?? snapshot.target.sourceUrl}
+              title={`${snapshot.title} เป้าหมายทดสอบสำหรับงาน ${taskIndex + 1}`}
+              allow="fullscreen"
+            />
+          </>
+        ) : snapshot.target.launchMode === "embed" ? (
+          <iframe
+            className={styles.prototypeFrame}
+            src={snapshot.target.embedUrl ?? snapshot.target.sourceUrl}
+            title={`${snapshot.title} เป้าหมายทดสอบสำหรับงาน ${taskIndex + 1}`}
+          />
+        ) : (
+          <section className={styles.card} style={{ margin: "24px auto", maxWidth: 720 }}>
+            <span className={styles.eyebrow}>เป้าหมายทดสอบ</span>
+            <h1>เปิดเว็บไซต์ที่ใช้ทำงานนี้</h1>
+            <p>
+              ระบบจะใช้เฉพาะหลักฐานที่ Target รองรับและจะไปขั้นถัดไปเมื่อได้รับ outcome
+              ที่ตรวจสอบได้ หากทำต่อไม่ได้ให้กลับมาที่หน้านี้แล้วเลือก “ทำงานนี้ต่อไม่ได้”
+            </p>
+            <div className={styles.actions}>
+              <a
+                className={styles.primaryButton}
+                href={snapshot.target.sourceUrl}
+                target={snapshot.target.launchMode === "new_tab" ? "_blank" : undefined}
+                rel={snapshot.target.launchMode === "new_tab" ? "noreferrer" : undefined}
+                onClick={() => setProviderReady(true)}
+              >
+                เปิด Test Target
+              </a>
+            </div>
+          </section>
+        )}
         {stage === "give-up-confirm" ? (
           <div className={styles.modalBackdrop} role="presentation">
             <section className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="giveup-title">
