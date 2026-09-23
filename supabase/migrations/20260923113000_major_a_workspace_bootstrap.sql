@@ -19,7 +19,7 @@ begin
     raise exception 'invalid_workspace_name' using errcode = '22023';
   end if;
   if v_slug = '' then
-    v_slug := regexp_replace(v_name, '[^a-zA-Z0-9]+', '-', 'g');
+    v_slug := regexp_replace(lower(v_name), '[^a-z0-9]+', '-', 'g');
     v_slug := trim(both '-' from v_slug);
     if v_slug = '' then v_slug := 'workspace'; end if;
     v_slug := left(v_slug, 48) || '-' || substr(replace(gen_random_uuid()::text, '-', ''), 1, 8);
