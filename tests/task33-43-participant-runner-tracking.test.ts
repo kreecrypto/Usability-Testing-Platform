@@ -77,7 +77,8 @@ test("Task33 public snapshot never exposes expected path or success/failure rule
   assert.equal(snapshot.tasks.length, 1);
   assert.doesNotMatch(serialized, /expectedPath|successRule|failureRule|expected_path|success_rule|failure_rule/);
   assert.doesNotMatch(calls[2], /expected_path|success_rule|failure_rule/);
-  assert.equal(new URL(snapshot.prototype.liveEmbedUrl!).searchParams.get("client-id"), "public-client-id");
+  assert.equal(snapshot.target.provider, "figma_prototype");
+  assert.equal(new URL(snapshot.target.liveEmbedUrl!).searchParams.get("client-id"), "public-client-id");
 });
 
 test("Task38 browser lifecycle emits raw events only with deterministic increasing sequence", async () => {
