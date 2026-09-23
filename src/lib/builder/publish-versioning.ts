@@ -72,7 +72,7 @@ function legacyFigmaTarget(version: VersionRow): TestTargetSnapshot | null {
   const fileKey = typeof m.fileKey === "string" ? m.fileKey : version.figma_file_key;
   if (!fileKey || !version.figma_start_node_id) return null;
   return Object.freeze({ provider: "figma_prototype", sourceUrl: m.sourceUrl, environment: null, launchMode: "embed",
-    capabilities: Object.freeze(record(m.capabilities) ?? {}), providerConfig: Object.freeze({ fileKey, startNodeId: version.figma_start_node_id, ...(typeof m.embedUrl === "string" ? { embedUrl: m.embedUrl } : {}) }), snapshotVersion: 1 });
+    capabilities: Object.freeze(record(m.capabilities) ?? { screen: "Available", publishBlocked: false }), providerConfig: Object.freeze({ fileKey, startNodeId: version.figma_start_node_id, ...(typeof m.embedUrl === "string" ? { embedUrl: m.embedUrl } : {}) }), snapshotVersion: 1 });
 }
 function cleanFunnelScreenIds(value: readonly string[]): string[] {
   const cleaned = value.map((item) => item.trim());
