@@ -44,8 +44,9 @@ export function createFirstPartyWebInstrumentation(options: {
   enqueue: (event: RawTrackingEvent) => Promise<void>;
   now?: () => string;
   randomId?: () => string;
+  initialSequence?: number;
 }) : FirstPartyWebAdapter {
-  let sequence = 0;
+  let sequence = options.initialSequence ?? 0;
   const now = options.now ?? (() => new Date().toISOString());
   const randomId = options.randomId ?? (() => crypto.randomUUID());\n  if (!Number.isSafeInteger(sequence) || sequence < 0) throw new Error("invalid_initial_sequence");
 
