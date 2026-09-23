@@ -13,7 +13,7 @@ test("production surface exposes authenticated researcher entry for MAJOR-A", ()
   const highFi = read("src/app/high-fi/page.tsx");
 
   assert.match(home, /href=["']\/login["']/);
-  assert.match(home, /href=["']\/projects["']/);
+  assert.match(home, /href:\s*["']\/projects["']/);
   assert.match(login, /\/api\/auth\/login/);
   assert.match(login, /\/api\/auth\/signup/);
   assert.match(login, /type="email"/);
