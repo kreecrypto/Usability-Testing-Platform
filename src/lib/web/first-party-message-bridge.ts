@@ -128,8 +128,11 @@ export function createFirstPartyMessageBridge(options: {
 
       if (!event) return Object.freeze({ status: "ignored_unsupported" });
       return Object.freeze({ status: "emitted", event });
-    } catch {
-      return Object.freeze({ status: "invalid_provider_event", providerEventType: payload.type });
+    } catch (error) {
+      if (error instanceof Error && /^invalid_/.test(error.message)) {
+        return Object.freeze({ status: "invalid_provider_event", providerEventType: payload.type });
+      }
+      throw error;
     }
   }
 
