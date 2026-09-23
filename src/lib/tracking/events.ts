@@ -13,6 +13,7 @@ export const rawEventTypes = [
   "screen_view",
   "pointer_interaction",
   "component_state_changed",
+  "completion_signal",
   "scroll",
   "question_viewed",
   "question_answered",
