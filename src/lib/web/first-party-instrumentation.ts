@@ -3,8 +3,8 @@ import type { RawTrackingEvent } from "../tracking/events.ts";
 export const FIRST_PARTY_WEB_ADAPTER_VERSION = "first-party-web-v1" as const;
 
 export type FirstPartyWebEvidence = Readonly<{
-  eventType: "screen_view" | "pointer_interaction" | "scroll";
-  screenId: string;
+  eventType: "screen_view" | "pointer_interaction" | "completion_signal" | "scroll";
+  screenId?: string;
   metadata: Readonly<Record<string, unknown>>;
 }>;
 
@@ -17,8 +17,13 @@ export type FirstPartyWebContext = Readonly<{
 }>;
 
 export type FirstPartyWebAdapter = Readonly<{
-  recordScreenView: (screenId: string, previousScreenId?: string) => Promise<RawTrackingEvent | null>;
+  recordScreenView: (
+    screenId: string,
+    previousScreenId?: string,
+    navigation?: Readonly<{ url?: string; route?: string }>,
+  ) => Promise<RawTrackingEvent | null>;
   recordPointer: (input: Readonly<{ screenId: string; x: number; y: number; viewportWidth: number; viewportHeight: number; elementId?: string }>) => Promise<RawTrackingEvent | null>;
+  recordCompletionSignal: (signalId: string, screenId?: string) => Promise<RawTrackingEvent | null>;
   recordScroll: (input: Readonly<{ screenId: string; scrollX: number; scrollY: number; documentWidth: number; documentHeight: number }>) => Promise<RawTrackingEvent | null>;
 }>;
 
@@ -61,7 +66,7 @@ export function createFirstPartyWebInstrumentation(options: {
       testId: options.context.testId,
       testVersionId: options.context.testVersionId,
       ...(options.context.taskId ? { taskId: options.context.taskId } : {}),
-      screenId: evidence.screenId,
+      ...(evidence.screenId ? { screenId: evidence.screenId } : {}),
       metadata: {
         ...evidence.metadata,
         targetProvider: "first_party_web",
@@ -73,10 +78,27 @@ export function createFirstPartyWebInstrumentation(options: {
   }
 
   return Object.freeze({
-    recordScreenView(screenId, previousScreenId) {
+    recordScreenView(screenId, previousScreenId, navigation) {
       const current = assertScreenId(screenId);
       const previous = previousScreenId ? assertScreenId(previousScreenId) : undefined;
-      return emit({ eventType: "screen_view", screenId: current, metadata: { ...(previous ? { previousScreenId: previous } : {}) } });
+      let url: string | undefined;
+      if (navigation?.url) {
+        const parsed = new URL(navigation.url);
+        if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new Error("invalid_navigation_url");
+        parsed.hash = "";
+        url = parsed.toString();
+      }
+      const route = navigation?.route?.trim();
+      if (route && (!route.startsWith("/") || /\s/.test(route))) throw new Error("invalid_navigation_route");
+      return emit({
+        eventType: "screen_view",
+        screenId: current,
+        metadata: {
+          ...(previous ? { previousScreenId: previous } : {}),
+          ...(url ? { url } : {}),
+          ...(route ? { route } : {}),
+        },
+      });
     },
     recordPointer(input) {
       const screenId = assertScreenId(input.screenId);
@@ -99,6 +121,16 @@ export function createFirstPartyWebInstrumentation(options: {
           viewportHeight: height,
           ...(input.elementId ? { elementId: input.elementId } : {}),
         },
+      });
+    },
+    recordCompletionSignal(signalId, screenId) {
+      const signal = signalId.trim();
+      if (!signal || signal.length > 512) throw new Error("invalid_completion_signal");
+      const screen = screenId ? assertScreenId(screenId) : undefined;
+      return emit({
+        eventType: "completion_signal",
+        ...(screen ? { screenId: screen } : {}),
+        metadata: { signalId: signal },
       });
     },
     recordScroll(input) {
