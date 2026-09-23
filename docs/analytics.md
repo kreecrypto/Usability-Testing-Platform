@@ -153,3 +153,25 @@ Every metric displayed in the Results UI must have:
 3. a declared eligibility rule,
 4. a deterministic test fixture,
 5. a QA case that recomputes the value from raw canonical events.
+
+## Metric observation context
+
+A numeric metric is not sufficient by itself. Every Results/Report metric must retain enough context to evaluate research validity and reproduce the value.
+
+Minimum logical context:
+
+- exact `testVersionId`;
+- target provider + immutable target snapshot context;
+- metric-definition version;
+- aggregation version;
+- required capability set;
+- availability state: `Available | Partial | Unsupported | No Data`;
+- numerator/denominator where applicable;
+- sample size;
+- `technical_blocked` count;
+- rule versions used by derived evidence;
+- source evidence references or a stable evidence trace.
+
+`Unsupported`, `Partial`, `No Data`, and numeric zero are distinct states. A zero may be displayed only when the metric is supported, the denominator/evidence exists, and the computed value is actually zero.
+
+See `docs/research-evidence-report-contract.md` for the cross-surface Evidence → Metric → Finding → Report contract.
