@@ -514,7 +514,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
         setStage("technical");
         return;
       }
-      if (snapshot?.target.provider !== "figma_prototype" && snapshot.target.instrumentation !== "first_party_bridge") setProviderReady(true);
+      if (snapshot && snapshot.target.provider !== "figma_prototype" && snapshot.target.instrumentation !== "first_party_bridge") setProviderReady(true);
       setStage("runner");
     } catch {
       setStage("recovery");
