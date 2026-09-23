@@ -68,3 +68,116 @@ jobs:
 
       - name: Verify lockfile stayed deterministic
         run: git diff --exit-code -- package-lock.json
+  major-a-production-api-proof:
+    if: ${{ github.event_name == 'pull_request' && github.head_ref == 'major-a-production-api-proof-20260923' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Prove FP-01 through FP-04 on Production APIs
+        env:
+          UTP_BASE_URL: https://usability-testing-platform.vercel.app
+        run: |
+          set -Eeuo pipefail
+          umask 077
+          COOKIE_JAR="$(mktemp)"
+          BODY="$(mktemp)"
+          trap 'rm -f "$COOKIE_JAR" "$BODY"' EXIT
+
+          call_api() {
+            local method="$1"
+            local path="$2"
+            local data="${3:-}"
+            local expected="${4:-2}"
+            local code
+            if [ -n "$data" ]; then
+              code="$(curl -sS --retry 2 --retry-delay 1                 -o "$BODY" -w '%{http_code}'                 -X "$method"                 -H 'content-type: application/json'                 -b "$COOKIE_JAR" -c "$COOKIE_JAR"                 --data "$data"                 "$UTP_BASE_URL$path")"
+            else
+              code="$(curl -sS --retry 2 --retry-delay 1                 -o "$BODY" -w '%{http_code}'                 -X "$method"                 -b "$COOKIE_JAR" -c "$COOKIE_JAR"                 "$UTP_BASE_URL$path")"
+            fi
+            if [[ "$code" != "$expected"* ]]; then
+              echo "::error::API $method $path returned HTTP $code (expected ${expected}xx)"
+              jq -c 'del(.accessToken,.token,.ingestionToken)' "$BODY" 2>/dev/null || true
+              exit 1
+            fi
+          }
+
+          echo "PROOF_STEP=guest_session"
+          call_api POST /api/auth/guest "" 201
+          MODE="$(jq -r '.mode // empty' "$BODY")"
+          test "$MODE" = "temporary_researcher"
+
+          echo "PROOF_STEP=session_validation"
+          call_api GET /api/auth/session "" 200
+          USER_ID="$(jq -r '.user.id // empty' "$BODY")"
+          test -n "$USER_ID"
+          echo "researcher_user_id=$USER_ID"
+
+          echo "PROOF_STEP=create_workspace"
+          call_api POST /api/workspaces '{"name":"MAJOR-A Flow Proven — Production"}' 201
+          WORKSPACE_ID="$(jq -r '.workspaceId // empty' "$BODY")"
+          test -n "$WORKSPACE_ID"
+          echo "workspace_id=$WORKSPACE_ID"
+
+          echo "PROOF_STEP=create_project"
+          PROJECT_JSON="$(jq -cn --arg workspaceId "$WORKSPACE_ID"             '{workspaceId:$workspaceId,name:"Golden Path Production Proof",description:"Real internal Flow Proven study; no fixture-only closure."}')"
+          call_api POST /api/projects "$PROJECT_JSON" 201
+          PROJECT_ID="$(jq -r '.project.id // empty' "$BODY")"
+          test -n "$PROJECT_ID"
+          echo "project_id=$PROJECT_ID"
+
+          echo "PROOF_STEP=create_test"
+          TEST_JSON="$(jq -cn --arg workspaceId "$WORKSPACE_ID" --arg projectId "$PROJECT_ID"             '{workspaceId:$workspaceId,projectId:$projectId,title:"MAJOR-A Flow Proven",description:"Production first-party internal usability validation."}')"
+          call_api POST /api/tests "$TEST_JSON" 201
+          TEST_ID="$(jq -r '.test.id // empty' "$BODY")"
+          test -n "$TEST_ID"
+          echo "test_id=$TEST_ID"
+
+          echo "PROOF_STEP=configure_target_partial"
+          TARGET_JSON='{"targetUrl":"https://usability-testing-platform.vercel.app/internal-validation-target","ownership":"owned","environment":"production"}'
+          call_api PUT "/api/tests/$TEST_ID/prototype" "$TARGET_JSON" 200
+          test "$(jq -r '.draft.target.capabilities.publishBlocked' "$BODY")" = "true"
+
+          echo "PROOF_STEP=live_target_preflight"
+          call_api POST "/api/tests/$TEST_ID/prototype" "" 200
+          test "$(jq -r '.draft.target.provider' "$BODY")" = "first_party_web"
+          test "$(jq -r '.draft.target.capabilities.instrumentation' "$BODY")" = "Available"
+          test "$(jq -r '.draft.target.capabilities.publishBlocked' "$BODY")" = "false"
+          test "$(jq -r '.draft.target.launchMode' "$BODY")" = "new_tab"
+          echo "target_preflight=Available"
+
+          echo "PROOF_STEP=create_task_1"
+          call_api POST "/api/tests/$TEST_ID/tasks"             '{"title":"ไปหน้า Review","scenario":"ตรวจข้อมูลก่อนยืนยัน","instruction":"เปิด Test Target แล้วไปยังหน้า Review"}' 201
+          TASK1_ID="$(jq -r '.task.id // empty' "$BODY")"
+          test -n "$TASK1_ID"
+          echo "task_1_id=$TASK1_ID"
+
+          echo "PROOF_STEP=create_task_2"
+          call_api POST "/api/tests/$TEST_ID/tasks"             '{"title":"ยืนยัน Flow","scenario":"ยืนยันงานหลังตรวจ Review","instruction":"จากหน้า Review ให้ยืนยันเสร็จสิ้น"}' 201
+          TASK2_ID="$(jq -r '.task.id // empty' "$BODY")"
+          test -n "$TASK2_ID"
+          echo "task_2_id=$TASK2_ID"
+
+          echo "PROOF_STEP=save_task_rules"
+          RULE1="$(jq -cn             '{successRule:{type:"route",values:["/internal-validation-target/review"]},failureRule:{type:"completion_signal",values:["internal-validation-cancel"]},expectedPath:["internal-validation:start","internal-validation:review"]}')"
+          call_api PATCH "/api/tasks/$TASK1_ID/outcome-rules" "$RULE1" 200
+          test "$(jq -r '.rules.successRule.type' "$BODY")" = "route"
+
+          RULE2="$(jq -cn             '{successRule:{type:"completion_signal",values:["internal-validation-complete"]},failureRule:{type:"completion_signal",values:["internal-validation-cancel"]},expectedPath:["internal-validation:review","internal-validation:complete"]}')"
+          call_api PATCH "/api/tasks/$TASK2_ID/outcome-rules" "$RULE2" 200
+          test "$(jq -r '.rules.successRule.type' "$BODY")" = "completion_signal"
+
+          echo "PROOF_STEP=publish_immutable_version"
+          call_api POST "/api/tests/$TEST_ID/publish" '{"action":"publish"}' 200
+          VERSION_ID="$(jq -r '.preview.testVersionId // empty' "$BODY")"
+          LIFECYCLE="$(jq -r '.preview.lifecycleStatus // empty' "$BODY")"
+          test -n "$VERSION_ID"
+          test "$LIFECYCLE" = "published"
+          test "$(jq -r '.preview.target.capabilities.publishBlocked' "$BODY")" = "false"
+          test "$(jq -r '.preview.tasks | length' "$BODY")" -eq 2
+          echo "test_version_id=$VERSION_ID"
+          echo "participant_path=/t/$VERSION_ID"
+          echo "fp01=PASS"
+          echo "fp02=PASS"
+          echo "fp03=PASS"
+          echo "fp04=PASS"
+
