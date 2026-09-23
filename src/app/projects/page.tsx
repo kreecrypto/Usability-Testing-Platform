@@ -238,7 +238,8 @@ export default function ProjectsPage() {
                 <button className="primaryButton" disabled={working}>เพิ่ม Task</button>
               </form>
               <ol>{tasks.map((task) => <li key={task.id}>{task.ordinal}. {task.title}</li>)}</ol>
-              <p style={{ color: "var(--ah-slate)" }}>Flow Gate ใช้ข้อมูลจริงเท่านั้น; provider-neutral success/failure rule ยังต้องผ่าน MT-08 ก่อนจึงจะนับ FP-03 COMPLETE</p>
+              {tasks.length > 0 ? <p><a className="primaryButton" href={`/builder/${testId}/rules`}>กำหนด Success / Failure Rules</a></p> : null}
+              <p style={{ color: "var(--ah-slate)" }}>Flow Gate ใช้ข้อมูลจริงเท่านั้น; Publish จะผ่านเมื่อทุก Task มี deterministic rule ที่ Target capability รองรับและไม่ขัดแย้งกัน</p>
             </> : <p>เลือก Test ก่อน</p>}
           </section>
 
