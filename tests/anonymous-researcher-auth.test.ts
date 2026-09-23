@@ -16,6 +16,7 @@ const config = Object.freeze({
 
 test("UTP project falls back only to its public publishable key when Vercel public-key env is absent", () => {
   const resolved = publicSupabaseConfig({
+    NODE_ENV: "test",
     SUPABASE_URL: "https://qryvrcwbsehrzpersuoc.supabase.co",
   } as NodeJS.ProcessEnv);
   assert.equal(resolved.url, "https://qryvrcwbsehrzpersuoc.supabase.co");
@@ -23,6 +24,7 @@ test("UTP project falls back only to its public publishable key when Vercel publ
 
   assert.throws(
     () => publicSupabaseConfig({
+      NODE_ENV: "test",
       SUPABASE_URL: "https://other-project.supabase.co",
     } as NodeJS.ProcessEnv),
     (error: unknown) => error instanceof AuthSessionError &&
