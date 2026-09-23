@@ -98,18 +98,19 @@ export function buildTaskOutcomeRule(input: Readonly<{ type: unknown; values: un
   if (!isRuleType(input.type)) {
     throw new TaskOutcomeRuleValidationError("invalid_rule_type");
   }
+  const type = input.type;
   if (!Array.isArray(input.values)) {
     throw new TaskOutcomeRuleValidationError("invalid_rule_values");
   }
   const values = input.values.map((value) => {
     if (typeof value !== "string") throw new TaskOutcomeRuleValidationError("invalid_rule_values");
-    return normalizedRuleValue(input.type, value);
+    return normalizedRuleValue(type, value);
   });
   const unique = [...new Set(values)];
   if (unique.length === 0) throw new TaskOutcomeRuleValidationError("invalid_rule_values");
   return Object.freeze({
     version: 2 as const,
-    type: input.type,
+    type,
     values: Object.freeze(unique),
   });
 }
