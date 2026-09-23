@@ -1,7 +1,7 @@
 import { parsePublicFigmaPrototypeUrl } from "../figma/public-embed.ts";
 import { resolveExternalTargetBoundary, type ExternalTargetCapabilityState } from "../web/external-target-boundary.ts";
 
-export type TestTargetProvider = "figma_prototype" | "first_party_web" | "external_web";
+export const FIRST_PARTY_BRIDGE_VERSION = "first-party-web-v1" as const;\nexport const INTERNAL_VALIDATION_TARGET_PATH = "/internal-validation-target" as const;\n\nexport type TestTargetProvider = "figma_prototype" | "first_party_web" | "external_web";
 export type CapabilityState = "Available" | "Partial" | "Unsupported" | "No Data";
 export type WebEnvironment = "uat" | "production" | null;
 
@@ -9,7 +9,7 @@ export type TestTargetPreflight = Readonly<{ access: CapabilityState; embed: Cap
 export type TestTargetSnapshotV1 = Readonly<{ provider: TestTargetProvider; sourceUrl: string; environment: WebEnvironment; launchMode: "embed" | "new_tab" | "same_tab" | "unsupported"; capabilities: TestTargetPreflight; providerConfig: Readonly<Record<string, unknown>>; snapshotVersion: 1 }>;
 
 export class TestTargetImportError extends Error {
-  readonly code: "invalid_url" | "unsupported_scheme" | "invalid_figma_prototype" | "ownership_confirmation_required";
+  readonly code: "invalid_url" | "unsupported_scheme" | "invalid_figma_prototype" | "ownership_confirmation_required" | "preflight_verification_failed";
   readonly status: number;
   constructor(code: TestTargetImportError["code"], status: number = 400) { super(code); this.name = "TestTargetImportError"; this.code = code; this.status = status; }
 }
@@ -35,6 +35,56 @@ export function preflightTestTarget(input: { url: string; ownership?: "owned" | 
   const boundary = resolveExternalTargetBoundary({ iframeAllowed: input.externalEmbed === "allowed", cooperativeBridge: input.cooperativeBridge === true });
   const screen = capability(boundary.capabilities.screenView);
   return Object.freeze({ provider: "external_web", sourceUrl: url.toString(), environment: null, launchMode: boundary.launchMode, capabilities: Object.freeze({ access: "Partial", embed: capability(boundary.capabilities.embed), instrumentation: screen, screen, path: screen, pointer: capability(boundary.capabilities.pointerInteraction), scroll: capability(boundary.capabilities.scroll), coordinates: capability(boundary.capabilities.heatmap), publishBlocked: false, reasons: boundary.reasons }), providerConfig: Object.freeze({ origin: url.origin, cooperativeBridge: input.cooperativeBridge === true }), snapshotVersion: 1 });
+}
+
+export function approveInternalFirstPartyTarget(
+  snapshot: TestTargetSnapshotV1,
+  requestOrigin: string,
+): TestTargetSnapshotV1 {
+  if (snapshot.provider !== "first_party_web") {
+    throw new TestTargetImportError("preflight_verification_failed", 409);
+  }
+
+  let source: URL;
+  let origin: string;
+  try {
+    source = new URL(snapshot.sourceUrl);
+    origin = new URL(requestOrigin).origin;
+  } catch {
+    throw new TestTargetImportError("preflight_verification_failed", 409);
+  }
+
+  if (
+    source.origin !== origin ||
+    source.pathname !== INTERNAL_VALIDATION_TARGET_PATH ||
+    source.search !== ""
+  ) {
+    throw new TestTargetImportError("preflight_verification_failed", 409);
+  }
+
+  return Object.freeze({
+    ...snapshot,
+    launchMode: "new_tab" as const,
+    capabilities: Object.freeze({
+      access: "Available" as const,
+      embed: "Unsupported" as const,
+      instrumentation: "Available" as const,
+      screen: "Available" as const,
+      path: "Available" as const,
+      pointer: "Available" as const,
+      scroll: "Available" as const,
+      coordinates: "Available" as const,
+      publishBlocked: false,
+      reasons: Object.freeze([] as string[]),
+    }),
+    providerConfig: Object.freeze({
+      ...snapshot.providerConfig,
+      origin,
+      bridgeVersion: FIRST_PARTY_BRIDGE_VERSION,
+      bridgeTransport: "window_post_message",
+      approvedPath: INTERNAL_VALIDATION_TARGET_PATH,
+    }),
+  });
 }
 
 export function canPublishTarget(snapshot: TestTargetSnapshotV1): boolean { return !snapshot.capabilities.publishBlocked && snapshot.launchMode !== "unsupported"; }
