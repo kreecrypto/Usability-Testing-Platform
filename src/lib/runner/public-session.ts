@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mintSessionIngestionToken } from "../collector/session-ingestion-token.ts";
+import { publicTargetFromSnapshot, type PublicRunnerTarget } from "./public-target.ts";
+import { RunnerTargetAdapterError } from "./target-adapter.ts";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export const INGESTION_TOKEN_TTL_SECONDS = 300 as const;
@@ -20,12 +22,7 @@ export type PublicTestSnapshot = Readonly<{
   versionNo: number;
   title: string;
   description: string | null;
-  prototype: Readonly<{
-    sourceUrl: string;
-    embedUrl: string;
-    liveEmbedUrl: string | null;
-    startNodeId: string;
-  }>;
+  target: PublicRunnerTarget;
   tasks: readonly PublicRunnerTask[];
 }>;
 
@@ -72,8 +69,8 @@ type VersionRow = Readonly<{
   test_id: string;
   version_no: number;
   lifecycle_status: string;
-  figma_start_node_id: string | null;
-  prototype_mapping: Record<string, unknown>;
+  target_provider: string | null;
+  target_snapshot: unknown;
 }>;
 
 type TestRow = Readonly<{ id: string; title: string; description: string | null; status: string }>;
@@ -121,28 +118,19 @@ function requiredServerValue(value: string, field: string): string {
   return result;
 }
 
-function liveEmbedUrl(embedUrl: string, clientId: string | null): string | null {
-  if (!clientId) return null;
-  const url = new URL(embedUrl);
-  if (url.protocol !== "https:" || url.hostname !== "embed.figma.com") return null;
-  url.searchParams.set("client-id", clientId);
-  return url.toString();
-}
-
-function prototypeFromVersion(version: VersionRow, figmaEmbedClientId: string | null) {
-  const mapping = version.prototype_mapping;
-  if (
-    mapping?.provider !== "figma" ||
-    typeof mapping.sourceUrl !== "string" || !mapping.sourceUrl.trim() ||
-    typeof mapping.embedUrl !== "string" || !mapping.embedUrl.trim() ||
-    !version.figma_start_node_id
-  ) throw new PublicRunnerError("published_test_not_found", 404);
-  return Object.freeze({
-    sourceUrl: mapping.sourceUrl,
-    embedUrl: mapping.embedUrl,
-    liveEmbedUrl: liveEmbedUrl(mapping.embedUrl, figmaEmbedClientId),
-    startNodeId: version.figma_start_node_id,
-  });
+function targetFromVersion(version: VersionRow, figmaEmbedClientId: string | null): PublicRunnerTarget {
+  try {
+    const target = publicTargetFromSnapshot(version.target_snapshot, figmaEmbedClientId);
+    if (version.target_provider && version.target_provider !== target.provider) {
+      throw new RunnerTargetAdapterError("invalid_target_snapshot");
+    }
+    return target;
+  } catch (error) {
+    if (error instanceof RunnerTargetAdapterError) {
+      throw new PublicRunnerError("published_test_not_found", 404, error.code);
+    }
+    throw error;
+  }
 }
 
 export function runnerServerConfig() {
@@ -202,13 +190,13 @@ export function createPublicRunnerStore(options: {
     const versionParams = new URLSearchParams({
       id: `eq.${testVersionId}`,
       lifecycle_status: "eq.published",
-      select: "id,test_id,version_no,lifecycle_status,figma_start_node_id,prototype_mapping",
+      select: "id,test_id,version_no,lifecycle_status,target_provider,target_snapshot",
       limit: "1",
     });
     const versions = await request<VersionRow[]>(`/rest/v1/test_versions?${versionParams}`);
     const version = versions[0];
     if (!version) throw new PublicRunnerError("published_test_not_found", 404);
-    const prototype = prototypeFromVersion(version, figmaEmbedClientId);
+    const target = targetFromVersion(version, figmaEmbedClientId);
 
     const testParams = new URLSearchParams({
       id: `eq.${version.test_id}`,
@@ -237,7 +225,7 @@ export function createPublicRunnerStore(options: {
       versionNo: version.version_no,
       title: test.title,
       description: test.description,
-      prototype,
+      target,
       tasks: Object.freeze(taskRows.map((task) => Object.freeze({
         id: task.id,
         ordinal: task.ordinal,
