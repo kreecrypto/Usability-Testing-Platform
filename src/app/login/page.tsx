@@ -1,58 +1,50 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
-
-type Mode = "login" | "signup";
+import { useCallback, useEffect, useState } from "react";
 
 async function readJson(response: Response): Promise<Record<string, unknown>> {
   return await response.json().catch(() => ({})) as Record<string, unknown>;
 }
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<Mode>("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [working, setWorking] = useState(false);
-  const [message, setMessage] = useState("");
+  const [working, setWorking] = useState(true);
+  const [message, setMessage] = useState("กำลังเปิด Researcher Workspace…");
 
-  useEffect(() => {
-    void fetch("/api/auth/session", { cache: "no-store" }).then((response) => {
-      if (response.ok) window.location.replace("/projects");
-    });
-  }, []);
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (working) return;
-    setWorking(true);
-    setMessage("");
+  const enterWorkspace = useCallback(async () => {
+    if (working === false) setWorking(true);
+    setMessage("กำลังเปิด Researcher Workspace…");
     try {
-      const response = await fetch(mode === "login" ? "/api/auth/login" : "/api/auth/signup", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const body = await readJson(response);
-      if (response.ok && body.confirmationRequired === true) {
-        setMessage("สร้างบัญชีแล้ว โปรดยืนยันอีเมลก่อนเข้าสู่ระบบ");
+      const current = await fetch("/api/auth/session", { cache: "no-store" });
+      if (current.ok) {
+        window.location.replace("/projects");
         return;
       }
+
+      const response = await fetch("/api/auth/guest", {
+        method: "POST",
+        cache: "no-store",
+      });
+      const body = await readJson(response);
       if (!response.ok) {
         const code = typeof body.error === "string" ? body.error : "request_failed";
-        setMessage(code === "invalid_credentials"
-          ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง"
-          : code === "signup_unavailable"
-            ? "ยังสร้างบัญชีด้วยอีเมลนี้ไม่ได้"
-            : "ดำเนินการไม่สำเร็จ โปรดลองอีกครั้ง");
+        setMessage(code === "anonymous_auth_unavailable"
+          ? "Temporary Researcher Session ยังไม่พร้อมในระบบ Auth"
+          : "เปิด Researcher Workspace ไม่สำเร็จ โปรดลองอีกครั้ง");
         return;
       }
       window.location.replace("/projects");
     } catch {
-      setMessage("เชื่อมต่อระบบยืนยันตัวตนไม่สำเร็จ");
+      setMessage("เชื่อมต่อ Researcher Workspace ไม่สำเร็จ");
     } finally {
       setWorking(false);
     }
-  }
+  }, [working]);
+
+  useEffect(() => {
+    void enterWorkspace();
+    // Run once on entry; retry remains explicit below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24 }}>
@@ -60,30 +52,23 @@ export default function LoginPage() {
         <p className="eyebrow">UT Platform</p>
         <h1 style={{ margin: "8px 0 6px", fontSize: 30 }}>Researcher Workspace</h1>
         <p style={{ margin: "0 0 22px", color: "var(--ah-slate)" }}>
-          {mode === "login" ? "เข้าสู่ระบบเพื่อสร้างและเผยแพร่ usability study" : "สร้างบัญชี Researcher สำหรับ workspace ของคุณ"}
+          V1 ข้ามขั้นสร้างบัญชี ระบบจะใช้ Temporary Researcher Session เพื่อเริ่มสร้าง Study ได้ทันที
         </p>
 
-        <form onSubmit={submit} style={{ display: "grid", gap: 14 }}>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>อีเมล</span>
-            <input aria-label="อีเมล" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)}
-              style={{ minHeight: 44, border: "1px solid var(--ah-hairline)", borderRadius: 8, padding: "0 12px", background: "white" }} />
-          </label>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>รหัสผ่าน</span>
-            <input aria-label="รหัสผ่าน" type="password" required minLength={6} autoComplete={mode === "login" ? "current-password" : "new-password"} value={password} onChange={(e) => setPassword(e.target.value)}
-              style={{ minHeight: 44, border: "1px solid var(--ah-hairline)", borderRadius: 8, padding: "0 12px", background: "white" }} />
-          </label>
-          {message ? <p role="alert" style={{ margin: 0, color: "var(--ah-danger, #b42318)" }}>{message}</p> : null}
-          <button className="primaryButton" type="submit" disabled={working} style={{ width: "100%" }}>
-            {working ? "กำลังดำเนินการ…" : mode === "login" ? "เข้าสู่ระบบ" : "สร้างบัญชี"}
-          </button>
-        </form>
-
-        <button type="button" onClick={() => { setMode(mode === "login" ? "signup" : "login"); setMessage(""); }}
-          style={{ width: "100%", marginTop: 12, minHeight: 42, border: 0, background: "transparent", color: "var(--ah-primary)" }}>
-          {mode === "login" ? "ยังไม่มีบัญชี? สร้างบัญชี" : "มีบัญชีแล้ว? เข้าสู่ระบบ"}
+        <p role="status" style={{ margin: "0 0 16px" }}>{message}</p>
+        <button
+          className="primaryButton"
+          type="button"
+          disabled={working}
+          onClick={() => void enterWorkspace()}
+          style={{ width: "100%" }}
+        >
+          {working ? "กำลังเปิด Workspace…" : "เข้า Researcher Workspace"}
         </button>
+
+        <p style={{ margin: "14px 0 0", color: "var(--ah-slate)", fontSize: 13 }}>
+          Session นี้เป็นแบบชั่วคราวบนอุปกรณ์ปัจจุบัน ยังไม่มีอีเมล รหัสผ่าน หรือขั้นสมัครสมาชิก
+        </p>
         <p style={{ margin: "18px 0 0", textAlign: "center" }}><a href="/">กลับหน้าหลัก</a></p>
       </section>
     </main>
