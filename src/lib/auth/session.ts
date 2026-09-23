@@ -1,4 +1,6 @@
 const ACCESS_COOKIE = "utp_access_token";
+const UTP_SUPABASE_URL = "https://qryvrcwbsehrzpersuoc.supabase.co";
+const UTP_SUPABASE_PUBLISHABLE_FALLBACK = "sb_publishable_pSBzT0OGWUGjJB5zRnY-3w_Co3XFjU6";
 
 export type PublicSupabaseConfig = Readonly<{
   url: string;
@@ -49,13 +51,15 @@ export function publicSupabaseConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): PublicSupabaseConfig {
   const url = required(env.NEXT_PUBLIC_SUPABASE_URL ?? env.SUPABASE_URL, "SUPABASE_URL");
+  const normalizedUrl = url.replace(/\/$/, "");
   const key = required(
     env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
       env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-      env.SUPABASE_ANON_KEY,
+      env.SUPABASE_ANON_KEY ??
+      (normalizedUrl === UTP_SUPABASE_URL ? UTP_SUPABASE_PUBLISHABLE_FALLBACK : undefined),
     "SUPABASE_PUBLISHABLE_KEY",
   );
-  return Object.freeze({ url: url.replace(/\/$/, ""), key });
+  return Object.freeze({ url: normalizedUrl, key });
 }
 
 function cookieMap(header: string | null): Map<string, string> {
