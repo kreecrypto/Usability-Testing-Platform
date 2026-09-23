@@ -219,3 +219,43 @@ V1 cannot ship unless:
 5. Workspace isolation and public-link access are security-tested.
 6. Critical UX issues in the platform itself are zero at release gate.
 7. The exact-main Vercel production deployment is `READY` and required route, event-ingestion, responsive and regression QA evidence has passed.
+
+## Research evidence and report boundary
+
+The end-to-end research loop is:
+
+```text
+Target
+  ↓
+Participant Behavior
+  ↓
+Canonical Evidence
+  ↓
+Deterministic Derivation
+  ↓
+Metric Observation
+  ↓
+Researcher Interpretation
+  ↓
+Finding
+  ↓
+Usability Report
+  ↓
+Fix
+  ↓
+Retest
+```
+
+Every actionable report claim must be traceable to an exact published test version, immutable target context, capability state, metric/rule versions, and accepted evidence. Metrics must distinguish `Available`, `Partial`, `Unsupported`, and `No Data`; missing or unsupported evidence must never be rewritten to numeric zero.
+
+A Finding remains a human research interpretation. Automation may surface a Finding Candidate but must not silently assign final cause, severity, or recommendation.
+
+The consolidated Usability Report is a synthesis surface over Results/Findings, not a second analytics engine. See `docs/research-evidence-report-contract.md`.
+
+### Additional V1 research-integrity release invariants
+
+8. Capability semantics are consistent across Builder, Runner, Results and Report.
+9. Every reportable metric exposes sample/provenance context and can drill down to accepted evidence.
+10. Report claims link to Findings/metrics/evidence rather than unsupported narrative.
+11. Retest deltas are shown only for compatible metric/capability/version contexts.
+12. Researcher UAT completes Create → Publish → Participate → Analyze → Finding → Report without Critical UX issues.
