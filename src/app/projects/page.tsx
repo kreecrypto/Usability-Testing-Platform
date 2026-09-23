@@ -28,7 +28,7 @@ export default function ProjectsPage() {
   const [workspaceName, setWorkspaceName] = useState("UTP Internal Validation");
   const [projectName, setProjectName] = useState("Golden Path");
   const [testTitle, setTestTitle] = useState("MAJOR-A Flow Proven");
-  const [targetUrl, setTargetUrl] = useState("https://usability-testing-platform.vercel.app/");
+  const [targetUrl, setTargetUrl] = useState("https://usability-testing-platform.vercel.app/internal-validation-target");
   const [taskTitle, setTaskTitle] = useState("");
   const [scenario, setScenario] = useState("");
   const [instruction, setInstruction] = useState("");
@@ -131,6 +131,16 @@ export default function ProjectsPage() {
     });
   }
 
+  function preflightTarget() {
+    if (!testId) return;
+    void run("ตรวจ Target", async () => {
+      await json(await fetch(`/api/tests/${encodeURIComponent(testId)}/prototype`, {
+        method: "POST",
+        cache: "no-store",
+      }));
+    });
+  }
+
   function createTask(event: FormEvent) {
     event.preventDefault();
     void run("เพิ่ม Task", async () => {
@@ -228,6 +238,7 @@ export default function ProjectsPage() {
             {testId ? <form onSubmit={configureTarget} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <input required type="url" value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)} style={{ ...input, flex: "1 1 420px" }} />
               <button className="primaryButton" disabled={working}>บันทึก Target</button>
+              <button className="primaryButton" type="button" disabled={working} onClick={preflightTarget}>ตรวจ Target</button>
             </form> : <p>เลือก Test ก่อน</p>}
           </section>
 
