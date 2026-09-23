@@ -1,7 +1,7 @@
 import {
   FIRST_PARTY_BRIDGE_VERSION,
   INTERNAL_VALIDATION_TARGET_PATH,
-} from "../../../lib/builder/test-target-import.ts";
+} from "../../lib/builder/test-target-import.ts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
