@@ -1,4 +1,5 @@
 import { parseFunnelDefinition, type FunnelDefinition } from "../analytics/funnel.ts";
+import { validateStoredTaskOutcomeRules } from "./task-outcome-rules.ts";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -101,8 +102,23 @@ export function createPublishVersioningStore(options: { supabaseUrl: string; pub
     if (!version || version.lifecycle_status === "archived") throw new PublishVersioningError("test_version_not_found", 404);
     const target = parseTargetSnapshot(version.target_snapshot) ?? legacyFigmaTarget(version);
     if (!target || (version.target_provider && version.target_provider !== target.provider)) throw new PublishVersioningError("not_publishable", 409, "publishable_target_snapshot_required");
+    if (version.lifecycle_status === "draft" && (target.launchMode === "unsupported" || target.capabilities.publishBlocked === true)) {
+      throw new PublishVersioningError("not_publishable", 409, "target_preflight_required");
+    }
     const taskParams = new URLSearchParams({ test_version_id: `eq.${version.id}`, select: "id,ordinal,title,scenario,instruction,expected_path,success_rule,failure_rule,timeout_seconds,post_task_questions", order: "ordinal.asc" });
     const taskRows = await request<TaskRow[]>(`/rest/v1/tasks?${taskParams}`);
+    if (version.lifecycle_status === "draft") {
+      for (const task of taskRows) {
+        const validation = validateStoredTaskOutcomeRules({
+          target,
+          successRule: task.success_rule,
+          failureRule: task.failure_rule,
+        });
+        if (!validation.ok) {
+          throw new PublishVersioningError("not_publishable", 409, validation.reason ?? "publishable_task_rules_required");
+        }
+      }
+    }
     const tasks = taskRows.map((task) => Object.freeze({ id: task.id, ordinal: task.ordinal, title: task.title, scenario: task.scenario, instruction: task.instruction,
       expectedPath: Object.freeze(Array.isArray(task.expected_path) ? [...task.expected_path] : []), successRule: Object.freeze({ ...(task.success_rule ?? {}) }), failureRule: Object.freeze({ ...(task.failure_rule ?? {}) }), timeoutSeconds: task.timeout_seconds, postTaskQuestions: Object.freeze({ ...(task.post_task_questions ?? {}) }) }));
     if (tasks.length === 0) throw new PublishVersioningError("not_publishable", 409, "at_least_one_task_required");
