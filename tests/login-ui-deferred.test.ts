@@ -6,42 +6,44 @@ function read(path: string): string {
   return readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 }
 
-test("current product surface does not expose researcher login", () => {
+test("production surface exposes authenticated researcher entry for MAJOR-A", () => {
   const home = read("src/app/page.tsx");
   const login = read("src/app/login/page.tsx");
   const projects = read("src/app/projects/page.tsx");
-  const inventory = read("docs/screen-inventory.md");
-  const screenMap = JSON.parse(read("docs/design-system/screen-component-map.json")) as {
-    screens: Array<{ id: string; name: string; states: string[]; componentFamilies: string[] }>;
-  };
-  const entry = screenMap.screens.find((screen) => screen.id === "S01");
+  const highFi = read("src/app/high-fi/page.tsx");
 
-  assert.doesNotMatch(home, /href=["']\/login["']/);
-  assert.doesNotMatch(home, /href=["']\/projects["']/);
-  assert.match(home, /href=["']\/high-fi["']/);
+  assert.match(home, /href=["']\/login["']/);
+  assert.match(home, /href=["']\/projects["']/);
+  assert.match(login, /\/api\/auth\/login/);
+  assert.match(login, /\/api\/auth\/signup/);
+  assert.match(login, /type="email"/);
+  assert.match(login, /type="password"/);
 
-  assert.match(login, /redirect\("\/"\)/);
-  assert.doesNotMatch(login, /password|email|sign in/i);
-  assert.match(projects, /redirect\("\/high-fi"\)/);
-  assert.doesNotMatch(projects, /sign out|authenticated researcher|\/api\/auth\/session/i);
+  assert.match(projects, /\/api\/auth\/session/);
+  assert.match(projects, /\/api\/workspaces/);
+  assert.match(projects, /\/api\/projects/);
+  assert.match(projects, /\/api\/tests/);
+  assert.match(projects, /\/prototype/);
+  assert.match(projects, /\/tasks/);
+  assert.match(projects, /\/publish/);
+  assert.doesNotMatch(projects, /redirect\(["']\/high-fi["']\)/);
 
-  assert.ok(entry);
-  assert.equal(entry.name, "App Entry");
-  assert.deepEqual(entry.states, ["Default", "Loading", "Error"]);
-  assert.equal(entry.componentFamilies.includes("AuthShell"), false);
-  assert.equal(entry.componentFamilies.includes("TextInput"), false);
-  assert.match(inventory, /S01 \| App Entry \| default, loading, error/);
-  assert.doesNotMatch(inventory, /S01 \| Login/);
+  // Design QA remains available, but it is explicitly not production research data.
+  assert.match(highFi, /design-only:no-production-data/);
 });
 
-test("authorization backend remains available while login UI is deferred", () => {
+test("authorization backend remains the RLS-backed researcher boundary", () => {
   const session = read("src/lib/auth/session.ts");
   const authRoute = read("src/app/api/auth/session/route.ts");
   const projectApi = read("src/lib/project-test-api.ts");
+  const workspaceRoute = read("src/app/api/workspaces/route.ts");
 
   assert.match(session, /accessTokenFromRequest/);
   assert.match(session, /validateAccessToken/);
+  assert.match(session, /signUpWithPassword/);
   assert.match(authRoute, /validateAccessToken|session/i);
   assert.match(projectApi, /accessTokenFromRequest/);
   assert.match(projectApi, /authentication_required/);
+  assert.match(workspaceRoute, /create_owned_workspace/);
+  assert.doesNotMatch(workspaceRoute, /service_role|SUPABASE_SECRET_KEY/);
 });
