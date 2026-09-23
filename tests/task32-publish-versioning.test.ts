@@ -10,10 +10,10 @@ const sourceUrl = "https://www.figma.com/proto/file-key/Flow?node-id=10-20";
 const draftVersion = {
   id: VERSION_ID, test_id: TEST_ID, version_no: 3, lifecycle_status: "draft", figma_file_key: "file-key", figma_start_node_id: "10:20",
   target_provider: "figma_prototype",
-  target_snapshot: { provider: "figma_prototype", sourceUrl, environment: null, launchMode: "embed", capabilities: {}, providerConfig: { fileKey: "file-key", startNodeId: "10:20" }, snapshotVersion: 1 },
+  target_snapshot: { provider: "figma_prototype", sourceUrl, environment: null, launchMode: "embed", capabilities: { screen: "Available", publishBlocked: false }, providerConfig: { fileKey: "file-key", startNodeId: "10:20" }, snapshotVersion: 1 },
   prototype_mapping: { schemaVersion: 1, provider: "figma", sourceUrl, embedUrl: "https://www.figma.com/embed?embed_host=share&url=x", fileKey: "file-key", nodeId: "10:20" },
 };
-const taskRow = { id: TASK_ID, ordinal: 1, title: "Complete checkout", scenario: "Buy the item", instruction: "Start from the cart", expected_path: ["10:20", "10:30"], success_rule: { targetNodeIds: ["10:30"] }, failure_rule: { targetNodeIds: ["10:99"] }, timeout_seconds: 120, post_task_questions: { seq: { enabled: true, required: true }, open_feedback: { enabled: true, required: false } } };
+const taskRow = { id: TASK_ID, ordinal: 1, title: "Complete checkout", scenario: "Buy the item", instruction: "Start from the cart", expected_path: ["10:20", "10:30"], success_rule: { type: "presented_node", nodeIds: ["10:30"] }, failure_rule: { type: "presented_node", nodeIds: ["10:99"] }, timeout_seconds: 120, post_task_questions: { seq: { enabled: true, required: true }, open_feedback: { enabled: true, required: false } } };
 
 function storeWithResponses(responses: Response[], calls: Array<{ url: string; init?: RequestInit }>) {
   let index = 0;
