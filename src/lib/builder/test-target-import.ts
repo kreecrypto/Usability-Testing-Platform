@@ -1,7 +1,10 @@
 import { parsePublicFigmaPrototypeUrl } from "../figma/public-embed.ts";
 import { resolveExternalTargetBoundary, type ExternalTargetCapabilityState } from "../web/external-target-boundary.ts";
 
-export const FIRST_PARTY_BRIDGE_VERSION = "first-party-web-v1" as const;\nexport const INTERNAL_VALIDATION_TARGET_PATH = "/internal-validation-target" as const;\n\nexport type TestTargetProvider = "figma_prototype" | "first_party_web" | "external_web";
+export const FIRST_PARTY_BRIDGE_VERSION = "first-party-web-v1" as const;
+export const INTERNAL_VALIDATION_TARGET_PATH = "/internal-validation-target" as const;
+
+export type TestTargetProvider = "figma_prototype" | "first_party_web" | "external_web";
 export type CapabilityState = "Available" | "Partial" | "Unsupported" | "No Data";
 export type WebEnvironment = "uat" | "production" | null;
 
