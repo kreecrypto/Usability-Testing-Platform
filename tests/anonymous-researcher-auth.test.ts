@@ -4,12 +4,31 @@ import test from "node:test";
 
 import {
   AuthSessionError,
+  publicSupabaseConfig,
   signInAnonymously,
 } from "../src/lib/auth/session.ts";
 
 const config = Object.freeze({
   url: "https://example.supabase.co",
   key: "sb_publishable_test",
+});
+
+
+test("UTP project falls back only to its public publishable key when Vercel public-key env is absent", () => {
+  const resolved = publicSupabaseConfig({
+    SUPABASE_URL: "https://qryvrcwbsehrzpersuoc.supabase.co",
+  } as NodeJS.ProcessEnv);
+  assert.equal(resolved.url, "https://qryvrcwbsehrzpersuoc.supabase.co");
+  assert.match(resolved.key, /^sb_publishable_/);
+
+  assert.throws(
+    () => publicSupabaseConfig({
+      SUPABASE_URL: "https://other-project.supabase.co",
+    } as NodeJS.ProcessEnv),
+    (error: unknown) => error instanceof AuthSessionError &&
+      error.code === "config_missing" &&
+      error.message === "SUPABASE_PUBLISHABLE_KEY missing",
+  );
 });
 
 test("anonymous researcher auth uses Supabase signup without email or password", async () => {
