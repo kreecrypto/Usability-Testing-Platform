@@ -47,7 +47,7 @@ export function createFirstPartyWebInstrumentation(options: {
 }) : FirstPartyWebAdapter {
   let sequence = 0;
   const now = options.now ?? (() => new Date().toISOString());
-  const randomId = options.randomId ?? (() => crypto.randomUUID());
+  const randomId = options.randomId ?? (() => crypto.randomUUID());\n  if (!Number.isSafeInteger(sequence) || sequence < 0) throw new Error("invalid_initial_sequence");
 
   async function emit(evidence: FirstPartyWebEvidence): Promise<RawTrackingEvent | null> {
     if (!options.hasConsent()) return null;
