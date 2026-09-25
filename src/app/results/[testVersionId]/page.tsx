@@ -7,7 +7,7 @@ import styles from "./results.module.css";
 type View = "overview" | "tasks" | "paths" | "heatmap" | "funnel" | "sessions";
 type LoadState = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; results: ResultsModel };
 
-const viewLabels: Record<View, string> = { overview: "ภาพรวม", tasks: "งานทดสอบ", paths: "เส้นทาง", heatmap: "ฮีตแมป", funnel: "Funnel", sessions: "ผู้เข้าร่วม" };
+const viewLabels: Record<View, string> = { overview: "ภาพรวม", tasks: "งานทดสอบ", paths: "เส้นทาง", heatmap: "ฮีตแมป", funnel: "ลำดับขั้น", sessions: "เซสชัน" };
 const outcomeLabels: Record<string, string> = {
   success_direct: "สำเร็จตามเส้นทาง", success_indirect: "สำเร็จด้วยเส้นทางอื่น", failed: "ไม่สำเร็จ", give_up: "ยุติงาน", timeout: "หมดเวลา", abandoned: "ออกจากแบบทดสอบ", technical_blocked: "ติดปัญหาทางเทคนิค", active: "กำลังทำ",
 };
@@ -185,8 +185,9 @@ export default function ResultsPage({ params }: { params: Promise<{ testVersionI
 
   const title = useMemo(() => versionId ? `เวอร์ชัน ${versionId.slice(0, 8)}` : "วิเคราะห์ผล", [versionId]);
   return <main className={styles.page}>
-    <header className={styles.header}><div><span className={styles.eyebrow}>วิเคราะห์ผล · หลักฐานจากเวอร์ชันที่เผยแพร่</span><h1>{title}</h1><p>ผลลัพธ์คำนวณจากเหตุการณ์ที่ระบบยอมรับ ปัญหาทางเทคนิคแยกจากผลด้านการใช้งาน และค่าที่ไม่มีข้อมูลจะไม่แสดงเป็นศูนย์</p></div><a href="/projects" className={styles.backLink}>โปรเจกต์</a></header>
-    <nav className={styles.tabs} aria-label="มุมมองการวิเคราะห์ผล"><a className={styles.reportTab} href={`/reports/${versionId}`}>รายงาน</a>{(["overview", "tasks", "paths", "heatmap", "funnel", "sessions"] as const).map((item) => <button key={item} type="button" aria-current={view === item ? "page" : undefined} className={view === item ? styles.tabActive : styles.tab} onClick={() => setView(item)}>{viewLabels[item]}</button>)}</nav>
+    <header className={styles.header}><div><span className={styles.eyebrow}>วิเคราะห์ผล · หลักฐานจากเวอร์ชันที่เผยแพร่</span><h1>{title}</h1><p>ดูผลการทดสอบจากหลักฐานที่ระบบยอมรับ โดยแยกปัญหาทางเทคนิคออกจากผลด้านการใช้งาน และไม่ใช้ศูนย์แทนข้อมูลที่ไม่มี</p></div><a href="/projects" className={styles.backLink}>โปรเจกต์</a></header>
+    <nav className={styles.studyNav} aria-label="เมนูการวิเคราะห์ของเวอร์ชันนี้"><a href={`/results/${versionId}`} aria-current="page">ผลการทดสอบ</a><a href={`/findings/${versionId}`}>Findings</a><a href={`/reports/${versionId}`}>รายงาน</a><a href={`/reports/${versionId}#retest`}>Retest</a></nav>
+    <nav className={styles.tabs} aria-label="มุมมองการวิเคราะห์ผล">{(["overview", "tasks", "paths", "heatmap", "funnel", "sessions"] as const).map((item) => <button key={item} type="button" aria-current={view === item ? "page" : undefined} className={view === item ? styles.tabActive : styles.tab} onClick={() => setView(item)}>{viewLabels[item]}</button>)}</nav>
     {state.status === "loading" ? <div className={styles.loading} role="status">กำลังโหลดผลการทดสอบ…</div> : null}
     {state.status === "error" ? <div className={styles.error} role="alert"><strong>ยังเปิดผลการทดสอบไม่ได้</strong><p>{state.message}</p></div> : null}
     {state.status === "ready" ? <section className={styles.content}>{view === "overview" ? <Overview results={state.results} /> : view === "tasks" ? <Tasks results={state.results} /> : view === "paths" ? <Paths results={state.results} /> : view === "heatmap" ? <Heatmap results={state.results} /> : view === "funnel" ? <Funnel results={state.results} /> : <Sessions results={state.results} />}</section> : null}
