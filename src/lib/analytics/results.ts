@@ -2,7 +2,7 @@ import { aggregateAnalytics, type TaskMetricAggregate } from "./aggregation.ts";
 import { deriveFunnel, type FunnelDefinition, type FunnelResult } from "./funnel.ts";
 import { buildScreenHeatmap, type ScreenHeatmapDataset } from "./heatmap.ts";
 import { deriveTaskTimeMetrics } from "./time-metrics.ts";
-import { median, percentage } from "./metrics.ts";
+import { median, p75, p90, percentage } from "./metrics.ts";
 import type { AcceptedTrackingEvent, TaskOutcome } from "../tracking/events.ts";
 
 export const RESULTS_MODEL_VERSION = "tasks44-49-v2" as const;
@@ -41,9 +41,12 @@ export type ResultsOverview = Readonly<{
   technicalBlockedTaskCount: number;
   completionRate: number | null;
   medianSuccessfulDurationMs: number | null;
+  p75SuccessfulDurationMs: number | null;
+  p90SuccessfulDurationMs: number | null;
   successfulDurationSampleSize: number;
   giveUpCount: number;
   giveUpRate: number | null;
+  eligiblePointerInteractionCount: number;
   misclickCount: number;
   misclickRate: number | null;
   rageClickCount: number;
@@ -60,6 +63,7 @@ export type TaskDetailResult = Readonly<{
   outcomes: Readonly<Record<TaskOutcome, number>>;
   completionRate: number | null;
   giveUpRate: number | null;
+  eligiblePointerInteractions: number;
   misclickCount: number;
   misclickRate: number | null;
   successfulDuration: TaskMetricAggregate["successfulDuration"];
@@ -350,6 +354,7 @@ export function buildResultsModel(input: Readonly<{
       outcomes: metric.outcomes,
       completionRate: metric.completionRate,
       giveUpRate: metric.giveUpRate,
+      eligiblePointerInteractions: metric.eligiblePointerInteractions,
       misclickCount: metric.misclicks,
       misclickRate: metric.misclickRate,
       successfulDuration: metric.successfulDuration,
@@ -377,9 +382,12 @@ export function buildResultsModel(input: Readonly<{
       technicalBlockedTaskCount,
       completionRate: percentage(successCount, eligibleTaskCount),
       medianSuccessfulDurationMs: median(successfulDurations),
+      p75SuccessfulDurationMs: p75(successfulDurations),
+      p90SuccessfulDurationMs: p90(successfulDurations),
       successfulDurationSampleSize: successfulDurations.length,
       giveUpCount,
       giveUpRate: percentage(giveUpCount, eligibleTaskCount),
+      eligiblePointerInteractionCount: eligiblePointers,
       misclickCount,
       misclickRate: percentage(misclickCount, eligiblePointers),
       rageClickCount,
