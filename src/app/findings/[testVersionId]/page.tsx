@@ -120,9 +120,10 @@ export default function FindingsPage({ params }: { params: Promise<{ testVersion
   }
 
   return <main className={styles.page}>
-    <header className={styles.header}><div><span>วิเคราะห์ผล · ประเด็นจากเวอร์ชันที่เผยแพร่</span><h1>ประเด็น UX ที่พบ</h1><p>เปลี่ยนพฤติกรรมที่สังเกตได้เป็นประเด็นที่นำไปแก้ไข โดยเก็บตัวชี้วัดและหลักฐานผูกกับเวอร์ชันที่สร้างข้อมูลนั้น</p></div><div className={styles.headerActions}><a href={`/reports/${testVersionId}`}>เปิดรายงาน</a><a href={`/results/${testVersionId}`}>กลับไปผลการทดสอบ</a></div></header>
+    <header className={styles.header}><div><span>วิเคราะห์ผล · Findings จากเวอร์ชันที่เผยแพร่</span><h1>ประเด็น UX ที่พบ</h1><p>เปลี่ยนพฤติกรรมที่สังเกตได้เป็น Finding ที่นำไปแก้ไข โดยแยกสิ่งที่เห็น การตีความ และ recommendation ออกจากกัน</p></div><a href="/projects">โปรเจกต์</a></header>
+    <nav className={styles.studyNav} aria-label="เมนูการวิเคราะห์ของเวอร์ชันนี้"><a href={`/results/${testVersionId}`}>ผลการทดสอบ</a><a href={`/findings/${testVersionId}`} aria-current="page">Findings</a><a href={`/reports/${testVersionId}`}>รายงาน</a><a href={`/reports/${testVersionId}#retest`}>Retest</a></nav>
     {state === "loading" ? <div className={styles.state}>กำลังโหลดประเด็นที่พบ…</div> : null}
-    {state === "error" ? <div className={styles.error} role="alert">{error}</div> : null}
+    {state === "error" ? <div className={styles.error} role="alert"><strong>ยังเปิด Findings ไม่ได้</strong><p>{error}</p><button type="button" onClick={() => void reload()}>ลองอีกครั้ง</button></div> : null}
     {state === "ready" && results ? <div className={styles.layout}>
       <form className={styles.form} onSubmit={createFinding}>
         <div><span className={styles.eyebrow}>จากหลักฐานสู่สิ่งที่ต้องแก้</span><h2>สร้างประเด็นใหม่</h2></div>
