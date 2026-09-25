@@ -50,6 +50,8 @@ export default function FindingsPage({ params }: { params: Promise<{ testVersion
   const [metricKey, setMetricKey] = useState<MetricKey>("completionRate");
   const [title, setTitle] = useState("");
   const [problem, setProblem] = useState("");
+  const [researcherInterpretation, setResearcherInterpretation] = useState("");
+  const [recommendation, setRecommendation] = useState("");
   const [screenId, setScreenId] = useState("");
   const [severity, setSeverity] = useState("medium");
   const [saving, setSaving] = useState(false);
@@ -84,10 +86,20 @@ export default function FindingsPage({ params }: { params: Promise<{ testVersion
     try {
       const response = await fetch("/api/findings", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ testVersionId, taskId: selectedTask.taskId, screenId: screenId || null, title, problem, severity, metricSnapshot: snapshot(selectedTask, metricKey, testVersionId) }),
+        body: JSON.stringify({
+          testVersionId,
+          taskId: selectedTask.taskId,
+          screenId: screenId || null,
+          title,
+          problem,
+          researcherInterpretation,
+          recommendation,
+          severity,
+          metricSnapshot: snapshot(selectedTask, metricKey, testVersionId),
+        }),
       });
       if (!response.ok) throw new Error("สร้างประเด็นที่พบไม่สำเร็จ");
-      setTitle(""); setProblem(""); setScreenId("");
+      setTitle(""); setProblem(""); setResearcherInterpretation(""); setRecommendation(""); setScreenId("");
       await reload();
     } catch (value) { setError(value instanceof Error ? value.message : "สร้างประเด็นที่พบไม่สำเร็จ"); }
     finally { setSaving(false); }
@@ -108,7 +120,7 @@ export default function FindingsPage({ params }: { params: Promise<{ testVersion
   }
 
   return <main className={styles.page}>
-    <header className={styles.header}><div><span>วิเคราะห์ผล · ประเด็นจากเวอร์ชันที่เผยแพร่</span><h1>ประเด็น UX ที่พบ</h1><p>เปลี่ยนพฤติกรรมที่สังเกตได้เป็นประเด็นที่นำไปแก้ไข โดยเก็บตัวชี้วัดและหลักฐานผูกกับเวอร์ชันที่สร้างข้อมูลนั้น</p></div><a href={`/results/${testVersionId}`}>กลับไปผลการทดสอบ</a></header>
+    <header className={styles.header}><div><span>วิเคราะห์ผล · ประเด็นจากเวอร์ชันที่เผยแพร่</span><h1>ประเด็น UX ที่พบ</h1><p>เปลี่ยนพฤติกรรมที่สังเกตได้เป็นประเด็นที่นำไปแก้ไข โดยเก็บตัวชี้วัดและหลักฐานผูกกับเวอร์ชันที่สร้างข้อมูลนั้น</p></div><div className={styles.headerActions}><a href={`/reports/${testVersionId}`}>เปิดรายงาน</a><a href={`/results/${testVersionId}`}>กลับไปผลการทดสอบ</a></div></header>
     {state === "loading" ? <div className={styles.state}>กำลังโหลดประเด็นที่พบ…</div> : null}
     {state === "error" ? <div className={styles.error} role="alert">{error}</div> : null}
     {state === "ready" && results ? <div className={styles.layout}>
@@ -118,17 +130,21 @@ export default function FindingsPage({ params }: { params: Promise<{ testVersion
         <label>ตัวชี้วัดหลัก<select value={metricKey} onChange={(event) => setMetricKey(event.target.value as MetricKey)}>{Object.entries(metricLabels).map(([key, label]) => <option value={key} key={key}>{label}</option>)}</select></label>
         {selectedTask ? <div className={styles.snapshot}><strong>{formatMetric(metricValue(selectedTask, metricKey))}</strong><span>n={metricKey === "medianSuccessfulDurationMs" ? selectedTask.successfulDuration.sampleSize : selectedTask.eligible} · ติดปัญหาทางเทคนิค={selectedTask.technicalBlockedCount}</span></div> : null}
         <label>ชื่อประเด็น<input required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="สรุปปัญหาที่สังเกตได้แบบสั้น ๆ" /></label>
-        <label>ปัญหา<textarea required value={problem} onChange={(event) => setProblem(event.target.value)} placeholder="ผู้เข้าร่วมติดขัดตรงไหน และเหตุใดจึงสำคัญ" /></label>
+        <label>ปัญหา<textarea required value={problem} onChange={(event) => setProblem(event.target.value)} placeholder="ผู้เข้าร่วมติดขัดตรงไหน โดยอธิบายเฉพาะสิ่งที่สังเกตได้" /></label>
+        <label>การตีความของ Researcher<textarea required value={researcherInterpretation} onChange={(event) => setResearcherInterpretation(event.target.value)} placeholder="อธิบายความหมายของหลักฐาน โดยไม่สรุปเหตุเชิงสาเหตุเกินข้อมูล" /></label>
+        <label>ข้อเสนอแนะ<textarea required value={recommendation} onChange={(event) => setRecommendation(event.target.value)} placeholder="สิ่งที่ควรแก้หรือทดลองในรอบถัดไป" /></label>
         <div className={styles.twoCol}><label>ความรุนแรง<select value={severity} onChange={(event) => setSeverity(event.target.value)}><option value="critical">วิกฤต</option><option value="high">สูง</option><option value="medium">กลาง</option><option value="low">ต่ำ</option></select></label><label>Screen ID<input value={screenId} onChange={(event) => setScreenId(event.target.value)} placeholder="ไม่บังคับ · Screen ID มาตรฐาน" /></label></div>
         <button disabled={saving || !selectedTask}>{saving ? "กำลังสร้าง…" : "สร้างประเด็น"}</button>
       </form>
 
       <section className={styles.list}>
         <div className={styles.listHeader}><div><span className={styles.eyebrow}>ประเด็นที่ตรวจพบ</span><h2>ประเด็นทั้งหมด</h2></div><strong>{findings.length}</strong></div>
-        {findings.length === 0 ? <div className={styles.empty}><strong>ยังไม่มีประเด็นที่พบ</strong><p>สร้างประเด็นจากตัวชี้วัดและหลักฐานเมื่อพบสิ่งที่ควรแก้ไข การไม่มีประเด็นยังไม่เท่ากับความรุนแรงเป็นศูนย์</p></div> : findings.map((finding) => <article key={finding.id} className={styles.card}>
+        {findings.length === 0 ? <div className={styles.empty}><strong>ยังไม่มีประเด็นที่พบ</strong><p>สร้างประเด็นจากตัวชี้วัดและหลักฐานเมื่อพบสิ่งที่ควรแก้ไข การไม่มีประเด็นยังไม่เท่ากับความรุนแรงเป็นศูนย์</p></div> : findings.map((finding) => <article key={finding.id} id={`finding-${finding.id}`} className={styles.card}>
           <div className={styles.cardHeader}><div><span className={styles.severity} data-severity={finding.severity}>{severityLabels[finding.severity] ?? finding.severity}</span><h3>{finding.title}</h3></div><span className={styles.status}>{statusLabels[finding.status] ?? finding.status}</span></div>
           <p>{finding.problem}</p>
-          <dl><div><dt>ตัวชี้วัด</dt><dd>{metricLabels[finding.metricSnapshot.metricKey as MetricKey] ?? finding.metricSnapshot.metricKey}: {formatMetric(finding.metricSnapshot.value)}</dd></div><div><dt>ตัวอย่าง</dt><dd>n={finding.metricSnapshot.sampleSize}, ติดปัญหาทางเทคนิค={finding.metricSnapshot.technicalBlockedCount}</dd></div><div><dt>เวอร์ชัน</dt><dd>{finding.testVersionId}</dd></div>{finding.screenId ? <div><dt>หน้าจอ</dt><dd>{finding.screenId}</dd></div> : null}</dl>
+          <dl>
+            <div><dt>การตีความ</dt><dd>{finding.researcherInterpretation ?? "ยังไม่ได้ระบุ"}</dd></div>
+            <div><dt>ข้อเสนอแนะ</dt><dd>{finding.recommendation ?? "ยังไม่ได้ระบุ"}</dd></div><div><dt>ตัวชี้วัด</dt><dd>{metricLabels[finding.metricSnapshot.metricKey as MetricKey] ?? finding.metricSnapshot.metricKey}: {formatMetric(finding.metricSnapshot.value)}</dd></div><div><dt>ตัวอย่าง</dt><dd>n={finding.metricSnapshot.sampleSize}, ติดปัญหาทางเทคนิค={finding.metricSnapshot.technicalBlockedCount}</dd></div><div><dt>เวอร์ชัน</dt><dd>{finding.testVersionId}</dd></div>{finding.screenId ? <div><dt>หน้าจอ</dt><dd>{finding.screenId}</dd></div> : null}</dl>
           <div className={styles.evidenceBox}><strong>เชื่อมหลักฐาน</strong><input value={evidenceSession[finding.id] ?? ""} onChange={(event) => setEvidenceSession((value) => ({ ...value, [finding.id]: event.target.value }))} placeholder="Session UUID" /><div><button type="button" onClick={() => void linkEvidence(finding, "session")}>เชื่อมเซสชัน</button><button type="button" onClick={() => void linkEvidence(finding, "path")}>เชื่อมเส้นทาง</button><button type="button" disabled title="ฮีตแมปยังติด capability gate">ฮีตแมปยังใช้ไม่ได้</button></div></div>
         </article>)}
       </section>

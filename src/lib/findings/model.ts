@@ -30,6 +30,8 @@ export type FindingRecord = Readonly<{
   title: string;
   problem: string;
   description: string | null;
+  researcherInterpretation: string | null;
+  recommendation: string | null;
   severity: FindingSeverity;
   status: FindingStatus;
   metricSnapshot: MetricSnapshot;
