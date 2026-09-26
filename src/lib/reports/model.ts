@@ -75,6 +75,7 @@ function heatmapAvailability(results: ResultsModel, target: ReportTargetContext)
   const coordinates = capabilityState(target, "coordinates");
   if (pointer === "Unsupported" || coordinates === "Unsupported") return "Unsupported";
   if (pointer === "Partial" || coordinates === "Partial" || pointer === null || coordinates === null) return "Partial";
+  if (pointer === "No Data" || coordinates === "No Data") return "No Data";
   if (results.heatmap.status === "unsupported") return "Unsupported";
   if (results.heatmap.status === "no_data") return "No Data";
   return "Available";

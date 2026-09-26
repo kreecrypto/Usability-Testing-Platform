@@ -22,6 +22,7 @@ export function capabilityAvailability(results: ResultsModel, ...capabilities: s
   const states = capabilities.map((key) => target.capabilities[key]);
   if (states.includes("Unsupported")) return "Unsupported";
   if (states.some((state) => !state || state === "Partial")) return "Partial";
+  if (states.includes("No Data")) return "No Data";
   return "Available";
 }
 
