@@ -85,7 +85,3 @@ HTTP smoke is supportive evidence only. It does not replace the required browser
 ## Rollback
 
 Keep the previous verified Vercel production deployment identifiable as the rollback candidate for every production release. If a production regression is found, use the last verified deployment/commit according to the Vercel release procedure and re-run the affected runtime gates.
-
-## Alternate runtimes
-
-Cloudflare Workers compatibility artifacts remain historical/fallback evidence only. See [`cloudflare-runtime.md`](cloudflare-runtime.md). They are not an active production gate unless Source Governance is changed again explicitly.

@@ -70,7 +70,7 @@ Production source branch:
 
 `main`
 
-Cloudflare Workers and Netlify are historical/fallback evidence only and must not override current Sheet governance.
+Vercel is the active production host; Supabase is the data and auth provider. Historical deployment experiments do not override current Sheet governance.
 
 See:
 - [architecture](docs/architecture.md)
