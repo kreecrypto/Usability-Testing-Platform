@@ -22,29 +22,40 @@ export function createEventOutbox(options: {
   if (!Number.isSafeInteger(maxBatchSize) || maxBatchSize < 1 || maxBatchSize > 100) throw new Error("maxBatchSize must be 1..100");
   let flushing: Promise<number> | null = null;
 
+  let mutation: Promise<unknown> = Promise.resolve();
+  function serialize<T>(operation: () => Promise<T>): Promise<T> {
+    const result = mutation.then(operation);
+    mutation = result.catch(() => undefined);
+    return result;
+  }
+
   async function enqueue(event: TrackingEvent): Promise<void> {
-    const current = [...await options.storage.load()];
-    const identity = eventIdentity(event);
-    const existing = current.find((candidate) => eventIdentity(candidate) === identity);
-    if (existing) {
-      if (existing.eventId !== event.eventId) throw new Error("outbox_idempotency_conflict");
-      return;
-    }
-    current.push(event);
-    await options.storage.save(current);
+    return serialize(async () => {
+      const current = [...await options.storage.load()];
+      const identity = eventIdentity(event);
+      const existing = current.find((candidate) => eventIdentity(candidate) === identity);
+      if (existing) {
+        if (existing.eventId !== event.eventId) throw new Error("outbox_idempotency_conflict");
+        return;
+      }
+      current.push(event);
+      await options.storage.save(current);
+    });
   }
 
   async function flushOnce(): Promise<number> {
     let delivered = 0;
     while (true) {
-      const current = [...await options.storage.load()];
+      const current = [...await serialize(() => options.storage.load())];
       if (current.length === 0) return delivered;
       const batch = Object.freeze(current.slice(0, maxBatchSize));
       const credential = await options.refreshCredential();
       await options.sendBatch(batch, credential);
       const deliveredIds = new Set(batch.map(eventIdentity));
-      const latest = [...await options.storage.load()];
-      await options.storage.save(latest.filter((event) => !deliveredIds.has(eventIdentity(event))));
+      await serialize(async () => {
+        const latest = [...await options.storage.load()];
+        await options.storage.save(latest.filter((event) => !deliveredIds.has(eventIdentity(event))));
+      });
       delivered += batch.length;
     }
   }
