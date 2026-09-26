@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ResultsModel } from "../../../lib/analytics/results.ts";
+import { capabilityAvailability, observationFor, presentMetric } from "../../../lib/analytics/presentation.ts";
 import styles from "./results.module.css";
 
 type View = "overview" | "tasks" | "paths" | "heatmap" | "funnel" | "sessions";
@@ -16,31 +17,38 @@ function metric(value: number | null, suffix = ""): string { return value === nu
 function duration(value: number | null): string { if (value === null) return "ยังไม่มีข้อมูล"; if (value < 1000) return `${Math.round(value)} มิลลิวินาที`; return `${Math.round(value / 100) / 10} วินาที`; }
 function outcomeLabel(value: string | null): string { return value ? outcomeLabels[value] ?? value : "ยังไม่จบ"; }
 function MetricCard({ label, value, detail }: { label: string; value: string; detail: string }) { return <article className={styles.metricCard}><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>; }
+function ObservationCard({ results, metricKey, taskId = null, label, format }: { results: ResultsModel; metricKey: string; taskId?: string | null; label: string; format: (value: number) => string }) {
+  const observed = presentMetric(observationFor(results, metricKey, taskId), format);
+  return <article className={styles.metricCard} data-availability={observed.availability}>
+    <span>{label} · {observed.availability}</span><strong>{observed.value}</strong><small>{observed.detail}</small>
+    <details><summary>ที่มาและหลักฐาน · {observed.evidenceRefs.length} รายการ</summary><small className={styles.evidenceRefs}>{observed.provenance}</small>{observed.evidenceRefs.length ? <small className={styles.evidenceRefs}>{observed.evidenceRefs.join(", ")}</small> : null}</details>
+  </article>;
+}
 function EmptyState({ title = "ยังไม่มีข้อมูล", children }: { title?: string; children: React.ReactNode }) { return <div className={styles.emptyState}><strong>{title}</strong><p>{children}</p></div>; }
 
 function Overview({ results }: { results: ResultsModel }) {
   const value = results.overview;
   return <div className={styles.stack}>
     <section className={styles.metricsGrid} aria-label="ตัวชี้วัดภาพรวม">
-      <MetricCard label="ผู้เข้าร่วม" value={String(value.participantCount)} detail={`${value.sessionCount} เซสชัน`} />
-      <MetricCard label="งานที่สำเร็จ" value={metric(value.completionRate, "%")} detail={`${value.eligibleTaskCount} งานที่นำมาคำนวณ`} />
-      <MetricCard label="เวลามัธยฐานของงานที่สำเร็จ" value={duration(value.medianSuccessfulDurationMs)} detail={`n=${value.successfulDurationSampleSize} งานสำเร็จ`} />
-      <MetricCard label="อัตราคลิกพลาด" value={metric(value.misclickRate, "%")} detail={`${value.misclickCount} เหตุการณ์ที่ตรวจพบ`} />
-      <MetricCard label="อัตรายุติงาน" value={metric(value.giveUpRate, "%")} detail={`${value.giveUpCount} ครั้งที่ยุติงาน`} />
-      <MetricCard label="ติดปัญหาทางเทคนิค" value={String(value.technicalBlockedTaskCount)} detail="ไม่นำมารวมในผลด้านการใช้งาน" />
+      <MetricCard label="ผู้เข้าร่วม" value={value.sessionCount ? String(value.participantCount) : "ยังไม่มีข้อมูล"} detail={`${value.sessionCount} เซสชัน`} />
+      <ObservationCard results={results} label="งานที่สำเร็จ" metricKey="completionRate" format={(n) => metric(n, "%")} />
+      <ObservationCard results={results} label="เวลามัธยฐานของงานที่สำเร็จ" metricKey="medianSuccessfulDurationMs" format={duration} />
+      <ObservationCard results={results} label="อัตราคลิกพลาด" metricKey="misclickRate" format={(n) => metric(n, "%")} />
+      <ObservationCard results={results} label="อัตรายุติงาน" metricKey="giveUpRate" format={(n) => metric(n, "%")} />
+      <MetricCard label="ติดปัญหาทางเทคนิค" value={value.sessionCount ? String(value.technicalBlockedTaskCount) : "ยังไม่มีข้อมูล"} detail="ไม่นำมารวมในผลด้านการใช้งาน" />
     </section>
     <section className={styles.panel}>
       <div className={styles.panelHeader}><div><span className={styles.eyebrow}>จุดติดขัดที่พบ</span><h2>พฤติกรรมที่ตรวจพบจากหลักฐาน</h2></div></div>
       <div className={styles.frictionGrid}>
-        <div><strong>{value.misclickCount}</strong><span>คลิกพลาด</span></div>
-        <div><strong>{value.rageClickCount}</strong><span>คลิกรัว</span></div>
-        <div><strong>{value.backtrackCount}</strong><span>ย้อนกลับ</span></div>
-        <div><strong>{value.giveUpCount}</strong><span>ยุติงาน</span></div>
+        <div><strong>{capabilityAvailability(results, "pointer") === "Available" && value.eligiblePointerInteractionCount ? value.misclickCount : "–"}</strong><span>คลิกพลาด</span></div>
+        <div><strong>{capabilityAvailability(results, "pointer") === "Available" && value.eligiblePointerInteractionCount ? value.rageClickCount : "–"}</strong><span>คลิกรัว</span></div>
+        <div><strong>{capabilityAvailability(results, "path") === "Available" && results.paths.some((path) => path.actualPath.length) ? value.backtrackCount : "–"}</strong><span>ย้อนกลับ</span></div>
+        <div><strong>{value.eligibleTaskCount ? value.giveUpCount : "–"}</strong><span>ยุติงาน</span></div>
       </div>
     </section>
     <section className={styles.warningPanel} role="status">
       <strong>คุณภาพของหลักฐานภาพ</strong>
-      <p>ฮีตแมปใช้เฉพาะพิกัดมาตรฐานที่ server สร้างจาก geometry snapshot ของเวอร์ชันนี้เท่านั้น หากไม่มี geometry ระบบจะแสดง Unsupported/No Data แทนการใช้พิกัดจาก browser.</p>
+      <p>Target: {results.context?.target.provider ?? "ไม่ทราบ"} · snapshot v{results.context?.target.snapshotVersion ?? "–"} · เวอร์ชันทดสอบ {results.testVersionId}. ฮีตแมปใช้เฉพาะพิกัดมาตรฐานที่ตรวจสอบได้ หากไม่มี geometry จะแสดง Unsupported/No Data.</p>
     </section>
   </div>;
 }
@@ -50,11 +58,11 @@ function Tasks({ results }: { results: ResultsModel }) {
   return <div className={styles.taskList}>{results.taskDetails.map((task) => <article key={task.taskId} className={styles.panel}>
     <div className={styles.panelHeader}><div><span className={styles.eyebrow}>งาน {task.ordinal}</span><h2>{task.title}</h2></div><span className={styles.badge}>n={task.eligible}</span></div>
     <div className={styles.metricsGrid}>
-      <MetricCard label="สำเร็จ" value={metric(task.completionRate, "%")} detail={`${task.outcomes.success_direct + task.outcomes.success_indirect} ครั้ง`} />
-      <MetricCard label="เวลามัธยฐาน" value={duration(task.successfulDuration.medianMs)} detail={`n=${task.successfulDuration.sampleSize} งานสำเร็จ`} />
-      <MetricCard label="P75" value={duration(task.successfulDuration.p75Ms)} detail="เซสชันสำเร็จที่นำมาคำนวณ" />
-      <MetricCard label="P90" value={duration(task.successfulDuration.p90Ms)} detail="เซสชันสำเร็จที่นำมาคำนวณ" />
-      <MetricCard label="คลิกพลาด" value={metric(task.misclickRate, "%")} detail={`${task.misclickCount} เหตุการณ์ที่ตรวจพบ`} />
+      <ObservationCard results={results} taskId={task.taskId} label="สำเร็จ" metricKey="completionRate" format={(n) => metric(n, "%")} />
+      <ObservationCard results={results} taskId={task.taskId} label="เวลามัธยฐาน" metricKey="medianSuccessfulDurationMs" format={duration} />
+      <ObservationCard results={results} taskId={task.taskId} label="P75" metricKey="p75SuccessfulDurationMs" format={duration} />
+      <ObservationCard results={results} taskId={task.taskId} label="P90" metricKey="p90SuccessfulDurationMs" format={duration} />
+      <ObservationCard results={results} taskId={task.taskId} label="คลิกพลาด" metricKey="misclickRate" format={(n) => metric(n, "%")} />
       <MetricCard label="ปัญหาทางเทคนิค" value={String(task.technicalBlockedCount)} detail="รายงานแยกจากผลด้านการใช้งาน" />
     </div>
     <div className={styles.seqBlock}>
@@ -66,6 +74,8 @@ function Tasks({ results }: { results: ResultsModel }) {
 }
 
 function Paths({ results }: { results: ResultsModel }) {
+  const pathCapability = capabilityAvailability(results, "path");
+  if (pathCapability !== "Available") return <EmptyState title={pathCapability === "Unsupported" ? "ไม่รองรับเส้นทาง" : "ข้อมูลเส้นทางยังไม่ครบ"}>Target เวอร์ชันนี้ยังไม่มี capability ที่ยืนยันข้อมูลเส้นทางได้</EmptyState>;
   const paths = results.paths.filter((path) => path.actualPath.length > 0 || path.expectedPath.length > 0);
   if (paths.length === 0) return <EmptyState title="ยังไม่มีข้อมูลเส้นทาง">ยังไม่มีหลักฐานเส้นทางหน้าจอที่ใช้วิเคราะห์ได้ในเวอร์ชันนี้</EmptyState>;
   return <div className={styles.taskList}>{paths.map((path) => <article key={`${path.sessionId}:${path.taskId}`} className={styles.panel}>
@@ -74,11 +84,11 @@ function Paths({ results }: { results: ResultsModel }) {
       <div><strong>เส้นทางที่คาดไว้</strong><div className={styles.pathRow}>{path.expectedPath.length ? path.expectedPath.map((screen, index) => <span key={`${screen}:${index}`}>{screen}</span>) : <em>เวอร์ชันนี้ไม่ได้เก็บเส้นทางที่คาดไว้</em>}</div></div>
       <div><strong>เส้นทางที่เกิดขึ้นจริง</strong><div className={styles.pathRow}>{path.actualPath.length ? path.actualPath.map((screen, index) => <span key={`${screen}:${index}`}>{screen}</span>) : <em>ยังไม่มีหลักฐานเส้นทาง</em>}</div></div>
     </div>
-    <div className={styles.frictionGrid}>
+    {path.actualPath.length ? <div className={styles.frictionGrid}>
       <div><strong>{path.detourCount}</strong><span>ออกนอกเส้นทาง</span></div>
       <div><strong>{path.backtrackCount}</strong><span>ย้อนกลับ</span></div>
       <div><strong>{path.repeatedScreenCount}</strong><span>เข้าหน้าซ้ำ</span></div>
-    </div>
+    </div> : <small>ยังไม่มี screen_view ที่ใช้คำนวณเส้นทาง</small>}
   </article>)}</div>;
 }
 
@@ -93,6 +103,8 @@ function Heatmap({ results }: { results: ResultsModel }) {
     if (!screenId && dataset.filters.screenIds[0]) setScreenId(dataset.filters.screenIds[0]);
   }, [dataset.filters.screenIds, screenId]);
 
+  const heatmapCapability = capabilityAvailability(results, "pointer", "coordinates");
+  if (heatmapCapability !== "Available") return <EmptyState title={heatmapCapability === "Unsupported" ? "ไม่รองรับฮีตแมป" : "ข้อมูลฮีตแมปยังไม่ครบ"}>Target เวอร์ชันนี้ไม่มี capability ที่ยืนยันพิกัดได้</EmptyState>;
   if (dataset.status === "unsupported") return <EmptyState title="ฮีตแมปยังไม่พร้อม">พบ {dataset.rawPointerCount} pointer events แต่ไม่มี canonical geometry ที่ตรวจสอบได้ ระบบจึงไม่ใช้พิกัด browser/CSS เป็น fallback.</EmptyState>;
   if (dataset.status === "no_data") return <EmptyState title="ยังไม่มีข้อมูลฮีตแมป">ยังไม่มี pointer interaction ในเวอร์ชันนี้</EmptyState>;
 
@@ -128,8 +140,11 @@ function Heatmap({ results }: { results: ResultsModel }) {
 }
 
 function Funnel({ results }: { results: ResultsModel }) {
+  const funnelCapability = capabilityAvailability(results, "path");
+  if (funnelCapability !== "Available") return <EmptyState title={funnelCapability === "Unsupported" ? "ไม่รองรับ Funnel" : "ข้อมูล Funnel ยังไม่ครบ"}>Target เวอร์ชันนี้ไม่มีข้อมูลเส้นทางที่ยืนยันได้</EmptyState>;
   const funnel = results.funnel;
   if (!funnel) return <EmptyState title="ยังไม่มี Funnel">เวอร์ชันนี้ยังไม่ได้กำหนดลำดับ Screen ID สำหรับคำนวณ Conversion และ Drop-off</EmptyState>;
+  if (!funnel.eligibleSessionCount) return <EmptyState title="ยังไม่มีข้อมูล Funnel">ยังไม่มีเซสชันที่มีหลักฐาน screen_view สำหรับคำนวณขั้นตอน</EmptyState>;
   return <div className={styles.stack}>
     <section className={styles.metricsGrid} aria-label="สรุป Funnel">
       <MetricCard label="เซสชันที่นำมาคำนวณ" value={String(funnel.eligibleSessionCount)} detail="ไม่รวมเซสชันที่ติดปัญหาทางเทคนิค" />
