@@ -1,5 +1,6 @@
 import { createPublicRunnerStore, PublicRunnerError, runnerServerConfig } from "../../../../../../lib/runner/public-session.ts";
 import { mintRunnerSessionProof } from "../../../../../../lib/runner/session-proof.ts";
+import { createSupabaseAdminFetch } from "../../../../../../lib/runner/supabase-admin-fetch.ts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,7 +32,10 @@ export async function POST(request: Request, context: Context): Promise<Response
 
   try {
     const config = runnerServerConfig();
-    const store = createPublicRunnerStore(config);
+    const store = createPublicRunnerStore({
+      ...config,
+      fetchImpl: createSupabaseAdminFetch(config.secretKey),
+    });
     const { testVersionId } = await context.params;
     const session = await store.startSession(testVersionId, consentVersion, typeof locale === "string" ? locale : null);
     const expiresAt = new Date(Date.now() + RUNNER_PROOF_TTL_SECONDS * 1000);

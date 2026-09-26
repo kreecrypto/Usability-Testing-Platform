@@ -1,7 +1,9 @@
+import type { ResultsStudyContext, ResultsTargetContext } from "./context.ts";
+import { buildMetricObservations, type MetricObservation } from "./observations.ts";
 import { aggregateAnalytics, type TaskMetricAggregate } from "./aggregation.ts";
 import { deriveFunnel, type FunnelDefinition, type FunnelResult } from "./funnel.ts";
-import { deriveTaskTimeMetrics } from "./time-metrics.ts";
-import { median, percentage } from "./metrics.ts";
+import { buildScreenHeatmap, type ScreenHeatmapDataset } from "./heatmap.ts";
+import { median, p75, p90, percentage } from "./metrics.ts";
 import type { AcceptedTrackingEvent, TaskOutcome } from "../tracking/events.ts";
 
 export const RESULTS_MODEL_VERSION = "tasks44-49-v2" as const;
@@ -40,9 +42,12 @@ export type ResultsOverview = Readonly<{
   technicalBlockedTaskCount: number;
   completionRate: number | null;
   medianSuccessfulDurationMs: number | null;
+  p75SuccessfulDurationMs: number | null;
+  p90SuccessfulDurationMs: number | null;
   successfulDurationSampleSize: number;
   giveUpCount: number;
   giveUpRate: number | null;
+  eligiblePointerInteractionCount: number;
   misclickCount: number;
   misclickRate: number | null;
   rageClickCount: number;
@@ -59,6 +64,7 @@ export type TaskDetailResult = Readonly<{
   outcomes: Readonly<Record<TaskOutcome, number>>;
   completionRate: number | null;
   giveUpRate: number | null;
+  eligiblePointerInteractions: number;
   misclickCount: number;
   misclickRate: number | null;
   successfulDuration: TaskMetricAggregate["successfulDuration"];
@@ -104,13 +110,16 @@ export type ResultsModel = Readonly<{
   modelVersion: typeof RESULTS_MODEL_VERSION;
   testId: string | null;
   testVersionId: string;
+  context: ResultsStudyContext | null;
+  metrics: readonly MetricObservation[];
   overview: ResultsOverview;
   taskDetails: readonly TaskDetailResult[];
   paths: readonly TaskPathResult[];
   sessions: readonly SessionDetailResult[];
+  heatmap: ScreenHeatmapDataset;
   funnel: FunnelResult | null;
   unsupported: Readonly<{
-    heatmap: true;
+    heatmap: boolean;
     funnel: boolean;
     reasons: readonly string[];
   }>;
@@ -191,6 +200,17 @@ function repeatedScreens(path: readonly string[]): number {
   return repeats;
 }
 
+function isTrustedBacktrack(event: AcceptedTrackingEvent, rawById: ReadonlyMap<string, AcceptedTrackingEvent>): boolean {
+  if (event.eventLayer !== "derived" || event.eventType !== "backtrack" || event.derivedFromEventIds.length < 2) return false;
+  return event.derivedFromEventIds.every((id) => {
+    const source = rawById.get(id);
+    return source?.eventLayer === "raw" && source.eventType === "screen_view"
+      && source.source === "prototype_adapter" && Boolean(source.screenId)
+      && source.sessionId === event.sessionId && source.taskId === event.taskId
+      && source.testVersionId === event.testVersionId;
+  });
+}
+
 function buildPaths(
   events: readonly AcceptedTrackingEvent[],
   tasks: readonly ResultTaskDefinition[],
@@ -212,7 +232,8 @@ function buildPaths(
       .filter((event) => event.eventLayer === "raw" && event.eventType === "screen_view" && event.screenId)
       .map((event) => event.screenId!);
     const expectedSet = new Set(expectedPath);
-    const backtrackCount = scoped.filter((event) => event.eventLayer === "derived" && event.eventType === "backtrack").length;
+    const rawById = new Map(scoped.filter((event) => event.eventLayer === "raw").map((event) => [event.eventId, event]));
+    const backtrackCount = scoped.filter((event) => isTrustedBacktrack(event, rawById)).length;
     output.push(Object.freeze({
       sessionId: first.sessionId,
       taskId: first.taskId!,
@@ -301,19 +322,16 @@ export function buildResultsModel(input: Readonly<{
   tasks: readonly ResultTaskDefinition[];
   answers?: readonly ResultAnswer[];
   funnelDefinition?: FunnelDefinition | null;
+  context?: ResultsStudyContext | null;
 }>): ResultsModel {
-  const scopedEvents = input.events.filter((event) => event.testVersionId === input.testVersionId);
+  if (input.context && input.context.testVersionId !== input.testVersionId) throw new Error("results_version_context_mismatch");
+  const scopedEvents = input.events.filter((event) => event.testVersionId === input.testVersionId
+    && (!input.context || event.testId === input.context.testId));
   const answers = input.answers ?? [];
   const analytics = aggregateAnalytics(scopedEvents);
   const taskById = new Map(input.tasks.map((task) => [task.taskId, task]));
-  const successfulKeys = new Set(scopedEvents.flatMap((event) =>
-    event.eventLayer === "derived" && event.eventType === "task_success" && event.taskId
-      ? [`${event.sessionId}\u0000${event.taskId}`] : []));
-  const times = deriveTaskTimeMetrics(scopedEvents);
-  const successfulDurations = times.flatMap((metric) =>
-    metric.timeOnTaskMs !== null && successfulKeys.has(`${metric.sessionId}\u0000${metric.taskId}`)
-      ? [metric.timeOnTaskMs] : []);
   const taskMetrics = analytics.taskMetrics;
+  const successfulDurations = taskMetrics.flatMap((metric) => metric.successfulDurationSamplesMs);
   const eligibleTaskCount = taskMetrics.reduce((sum, task) => sum + task.eligible, 0);
   const successCount = taskMetrics.reduce((sum, task) => sum + task.outcomes.success_direct + task.outcomes.success_indirect, 0);
   const technicalBlockedTaskCount = taskMetrics.reduce((sum, task) => sum + task.outcomes.technical_blocked, 0);
@@ -322,7 +340,8 @@ export function buildResultsModel(input: Readonly<{
   const misclickCount = taskMetrics.reduce((sum, task) => sum + task.misclicks, 0);
   const participantCount = new Set(analytics.sessions.map((session) => session.participantId)).size;
   const rageClickCount = scopedEvents.filter((event) => event.eventLayer === "derived" && event.eventType === "rage_click").length;
-  const backtrackCount = scopedEvents.filter((event) => event.eventLayer === "derived" && event.eventType === "backtrack").length;
+  const rawById = new Map(scopedEvents.filter((event) => event.eventLayer === "raw").map((event) => [event.eventId, event]));
+  const backtrackCount = scopedEvents.filter((event) => isTrustedBacktrack(event, rawById)).length;
 
   const taskDetails = taskMetrics.map((metric) => {
     const definition = taskById.get(metric.taskId);
@@ -348,6 +367,7 @@ export function buildResultsModel(input: Readonly<{
       outcomes: metric.outcomes,
       completionRate: metric.completionRate,
       giveUpRate: metric.giveUpRate,
+      eligiblePointerInteractions: metric.eligiblePointerInteractions,
       misclickCount: metric.misclicks,
       misclickRate: metric.misclickRate,
       successfulDuration: metric.successfulDuration,
@@ -357,16 +377,18 @@ export function buildResultsModel(input: Readonly<{
     });
   }).sort((a, b) => a.ordinal - b.ordinal || a.taskId.localeCompare(b.taskId));
 
+  const heatmap = buildScreenHeatmap(input.testVersionId, scopedEvents, input.context ? input.context.target.provider : "figma_prototype");
   const funnel = input.funnelDefinition ? deriveFunnel(scopedEvents, input.funnelDefinition) : null;
   const unsupportedReasons = [
-    "Task 47 requires canonical pinned geometry from Task 39 before heatmap output can be claimed.",
+    ...(heatmap.status === "unsupported" ? ["Canonical heatmap geometry is unavailable for the recorded pointer evidence."] : []),
     ...(funnel ? [] : ["No funnel definition is stored with this published test version."]),
   ];
 
-  return Object.freeze({
+  const base = Object.freeze({
     modelVersion: RESULTS_MODEL_VERSION,
-    testId: scopedEvents[0]?.testId ?? null,
+    testId: input.context?.testId ?? scopedEvents[0]?.testId ?? null,
     testVersionId: input.testVersionId,
+    context: input.context ?? null,
     overview: Object.freeze({
       participantCount,
       sessionCount: analytics.sessions.length,
@@ -374,9 +396,12 @@ export function buildResultsModel(input: Readonly<{
       technicalBlockedTaskCount,
       completionRate: percentage(successCount, eligibleTaskCount),
       medianSuccessfulDurationMs: median(successfulDurations),
+      p75SuccessfulDurationMs: p75(successfulDurations),
+      p90SuccessfulDurationMs: p90(successfulDurations),
       successfulDurationSampleSize: successfulDurations.length,
       giveUpCount,
       giveUpRate: percentage(giveUpCount, eligibleTaskCount),
+      eligiblePointerInteractionCount: eligiblePointers,
       misclickCount,
       misclickRate: percentage(misclickCount, eligiblePointers),
       rageClickCount,
@@ -385,11 +410,15 @@ export function buildResultsModel(input: Readonly<{
     taskDetails: Object.freeze(taskDetails),
     paths: Object.freeze(buildPaths(scopedEvents, input.tasks)),
     sessions: Object.freeze(buildSessionDetails(scopedEvents, answers)),
+    heatmap,
     funnel,
     unsupported: Object.freeze({
-      heatmap: true,
+      heatmap: heatmap.status === "unsupported",
       funnel: funnel === null,
       reasons: Object.freeze(unsupportedReasons),
     }),
   });
+  const missingTarget: ResultsTargetContext = Object.freeze({ provider: null, sourceUrl: null, environment: null,
+    launchMode: null, snapshotVersion: null, capabilities: Object.freeze({}) });
+  return Object.freeze({ ...base, metrics: buildMetricObservations(base, input.context?.target ?? missingTarget) });
 }

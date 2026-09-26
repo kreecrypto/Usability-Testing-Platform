@@ -113,6 +113,9 @@ button {
 
 .primaryButton {
   min-height: var(--ah-button-md-height);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 0;
   border-radius: var(--ah-radius-sm);
   background: var(--ah-primary);
@@ -121,10 +124,17 @@ button {
   font-size: var(--ah-type-button-md-size);
   line-height: var(--ah-type-button-md-line-height);
   font-weight: var(--ah-font-weight-bold);
+  text-decoration: none;
 }
 
 .primaryButton:hover {
   background: var(--ah-primary-dark);
+}
+
+.primaryButton:focus-visible,
+.navItem:focus-visible {
+  outline: 2px solid var(--ah-primary);
+  outline-offset: 2px;
 }
 
 .heroCard {
@@ -298,9 +308,11 @@ button {
 
   .topbar {
     align-items: flex-start;
+    flex-wrap: wrap;
   }
 
   .primaryButton {
+    min-height: 44px;
     flex: 0 0 auto;
   }
 

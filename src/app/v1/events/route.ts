@@ -1,5 +1,6 @@
 import { createEventCollectorHandler, type PersistAcceptedEvent } from "../../../lib/collector/event-collector.ts";
 import { withSessionIngestionAuth } from "../../../lib/collector/authenticated-event-collector.ts";
+import { createFigmaPointerCollectorNormalizer } from "../../../lib/collector/figma-pointer-normalizer.ts";
 import { createReliableEventPersister } from "../../../lib/collector/reliable-event-persistence.ts";
 import { createSupabaseDeadLetterRecorder } from "../../../lib/collector/supabase-event-dead-letter.ts";
 import { createSupabaseEventPersister } from "../../../lib/collector/supabase-event-persistence.ts";
@@ -12,6 +13,9 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const secretKey = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ingestionTokenSigningKey = process.env.EVENT_INGESTION_TOKEN_SECRET;
 const rateLimitPerMinute = Number(process.env.EVENT_INGESTION_RATE_LIMIT_PER_MINUTE);
+const pointerNormalizer = supabaseUrl && secretKey
+  ? createFigmaPointerCollectorNormalizer({ supabaseUrl, secretKey })
+  : null;
 
 const persist: PersistAcceptedEvent = async (event) => {
   if (!supabaseUrl || !secretKey) throw new Error("collector_not_configured");
@@ -22,7 +26,8 @@ const persist: PersistAcceptedEvent = async (event) => {
     maxAttempts: 3,
   });
 
-  return persistReliably(event);
+  const canonicalEvent = pointerNormalizer ? await pointerNormalizer.normalize(event) : event;
+  return persistReliably(canonicalEvent);
 };
 
 // Reliable persistence owns the bounded retry loop so exhaustion is recorded once in the DLQ.

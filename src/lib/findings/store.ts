@@ -22,6 +22,8 @@ type FindingRow = Readonly<{
   title: string;
   problem: string;
   description: string | null;
+  researcher_interpretation: string | null;
+  recommendation: string | null;
   severity: string;
   status: string;
   metric_snapshot: unknown;
@@ -101,6 +103,8 @@ function mapFinding(row: FindingRow): FindingRecord {
     title: row.title,
     problem: row.problem,
     description: row.description,
+    researcherInterpretation: row.researcher_interpretation,
+    recommendation: row.recommendation,
     severity: row.severity,
     status: row.status,
     metricSnapshot: normalizeMetricSnapshot(row.metric_snapshot, row.test_version_id),
@@ -160,7 +164,7 @@ export function createFindingsStore(options: Readonly<{
     const id = uuid(findingId, "findingId");
     const result = await rows<FindingRow>("findings", new URLSearchParams({
       id: `eq.${id}`,
-      select: "id,workspace_id,project_id,test_version_id,task_id,screen_id,title,problem,description,severity,status,metric_snapshot,created_at,updated_at",
+      select: "id,workspace_id,project_id,test_version_id,task_id,screen_id,title,problem,description,researcher_interpretation,recommendation,severity,status,metric_snapshot,created_at,updated_at",
       limit: "1",
     }));
     if (!result[0]) throw new FindingsStoreError("not_found", 404);
@@ -171,7 +175,7 @@ export function createFindingsStore(options: Readonly<{
     const version = uuid(testVersionId, "testVersionId");
     const result = await rows<FindingRow>("findings", new URLSearchParams({
       test_version_id: `eq.${version}`,
-      select: "id,workspace_id,project_id,test_version_id,task_id,screen_id,title,problem,description,severity,status,metric_snapshot,created_at,updated_at",
+      select: "id,workspace_id,project_id,test_version_id,task_id,screen_id,title,problem,description,researcher_interpretation,recommendation,severity,status,metric_snapshot,created_at,updated_at",
       order: "created_at.desc,id.asc",
     }));
     return Object.freeze(result.map(mapFinding));
@@ -186,13 +190,15 @@ export function createFindingsStore(options: Readonly<{
     const title = text(input.title, "title");
     const problem = text(input.problem, "problem");
     const description = optionalText(input.description);
+    const researcherInterpretation = optionalText(input.researcherInterpretation);
+    const recommendation = optionalText(input.recommendation);
     if (!isFindingSeverity(input.severity)) throw new FindingsStoreError("validation_error", 400, "severity_invalid");
     let metricSnapshot;
     try { metricSnapshot = normalizeMetricSnapshot(input.metricSnapshot, testVersionId); }
     catch (error) { throw new FindingsStoreError("validation_error", 400, error instanceof Error ? error.message : "metric_snapshot_invalid"); }
 
     const result = await rows<FindingRow>("findings", new URLSearchParams({
-      select: "id,workspace_id,project_id,test_version_id,task_id,screen_id,title,problem,description,severity,status,metric_snapshot,created_at,updated_at",
+      select: "id,workspace_id,project_id,test_version_id,task_id,screen_id,title,problem,description,researcher_interpretation,recommendation,severity,status,metric_snapshot,created_at,updated_at",
     }), {
       method: "POST",
       headers: { prefer: "return=representation" },
@@ -205,6 +211,8 @@ export function createFindingsStore(options: Readonly<{
         title,
         problem,
         description,
+        researcher_interpretation: researcherInterpretation,
+        recommendation,
         severity: input.severity,
         status: "open",
         metric_snapshot: metricSnapshot,
@@ -220,6 +228,8 @@ export function createFindingsStore(options: Readonly<{
     if (input.title !== undefined) patch.title = text(input.title, "title");
     if (input.problem !== undefined) patch.problem = text(input.problem, "problem");
     if (input.description !== undefined) patch.description = optionalText(input.description);
+    if (input.researcherInterpretation !== undefined) patch.researcher_interpretation = optionalText(input.researcherInterpretation);
+    if (input.recommendation !== undefined) patch.recommendation = optionalText(input.recommendation);
     if (input.screenId !== undefined) patch.screen_id = optionalText(input.screenId);
     if (input.taskId !== undefined) patch.task_id = input.taskId ? uuid(input.taskId, "taskId") : null;
     if (input.severity !== undefined) {
@@ -237,7 +247,7 @@ export function createFindingsStore(options: Readonly<{
     if (Object.keys(patch).length === 0) throw new FindingsStoreError("validation_error", 400, "no_editable_fields");
     const result = await rows<FindingRow>("findings", new URLSearchParams({
       id: `eq.${current.id}`,
-      select: "id,workspace_id,project_id,test_version_id,task_id,screen_id,title,problem,description,severity,status,metric_snapshot,created_at,updated_at",
+      select: "id,workspace_id,project_id,test_version_id,task_id,screen_id,title,problem,description,researcher_interpretation,recommendation,severity,status,metric_snapshot,created_at,updated_at",
     }), { method: "PATCH", headers: { prefer: "return=representation" }, body: JSON.stringify(patch) });
     if (!result[0]) throw new FindingsStoreError("not_found", 404);
     return mapFinding(result[0]);
@@ -317,6 +327,26 @@ export function createFindingsStore(options: Readonly<{
     return Object.freeze({ id: result[0].id });
   }
 
+  async function listRetestsForVersion(testVersionId: string): Promise<readonly Readonly<{ retestId: string; findingId: string; status: string; comparison: RetestMetricComparison }>[]> {
+    const versionId = uuid(testVersionId, "testVersionId");
+    const result = await rows<RetestRow>("retests", new URLSearchParams({
+      original_test_version_id: `eq.${versionId}`,
+      select: "id,workspace_id,finding_id,original_test_version_id,retest_test_version_id,status,before_metrics,after_metrics,created_at,updated_at",
+      order: "created_at.asc,id.asc",
+    }));
+    return Object.freeze(result.map((row) => Object.freeze({
+      retestId: row.id,
+      findingId: row.finding_id,
+      status: row.status,
+      comparison: compareRetestMetric({
+        baselineVersionId: row.original_test_version_id,
+        retestVersionId: row.retest_test_version_id,
+        before: row.before_metrics,
+        after: row.after_metrics,
+      }),
+    })));
+  }
+
   async function retestComparison(retestId: string): Promise<Readonly<{ retestId: string; status: string; comparison: RetestMetricComparison }>> {
     const id = uuid(retestId, "retestId");
     const result = await rows<RetestRow>("retests", new URLSearchParams({
@@ -340,5 +370,5 @@ export function createFindingsStore(options: Readonly<{
     return Object.freeze({ retestId: row.id, status: row.status, comparison });
   }
 
-  return Object.freeze({ listFindings, createFinding, updateFinding, listEvidence, linkEvidence, createRetest, retestComparison });
+  return Object.freeze({ listFindings, createFinding, updateFinding, listEvidence, linkEvidence, createRetest, listRetestsForVersion, retestComparison });
 }

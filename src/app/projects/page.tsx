@@ -1,492 +1,269 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import styles from "./projects.module.css";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 
-type Workspace = { id: string; name: string; slug: string; created_at: string };
-type Project = {
-  id: string;
-  workspace_id: string;
-  name: string;
-  description: string | null;
-  status: "active" | "archived";
-  created_at: string;
-  updated_at: string;
-};
-type ResearchTest = {
-  id: string;
-  workspace_id: string;
-  project_id: string;
-  title: string;
-  description: string | null;
-  status: "draft" | "published" | "closed" | "archived";
-  created_at: string;
-  updated_at: string;
-};
+type Workspace = { id: string; name: string; slug: string };
+type Project = { id: string; workspace_id: string; name: string; description: string | null; status: string };
+type StudyTest = { id: string; workspace_id: string; project_id: string; title: string; description: string | null; status: string };
+type Task = { id: string; title: string; ordinal: number };
 
-type ApiErrorCode =
-  | "authentication_required"
-  | "permission_denied"
-  | "invalid_input"
-  | "not_found"
-  | "conflict"
-  | "data_request_failed"
-  | "data_service_not_configured"
-  | "internal_error"
-  | string;
-
-class UiApiError extends Error {
-  status: number;
-  code: ApiErrorCode;
-
-  constructor(status: number, code: ApiErrorCode) {
-    super(code);
-    this.name = "UiApiError";
-    this.status = status;
-    this.code = code;
-  }
-}
-
-async function api<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    ...init,
-    headers: init?.body
-      ? { "content-type": "application/json", ...(init.headers ?? {}) }
-      : init?.headers,
-    cache: "no-store",
-  });
-  const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+async function json<T>(response: Response): Promise<T> {
+  const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new UiApiError(response.status, typeof body.error === "string" ? body.error : "request_failed");
+    const code = typeof body?.error === "string" ? body.error : "request_failed";
+    throw new Error(code);
   }
   return body as T;
 }
 
-function messageFor(error: unknown): string {
-  if (!(error instanceof UiApiError)) return "Something went wrong. Try again.";
-  if (error.code === "permission_denied") return "You do not have permission to make this change.";
-  if (error.code === "invalid_input") return "Check the required fields and try again.";
-  if (error.code === "conflict") return "This change conflicts with the current data. Refresh and try again.";
-  if (error.code === "data_service_not_configured") return "The data service is not configured.";
-  return "Unable to complete the request. Try again.";
-}
-
 export default function ProjectsPage() {
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [workspaceId, setWorkspaceId] = useState("");
   const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState("");
-  const [tests, setTests] = useState<ResearchTest[]>([]);
-  const [selectedTestId, setSelectedTestId] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [projectId, setProjectId] = useState("");
+  const [tests, setTests] = useState<StudyTest[]>([]);
+  const [testId, setTestId] = useState("");
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [workspaceName, setWorkspaceName] = useState("UTP Internal Validation");
+  const [projectName, setProjectName] = useState("Golden Path");
+  const [testTitle, setTestTitle] = useState("MAJOR-A Flow Proven");
+  const [targetUrl, setTargetUrl] = useState("https://usability-testing-platform.vercel.app/internal-validation-target");
+  const [taskTitle, setTaskTitle] = useState("");
+  const [scenario, setScenario] = useState("");
+  const [instruction, setInstruction] = useState("");
+  const [publishedVersionId, setPublishedVersionId] = useState("");
+  const [message, setMessage] = useState("");
+  const [working, setWorking] = useState(false);
 
-  const selectedProject = useMemo(
-    () => projects.find((project) => project.id === selectedProjectId) ?? null,
-    [projects, selectedProjectId],
-  );
-  const selectedTest = useMemo(
-    () => tests.find((item) => item.id === selectedTestId) ?? null,
-    [tests, selectedTestId],
-  );
-
-  const handleFailure = useCallback((caught: unknown) => {
-    if (caught instanceof UiApiError && caught.status === 401) {
-      window.location.assign("/login");
-      return;
-    }
-    setError(messageFor(caught));
-  }, []);
-
-  const loadProjects = useCallback(async (nextWorkspaceId: string) => {
-    if (!nextWorkspaceId) {
-      setProjects([]);
-      setSelectedProjectId("");
-      setTests([]);
-      return;
-    }
-    const data = await api<{ projects: Project[] }>(
-      `/api/projects?workspaceId=${encodeURIComponent(nextWorkspaceId)}`,
-    );
-    setProjects(data.projects);
-    setSelectedProjectId((current) =>
-      data.projects.some((project) => project.id === current) ? current : data.projects[0]?.id ?? "",
-    );
-  }, []);
-
-  const loadTests = useCallback(async (nextWorkspaceId: string, projectId: string) => {
-    if (!nextWorkspaceId || !projectId) {
-      setTests([]);
-      setSelectedTestId("");
-      return;
-    }
-    const data = await api<{ tests: ResearchTest[] }>(
-      `/api/tests?workspaceId=${encodeURIComponent(nextWorkspaceId)}&projectId=${encodeURIComponent(projectId)}`,
-    );
-    setTests(data.tests);
-    setSelectedTestId((current) =>
-      data.tests.some((item) => item.id === current) ? current : data.tests[0]?.id ?? "",
-    );
+  const loadWorkspaces = useCallback(async () => {
+    const response = await fetch("/api/workspaces", { cache: "no-store" });
+    if (response.status === 401) { window.location.replace("/login"); return; }
+    const body = await json<{ workspaces: Workspace[] }>(response);
+    setWorkspaces(body.workspaces);
+    setWorkspaceId((current) => current || body.workspaces[0]?.id || "");
   }, []);
 
   useEffect(() => {
-    let alive = true;
     void (async () => {
-      try {
-        const session = await api<{ user: { id: string; email: string | null } }>("/api/auth/session");
-        const workspaceData = await api<{ workspaces: Workspace[] }>("/api/workspaces");
-        if (!alive) return;
-        setUserEmail(session.user.email);
-        setWorkspaces(workspaceData.workspaces);
-        const firstWorkspace = workspaceData.workspaces[0]?.id ?? "";
-        setWorkspaceId(firstWorkspace);
-        await loadProjects(firstWorkspace);
-      } catch (caught) {
-        if (alive) handleFailure(caught);
-      } finally {
-        if (alive) setLoading(false);
+      const session = await fetch("/api/auth/session", { cache: "no-store" });
+      if (!session.ok) {
+        const temporary = await fetch("/api/auth/guest", { method: "POST", cache: "no-store" });
+        if (!temporary.ok) { window.location.replace("/login"); return; }
       }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [handleFailure, loadProjects]);
+      await loadWorkspaces();
+      setReady(true);
+    })().catch(() => setMessage("โหลด Researcher workspace ไม่สำเร็จ"));
+  }, [loadWorkspaces]);
 
   useEffect(() => {
-    void loadTests(workspaceId, selectedProjectId).catch(handleFailure);
-  }, [workspaceId, selectedProjectId, loadTests, handleFailure]);
+    if (!workspaceId) { setProjects([]); setProjectId(""); return; }
+    void fetch(`/api/projects?workspaceId=${encodeURIComponent(workspaceId)}`, { cache: "no-store" })
+      .then((r) => json<{ projects: Project[] }>(r))
+      .then((body) => {
+        setProjects(body.projects);
+        setProjectId((current) => body.projects.some((p) => p.id === current) ? current : body.projects[0]?.id || "");
+      })
+      .catch(() => setMessage("โหลด Project ไม่สำเร็จ"));
+  }, [workspaceId]);
 
-  async function runMutation(action: () => Promise<void>, success: string) {
-    setBusy(true);
-    setError(null);
-    setNotice(null);
-    try {
-      await action();
-      setNotice(success);
-    } catch (caught) {
-      handleFailure(caught);
-    } finally {
-      setBusy(false);
-    }
+  useEffect(() => {
+    if (!workspaceId || !projectId) { setTests([]); setTestId(""); return; }
+    void fetch(`/api/tests?workspaceId=${encodeURIComponent(workspaceId)}&projectId=${encodeURIComponent(projectId)}`, { cache: "no-store" })
+      .then((r) => json<{ tests: StudyTest[] }>(r))
+      .then((body) => {
+        setTests(body.tests);
+        setTestId((current) => body.tests.some((t) => t.id === current) ? current : body.tests[0]?.id || "");
+      })
+      .catch(() => setMessage("โหลด Test ไม่สำเร็จ"));
+  }, [workspaceId, projectId]);
+
+  const loadTasks = useCallback(async (selectedTestId: string) => {
+    if (!selectedTestId) { setTasks([]); return; }
+    const body = await json<{ tasks: Task[] }>(await fetch(`/api/tests/${encodeURIComponent(selectedTestId)}/tasks`, { cache: "no-store" }));
+    setTasks(body.tasks);
+  }, []);
+
+  useEffect(() => { void loadTasks(testId).catch(() => setTasks([])); }, [testId, loadTasks]);
+
+  async function run(label: string, action: () => Promise<void>) {
+    if (working) return;
+    setWorking(true);
+    setMessage("");
+    try { await action(); setMessage(`${label} สำเร็จ`); }
+    catch (error) { setMessage(`${label} ไม่สำเร็จ: ${error instanceof Error ? error.message : "unknown"}`); }
+    finally { setWorking(false); }
   }
 
-  async function createProject(event: FormEvent<HTMLFormElement>) {
+  function createWorkspace(event: FormEvent) {
     event.preventDefault();
-    const form = event.currentTarget;
-    const data = new FormData(form);
-    await runMutation(async () => {
-      await api<{ project: Project }>("/api/projects", {
+    void run("สร้าง Workspace", async () => {
+      await json(await fetch("/api/workspaces", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: workspaceName }) }));
+      await loadWorkspaces();
+    });
+  }
+
+  function createProject(event: FormEvent) {
+    event.preventDefault();
+    void run("สร้าง Project", async () => {
+      const body = await json<{ project: Project }>(await fetch("/api/projects", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ workspaceId, name: projectName, description: "Internal real-flow validation for MAJOR-A" }) }));
+      setProjects((items) => [body.project, ...items]);
+      setProjectId(body.project.id);
+    });
+  }
+
+  function createTest(event: FormEvent) {
+    event.preventDefault();
+    void run("สร้าง Test", async () => {
+      const body = await json<{ test: StudyTest }>(await fetch("/api/tests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ workspaceId, projectId, title: testTitle, description: "Flow Proven real study" }) }));
+      setTests((items) => [body.test, ...items]);
+      setTestId(body.test.id);
+    });
+  }
+
+  function configureTarget(event: FormEvent) {
+    event.preventDefault();
+    void run("ตั้งค่า Test Target", async () => {
+      await json(await fetch(`/api/tests/${encodeURIComponent(testId)}/prototype`, {
+        method: "PUT", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ targetUrl, ownership: "owned", environment: "production" }),
+      }));
+    });
+  }
+
+  function preflightTarget() {
+    if (!testId) return;
+    void run("ตรวจ Target", async () => {
+      await json(await fetch(`/api/tests/${encodeURIComponent(testId)}/prototype`, {
         method: "POST",
-        body: JSON.stringify({
-          workspaceId,
-          name: String(data.get("name") ?? ""),
-          description: String(data.get("description") ?? "") || null,
-        }),
-      });
-      form.reset();
-      await loadProjects(workspaceId);
-    }, "Project created.");
+        cache: "no-store",
+      }));
+    });
   }
 
-  async function updateProject(event: FormEvent<HTMLFormElement>) {
+  function createTask(event: FormEvent) {
     event.preventDefault();
-    if (!selectedProject) return;
-    const data = new FormData(event.currentTarget);
-    await runMutation(async () => {
-      await api<{ project: Project }>(`/api/projects/${selectedProject.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          name: String(data.get("name") ?? ""),
-          description: String(data.get("description") ?? "") || null,
-        }),
-      });
-      await loadProjects(workspaceId);
-    }, "Project updated.");
+    void run("เพิ่ม Task", async () => {
+      await json(await fetch(`/api/tests/${encodeURIComponent(testId)}/tasks`, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title: taskTitle, scenario, instruction }),
+      }));
+      setTaskTitle(""); setScenario(""); setInstruction("");
+      await loadTasks(testId);
+    });
   }
 
-  async function archiveProject() {
-    if (!selectedProject) return;
-    await runMutation(async () => {
-      await api<{ project: Project }>(`/api/projects/${selectedProject.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ action: "archive" }),
-      });
-      await loadProjects(workspaceId);
-    }, "Project archived.");
-  }
-
-  async function createTest(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selectedProject) return;
-    const form = event.currentTarget;
-    const data = new FormData(form);
-    await runMutation(async () => {
-      await api<{ test: ResearchTest }>("/api/tests", {
-        method: "POST",
-        body: JSON.stringify({
-          workspaceId,
-          projectId: selectedProject.id,
-          title: String(data.get("title") ?? ""),
-          description: String(data.get("description") ?? "") || null,
-        }),
-      });
-      form.reset();
-      await loadTests(workspaceId, selectedProject.id);
-    }, "Test created.");
-  }
-
-  async function updateTest(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selectedTest) return;
-    const data = new FormData(event.currentTarget);
-    await runMutation(async () => {
-      await api<{ test: ResearchTest }>(`/api/tests/${selectedTest.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          title: String(data.get("title") ?? ""),
-          description: String(data.get("description") ?? "") || null,
-        }),
-      });
-      await loadTests(workspaceId, selectedTest.project_id);
-    }, "Test updated.");
-  }
-
-  async function archiveTest() {
-    if (!selectedTest) return;
-    await runMutation(async () => {
-      await api<{ test: ResearchTest }>(`/api/tests/${selectedTest.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ action: "archive" }),
-      });
-      await loadTests(workspaceId, selectedTest.project_id);
-    }, "Test archived.");
+  function publish() {
+    void run("Publish", async () => {
+      const body = await json<{ preview: { testVersionId: string } }>(await fetch(`/api/tests/${encodeURIComponent(testId)}/publish`, {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "publish" }),
+      }));
+      setPublishedVersionId(body.preview.testVersionId);
+    });
   }
 
   async function signOut() {
-    setBusy(true);
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } finally {
-      window.location.assign("/login");
-    }
+    await fetch("/api/auth/logout", { method: "POST" });
+    window.location.replace("/login");
   }
 
-  if (loading) {
-    return <main className={styles.loading} aria-busy="true">Loading workspace…</main>;
-  }
+  if (!ready) return <main style={{ padding: 32 }}>กำลังโหลด Researcher workspace…</main>;
+
+  const block = { background: "var(--ah-canvas)", border: "1px solid var(--ah-hairline)", borderRadius: 12, padding: 20 } as const;
+  const input = { minHeight: 42, border: "1px solid var(--ah-hairline)", borderRadius: 8, padding: "0 10px", background: "white", width: "100%" } as const;
 
   return (
-    <main className={styles.shell}>
-      <header className={styles.header}>
-        <div>
-          <p className={styles.eyebrow}>Projects / Tests</p>
-          <h1>Research workspace</h1>
-          <p className={styles.muted}>{userEmail ?? "Authenticated researcher"}</p>
-        </div>
-        <div className={styles.headerActions}>
-          <label className={styles.workspaceSelect}>
-            <span>Workspace</span>
-            <select
-              value={workspaceId}
-              onChange={(event) => {
-                const next = event.target.value;
-                setWorkspaceId(next);
-                setSelectedProjectId("");
-                setSelectedTestId("");
-                setError(null);
-                void loadProjects(next).catch(handleFailure);
-              }}
-              disabled={busy || workspaces.length === 0}
-            >
-              {workspaces.map((workspace) => (
-                <option key={workspace.id} value={workspace.id}>{workspace.name}</option>
-              ))}
-            </select>
-          </label>
-          <button type="button" className={styles.secondaryButton} onClick={signOut} disabled={busy}>
-            Sign out
-          </button>
-        </div>
-      </header>
+    <main className="shell">
+      <aside className="sidebar">
+        <div className="brand">UT Platform</div>
+        <nav className="nav" aria-label="Researcher menu">
+          <a className="navItem active" href="/projects">Projects</a>
+          <a className="navItem" href="/high-fi">Design QA</a>
+          <button className="navItem" type="button" onClick={() => void signOut()} style={{ border: 0, textAlign: "left", background: "transparent" }}>เริ่ม Session ใหม่</button>
+        </nav>
+      </aside>
 
-      {error ? <div className={styles.error} role="alert">{error}</div> : null}
-      {notice ? <div className={styles.notice} role="status">{notice}</div> : null}
+      <section className="content">
+        <header className="topbar">
+          <div><p className="eyebrow">MAJOR-A / Flow Proven</p><h1>สร้าง Study จริงบน Production</h1></div>
+        </header>
 
-      {workspaces.length === 0 ? (
-        <section className={styles.empty}>
-          <h2>No workspace available</h2>
-          <p>Your authenticated account is not a member of a workspace yet.</p>
-        </section>
-      ) : (
-        <div className={styles.grid}>
-          <aside className={styles.sidebar} aria-label="Projects">
-            <div className={styles.sectionHeading}>
-              <div>
-                <p className={styles.eyebrow}>S04</p>
-                <h2>Projects</h2>
-              </div>
-              <span className={styles.count}>{projects.length}</span>
-            </div>
+        {message ? <p role="status" style={{ ...block, marginBottom: 16 }}>{message}</p> : null}
 
-            <div className={styles.list}>
-              {projects.length === 0 ? (
-                <div className={styles.emptyCompact}>No projects yet.</div>
-              ) : projects.map((project) => (
-                <button
-                  type="button"
-                  key={project.id}
-                  className={`${styles.listItem} ${project.id === selectedProjectId ? styles.selected : ""}`}
-                  onClick={() => setSelectedProjectId(project.id)}
-                >
-                  <span>{project.name}</span>
-                  <small>{project.status}</small>
-                </button>
-              ))}
-            </div>
-
-            <form className={styles.formCard} onSubmit={createProject}>
-              <p className={styles.eyebrow}>S05 · Create project</p>
-              <label>
-                <span>Name</span>
-                <input name="name" required disabled={busy} />
-              </label>
-              <label>
-                <span>Description</span>
-                <textarea name="description" rows={3} disabled={busy} />
-              </label>
-              <button type="submit" disabled={busy || !workspaceId}>Create project</button>
-            </form>
-          </aside>
-
-          <section className={styles.content}>
-            {!selectedProject ? (
-              <div className={styles.empty}>
-                <p className={styles.eyebrow}>S06</p>
-                <h2>Select a project</h2>
-                <p>Create a project or select one to manage its tests.</p>
-              </div>
+        <div style={{ display: "grid", gap: 16 }}>
+          <section style={block}>
+            <h2 style={{ marginTop: 0 }}>1. Workspace</h2>
+            {workspaces.length ? (
+              <select value={workspaceId} onChange={(e) => setWorkspaceId(e.target.value)} style={input}>
+                {workspaces.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+              </select>
             ) : (
-              <>
-                <section className={styles.panel}>
-                  <div className={styles.sectionHeading}>
-                    <div>
-                      <p className={styles.eyebrow}>S06 · Project overview</p>
-                      <h2>{selectedProject.name}</h2>
-                    </div>
-                    <span className={styles.status}>{selectedProject.status}</span>
-                  </div>
-                  <form key={selectedProject.id} className={styles.inlineForm} onSubmit={updateProject}>
-                    <label>
-                      <span>Project name</span>
-                      <input name="name" defaultValue={selectedProject.name} required disabled={busy} />
-                    </label>
-                    <label>
-                      <span>Description</span>
-                      <textarea
-                        name="description"
-                        defaultValue={selectedProject.description ?? ""}
-                        rows={3}
-                        disabled={busy}
-                      />
-                    </label>
-                    <div className={styles.actions}>
-                      <button type="submit" disabled={busy}>Save changes</button>
-                      <button
-                        type="button"
-                        className={styles.dangerButton}
-                        disabled={busy || selectedProject.status === "archived"}
-                        onClick={archiveProject}
-                      >
-                        Archive project
-                      </button>
-                    </div>
-                  </form>
-                </section>
-
-                <section className={styles.panel}>
-                  <div className={styles.sectionHeading}>
-                    <div>
-                      <p className={styles.eyebrow}>S07–S08</p>
-                      <h2>Tests</h2>
-                    </div>
-                    <span className={styles.count}>{tests.length}</span>
-                  </div>
-
-                  <div className={styles.testLayout}>
-                    <div className={styles.list}>
-                      {tests.length === 0 ? (
-                        <div className={styles.emptyCompact}>No tests in this project.</div>
-                      ) : tests.map((item) => (
-                        <button
-                          type="button"
-                          key={item.id}
-                          className={`${styles.listItem} ${item.id === selectedTestId ? styles.selected : ""}`}
-                          onClick={() => setSelectedTestId(item.id)}
-                        >
-                          <span>{item.title}</span>
-                          <small>{item.status}</small>
-                        </button>
-                      ))}
-                    </div>
-
-                    <form className={styles.formCard} onSubmit={createTest}>
-                      <p className={styles.eyebrow}>Create test</p>
-                      <label>
-                        <span>Title</span>
-                        <input name="title" required disabled={busy} />
-                      </label>
-                      <label>
-                        <span>Description</span>
-                        <textarea name="description" rows={3} disabled={busy} />
-                      </label>
-                      <button type="submit" disabled={busy}>Create test</button>
-                    </form>
-                  </div>
-
-                  {selectedTest ? (
-                    <form key={selectedTest.id} className={styles.inlineForm} onSubmit={updateTest}>
-                      <div className={styles.sectionHeading}>
-                        <div>
-                          <p className={styles.eyebrow}>Test details</p>
-                          <h3>{selectedTest.title}</h3>
-                        </div>
-                        <span className={styles.status}>{selectedTest.status}</span>
-                      </div>
-                      <label>
-                        <span>Test title</span>
-                        <input name="title" defaultValue={selectedTest.title} required disabled={busy} />
-                      </label>
-                      <label>
-                        <span>Description</span>
-                        <textarea
-                          name="description"
-                          defaultValue={selectedTest.description ?? ""}
-                          rows={3}
-                          disabled={busy}
-                        />
-                      </label>
-                      <div className={styles.actions}>
-                        <button type="submit" disabled={busy}>Save test</button>
-                        <button
-                          type="button"
-                          className={styles.dangerButton}
-                          disabled={busy || selectedTest.status === "archived"}
-                          onClick={archiveTest}
-                        >
-                          Archive test
-                        </button>
-                      </div>
-                    </form>
-                  ) : null}
-                </section>
-              </>
+              <form onSubmit={createWorkspace} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <input required value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} style={{ ...input, flex: "1 1 260px" }} />
+                <button className="primaryButton" disabled={working}>สร้าง Workspace</button>
+              </form>
             )}
           </section>
+
+          <section style={block}>
+            <h2 style={{ marginTop: 0 }}>2. Project</h2>
+            {workspaceId ? <form onSubmit={createProject} style={{ display: "grid", gap: 10 }}>
+              <select value={projectId} onChange={(e) => setProjectId(e.target.value)} style={input}>
+                <option value="">เลือก Project</option>
+                {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <input required value={projectName} onChange={(e) => setProjectName(e.target.value)} style={{ ...input, flex: "1 1 260px" }} />
+                <button className="primaryButton" disabled={working}>สร้าง Project</button>
+              </div>
+            </form> : <p>สร้าง Workspace ก่อน</p>}
+          </section>
+
+          <section style={block}>
+            <h2 style={{ marginTop: 0 }}>3. Test</h2>
+            {projectId ? <form onSubmit={createTest} style={{ display: "grid", gap: 10 }}>
+              <select value={testId} onChange={(e) => setTestId(e.target.value)} style={input}>
+                <option value="">เลือก Test</option>
+                {tests.map((t) => <option key={t.id} value={t.id}>{t.title} — {t.status}</option>)}
+              </select>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <input required value={testTitle} onChange={(e) => setTestTitle(e.target.value)} style={{ ...input, flex: "1 1 260px" }} />
+                <button className="primaryButton" disabled={working}>สร้าง Test</button>
+              </div>
+            </form> : <p>เลือก Project ก่อน</p>}
+          </section>
+
+          <section style={block}>
+            <h2 style={{ marginTop: 0 }}>4. First-party Production Target</h2>
+            {testId ? <form onSubmit={configureTarget} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <input required type="url" value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)} style={{ ...input, flex: "1 1 420px" }} />
+              <button className="primaryButton" disabled={working}>บันทึก Target</button>
+              <button className="primaryButton" type="button" disabled={working} onClick={preflightTarget}>ตรวจ Target</button>
+            </form> : <p>เลือก Test ก่อน</p>}
+          </section>
+
+          <section style={block}>
+            <h2 style={{ marginTop: 0 }}>5. Scenario / Tasks</h2>
+            {testId ? <>
+              <form onSubmit={createTask} style={{ display: "grid", gap: 8 }}>
+                <input required placeholder="ชื่อ Task" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} style={input} />
+                <input placeholder="Scenario" value={scenario} onChange={(e) => setScenario(e.target.value)} style={input} />
+                <textarea placeholder="คำสั่งสำหรับผู้เข้าร่วม" value={instruction} onChange={(e) => setInstruction(e.target.value)} rows={3} style={{ ...input, padding: 10 }} />
+                <button className="primaryButton" disabled={working}>เพิ่ม Task</button>
+              </form>
+              <ol>{tasks.map((task) => <li key={task.id}>{task.ordinal}. {task.title}</li>)}</ol>
+              {tasks.length > 0 ? <p><a className="primaryButton" href={`/builder/${testId}/rules`}>กำหนด Success / Failure Rules</a></p> : null}
+              <p style={{ color: "var(--ah-slate)" }}>Flow Gate ใช้ข้อมูลจริงเท่านั้น; Publish จะผ่านเมื่อทุก Task มี deterministic rule ที่ Target capability รองรับและไม่ขัดแย้งกัน</p>
+            </> : <p>เลือก Test ก่อน</p>}
+          </section>
+
+          <section style={block}>
+            <h2 style={{ marginTop: 0 }}>6. Publish</h2>
+            <button className="primaryButton" type="button" disabled={working || !testId || tasks.length === 0} onClick={publish}>Publish immutable version</button>
+            {publishedVersionId ? <p>Participant link: <a href={`/t/${publishedVersionId}`} target="_blank" rel="noreferrer">{`/t/${publishedVersionId}`}</a></p> : null}
+          </section>
         </div>
-      )}
+      </section>
     </main>
   );
 }

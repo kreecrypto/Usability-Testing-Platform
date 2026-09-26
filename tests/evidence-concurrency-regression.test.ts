@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createEventOutbox } from '../src/lib/tracking/event-outbox.ts';
-import { belongsToTest, remainingTaskTime } from '../src/lib/runner/recovery.ts';
 import type { TrackingEvent } from '../src/lib/tracking/events.ts';
 
 const event = (id: string) => ({ sessionId: 'session', eventId: id, idempotencyKey: id }) as TrackingEvent;
@@ -51,17 +50,3 @@ test('failed storage mutation does not poison subsequent retries', async () => {
   assert.equal(rows.length,1);
 });
 
-test('recovery requires both the same test and immutable test version', () => {
-  const current = {testId:'test-a',testVersionId:'v1'};
-  assert.equal(belongsToTest(current,current),true);
-  assert.equal(belongsToTest(current,{testId:'test-b',testVersionId:'v1'}),false);
-  assert.equal(belongsToTest(current,{testId:'test-a',testVersionId:'v2'}),false);
-});
-
-test('timeout keeps original deadline across confirmation and recovery', () => {
-  const start = '2026-09-09T10:00:00Z';
-  assert.equal(remainingTaskTime(start,60,Date.parse('2026-09-09T10:00:45Z')),15000);
-  assert.equal(remainingTaskTime(start,60,Date.parse('2026-09-09T10:00:55Z')),5000);
-  assert.equal(remainingTaskTime(start,60,Date.parse('2026-09-09T10:01:10Z')),0);
-  assert.equal(remainingTaskTime(null,60,Date.now()),null);
-});

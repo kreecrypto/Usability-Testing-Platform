@@ -1,3 +1,4 @@
+import { createSupabaseAdminFetch } from "../supabase-admin-fetch.ts";
 import type { ConsumeIngestionToken, SessionIngestionTokenClaims } from "./session-ingestion-token.ts";
 
 export function createSupabaseIngestionTokenConsumer(options: {
@@ -6,7 +7,7 @@ export function createSupabaseIngestionTokenConsumer(options: {
   rateLimitPerMinute: number;
   fetchImpl?: typeof fetch;
 }): ConsumeIngestionToken {
-  const fetchImpl = options.fetchImpl ?? fetch;
+  const fetchImpl = createSupabaseAdminFetch(options.secretKey, options.fetchImpl ?? fetch);
   if (!Number.isSafeInteger(options.rateLimitPerMinute) || options.rateLimitPerMinute <= 0) {
     throw new Error("invalid_ingestion_rate_limit");
   }

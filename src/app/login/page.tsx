@@ -1,81 +1,75 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import styles from "./login.module.css";
+import { useCallback, useEffect, useState } from "react";
 
-type LoginError = "invalid_credentials" | "auth_unavailable" | "unknown" | null;
-
-const copy: Record<Exclude<LoginError, null>, string> = {
-  invalid_credentials: "Email or password is incorrect.",
-  auth_unavailable: "Sign in is temporarily unavailable. Try again.",
-  unknown: "Unable to sign in. Try again.",
-};
+async function readJson(response: Response): Promise<Record<string, unknown>> {
+  return await response.json().catch(() => ({})) as Record<string, unknown>;
+}
 
 export default function LoginPage() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<LoginError>(null);
+  const [working, setWorking] = useState(true);
+  const [message, setMessage] = useState("กำลังเปิด Researcher Workspace…");
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setLoading(true);
-    setError(null);
-    const data = new FormData(event.currentTarget);
+  const enterWorkspace = useCallback(async () => {
+    if (working === false) setWorking(true);
+    setMessage("กำลังเปิด Researcher Workspace…");
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          email: String(data.get("email") ?? ""),
-          password: String(data.get("password") ?? ""),
-        }),
-      });
-      if (!response.ok) {
-        const body = (await response.json().catch(() => ({}))) as { error?: string };
-        if (body.error === "invalid_credentials") setError("invalid_credentials");
-        else if (body.error === "auth_unavailable") setError("auth_unavailable");
-        else setError("unknown");
+      const current = await fetch("/api/auth/session", { cache: "no-store" });
+      if (current.ok) {
+        window.location.replace("/projects");
         return;
       }
-      window.location.assign("/projects");
+
+      const response = await fetch("/api/auth/guest", {
+        method: "POST",
+        cache: "no-store",
+      });
+      const body = await readJson(response);
+      if (!response.ok) {
+        const code = typeof body.error === "string" ? body.error : "request_failed";
+        setMessage(code === "anonymous_auth_unavailable"
+          ? "Temporary Researcher Session ยังไม่พร้อมในระบบ Auth"
+          : "เปิด Researcher Workspace ไม่สำเร็จ โปรดลองอีกครั้ง");
+        return;
+      }
+      window.location.replace("/projects");
     } catch {
-      setError("auth_unavailable");
+      setMessage("เชื่อมต่อ Researcher Workspace ไม่สำเร็จ");
     } finally {
-      setLoading(false);
+      setWorking(false);
     }
-  }
+  }, [working]);
+
+  useEffect(() => {
+    void enterWorkspace();
+    // Run once on entry; retry remains explicit below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <main className={styles.shell}>
-      <section className={styles.card} aria-labelledby="login-title">
-        <div className={styles.brand}>UT Platform</div>
-        <p className={styles.eyebrow}>Research workspace</p>
-        <h1 id="login-title">Sign in</h1>
-        <p className={styles.lead}>Open your projects and usability tests.</p>
+    <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24 }}>
+      <section style={{ width: "min(460px, 100%)", background: "var(--ah-canvas)", border: "1px solid var(--ah-hairline)", borderRadius: "var(--ah-radius-lg)", padding: 28, boxShadow: "var(--ah-shadow-card)" }}>
+        <p className="eyebrow">UT Platform</p>
+        <h1 style={{ margin: "8px 0 6px", fontSize: 30 }}>Researcher Workspace</h1>
+        <p style={{ margin: "0 0 22px", color: "var(--ah-slate)" }}>
+          V1 ข้ามขั้นสร้างบัญชี ระบบจะใช้ Temporary Researcher Session เพื่อเริ่มสร้าง Study ได้ทันที
+        </p>
 
-        <form onSubmit={onSubmit} className={styles.form} noValidate>
-          <label>
-            <span>Email</span>
-            <input name="email" type="email" autoComplete="email" required disabled={loading} />
-          </label>
-          <label>
-            <span>Password</span>
-            <input
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              disabled={loading}
-            />
-          </label>
-          {error ? (
-            <div className={styles.error} role="alert">
-              {copy[error]}
-            </div>
-          ) : null}
-          <button type="submit" disabled={loading} aria-busy={loading}>
-            {loading ? "Signing in…" : "Sign in"}
-          </button>
-        </form>
+        <p role="status" style={{ margin: "0 0 16px" }}>{message}</p>
+        <button
+          className="primaryButton"
+          type="button"
+          disabled={working}
+          onClick={() => void enterWorkspace()}
+          style={{ width: "100%" }}
+        >
+          {working ? "กำลังเปิด Workspace…" : "เข้า Researcher Workspace"}
+        </button>
+
+        <p style={{ margin: "14px 0 0", color: "var(--ah-slate)", fontSize: 13 }}>
+          Session นี้เป็นแบบชั่วคราวบนอุปกรณ์ปัจจุบัน ยังไม่มีอีเมล รหัสผ่าน หรือขั้นสมัครสมาชิก
+        </p>
+        <p style={{ margin: "18px 0 0", textAlign: "center" }}><a href="/">กลับหน้าหลัก</a></p>
       </section>
     </main>
   );

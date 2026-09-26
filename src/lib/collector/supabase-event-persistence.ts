@@ -3,6 +3,7 @@ import type {
   RawTrackingEvent,
 } from "../tracking/events.ts";
 import { toEventStorageRow } from "../tracking/persistence.ts";
+import { createSupabaseAdminFetch } from "../supabase-admin-fetch.ts";
 import type { PersistAcceptedEvent, PersistAcceptedEventResult } from "./event-collector.ts";
 
 type FetchLike = typeof fetch;
@@ -65,7 +66,7 @@ export function createSupabaseEventPersister(options: {
 }): PersistAcceptedEvent {
   const supabaseUrl = requiredServerValue(options.supabaseUrl, "supabaseUrl").replace(/\/+$/, "");
   const secretKey = requiredServerValue(options.secretKey, "secretKey");
-  const fetchImpl = options.fetchImpl ?? fetch;
+  const fetchImpl = createSupabaseAdminFetch(secretKey, options.fetchImpl ?? fetch);
 
   if (!supabaseUrl.startsWith("https://")) {
     throw new Error("supabaseUrl must use https");

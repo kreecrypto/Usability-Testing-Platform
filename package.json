@@ -14,7 +14,10 @@
     "test": "node --test tests/*.test.ts",
     "check:design-system": "node scripts/check-design-system.mjs",
     "check:high-fi": "node scripts/check-high-fi.mjs",
-    "qa": "npm run build && npm run typecheck && npm test"
+    "check:demo-env": "node scripts/check-demo-environment.mjs",
+    "qa": "npm run build && npm run typecheck && npm test",
+    "qa:demo": "npm run check:demo-env && npm run build && npm run typecheck && node --test tests/task54-58-nonfigma-release-qa.test.ts",
+    "qa:demo:full": "npm run check:demo-env && npm run check:design-system && npm run check:high-fi && npm run build && npm run typecheck && npm test"
   },
   "dependencies": {
     "next": "16.3.4",
@@ -26,5 +29,6 @@
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
     "typescript": "7.0.2"
-  }
+  },
+  "type": "module"
 }

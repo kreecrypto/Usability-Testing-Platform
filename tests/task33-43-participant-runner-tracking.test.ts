@@ -77,7 +77,8 @@ test("Task33 public snapshot never exposes expected path or success/failure rule
   assert.equal(snapshot.tasks.length, 1);
   assert.doesNotMatch(serialized, /expectedPath|successRule|failureRule|expected_path|success_rule|failure_rule/);
   assert.doesNotMatch(calls[2], /expected_path|success_rule|failure_rule/);
-  assert.equal(new URL(snapshot.prototype.liveEmbedUrl!).searchParams.get("client-id"), "public-client-id");
+  assert.equal(snapshot.target.provider, "figma_prototype");
+  assert.equal(new URL(snapshot.target.liveEmbedUrl!).searchParams.get("client-id"), "public-client-id");
 });
 
 test("Task38 browser lifecycle emits raw events only with deterministic increasing sequence", async () => {
@@ -199,23 +200,41 @@ test("Task42 time metrics derive from occurredAt and do not invent idle-adjusted
   assert.equal(metrics.idleRuleVersion, null);
 });
 
-test("Tasks 34-37 runner UI implements P01-P12 contract and never references hidden research rules", async () => {
+test("Tasks 34-37 runner UI covers participant states in Thai without exposing internal research language", async () => {
   const client = await readFile(new URL("../src/app/t/[testVersionId]/participant-runner-client.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../src/app/t/[testVersionId]/participant-runner.module.css", import.meta.url), "utf8");
-  assert.match(client, /P01 · Access check/);
-  assert.match(client, /P02 · Consent/);
-  assert.match(client, /P03 · Task/);
-  assert.match(client, /P06 · Post-task feedback/);
-  assert.match(client, /P08 · Complete/);
-  assert.match(client, /P09 · Unavailable/);
-  assert.match(client, /P10 · Technical blocked/);
-  assert.match(client, /P11 · Timed out/);
-  assert.match(client, /P12 · Recovery/);
-  assert.match(client, /Agree and start/);
-  assert.match(client, /Give up this task/);
-  assert.match(client, /Very difficult/);
-  assert.match(client, /Very easy/);
+
+  for (const stage of ["access-loading", "consent", "task-intro", "runner", "give-up-confirm", "feedback", "transition", "complete", "invalid", "technical", "timeout", "recovery"]) {
+    assert.match(client, new RegExp(`\\"${stage}\\"`));
+  }
+
+  for (const copy of [
+    "กำลังตรวจสอบแบบทดสอบ",
+    "ยินยอมและเริ่ม",
+    "ทำงานนี้ตามวิธีที่คุณทำตามปกติ",
+    "ต้องการยุติงานนี้หรือไม่?",
+    "ยากมาก",
+    "ง่ายมาก",
+    "ส่งคำตอบ",
+    "แบบทดสอบนี้ใช้งานไม่ได้",
+    "แบบทดสอบยังดำเนินการต่อไม่ได้",
+    "หมดเวลาสำหรับงานนี้แล้ว",
+    "กำลังเชื่อมต่ออีกครั้ง",
+    "แบบทดสอบเสร็จสมบูรณ์",
+  ]) {
+    assert.ok(client.includes(copy), `missing Thai participant copy: ${copy}`);
+  }
+
+  assert.doesNotMatch(client, /P0[1-9] ·|P1[0-2] ·/);
+  assert.doesNotMatch(client, /Expected paths and success targets are intentionally hidden/);
+  assert.doesNotMatch(client, /recorded as Timeout|recorded as Give Up|not a usability failure|stable event IDs|anonymous-session capabilities/);
   assert.doesNotMatch(client, /expectedPath|successRule|failureRule/);
+  assert.doesNotMatch(client, /เส้นทางที่คาดไว้|เกณฑ์สำเร็จ/);
+  assert.match(client, /role="progressbar"/);
+  assert.match(client, /aria-valuenow=\{progress\}/);
+  assert.match(client, /event\.key !== "Escape"/);
+  assert.match(client, /giveUpTriggerRef/);
+  assert.match(client, /giveUpCancelRef/);
   assert.match(css, /var\(--ut-/);
   assert.match(css, /@media \(max-width:575px\)/);
   assert.doesNotMatch(css, /#[0-9a-f]{3,8}/i);

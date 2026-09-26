@@ -107,17 +107,17 @@ test("question API uses current authenticated session boundary and no service ro
   assert.match(route, /cache-control/);
 });
 
-test("S15 editor exposes SEQ, Open Feedback, required optional, validation, empty and responsive accessibility states", async () => {
+test("S15 editor exposes Thai SEQ, open feedback, required/optional, validation, empty and responsive accessibility states", async () => {
   const client = await readFile(new URL("../src/app/builder/[testId]/questions/post-task-question-builder-client.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../src/app/builder/[testId]/questions/post-task-question-builder.module.css", import.meta.url), "utf8");
-  assert.match(client, /S15 · Question editor/);
+  assert.match(client, /สร้างการทดสอบ · คำถามหลังงาน/);
   assert.match(client, />SEQ</);
-  assert.match(client, />Open Feedback</);
-  assert.match(client, /Required response/);
-  assert.match(client, /cannot be required when disabled/i);
-  assert.match(client, /Loading question configuration/);
-  assert.match(client, /No tasks are available/);
-  assert.match(client, /Save questions/);
+  assert.match(client, /ความคิดเห็นเพิ่มเติม/);
+  assert.match(client, /บังคับตอบ/);
+  assert.match(client, /ตั้ง SEQ เป็นบังคับตอบไม่ได้เมื่อยังปิดคำถามนี้/);
+  assert.match(client, /กำลังโหลดการตั้งค่าคำถาม/);
+  assert.match(client, /ยังไม่มีงาน/);
+  assert.match(client, /บันทึกคำถาม/);
   assert.match(client, /role="alert"/);
   assert.match(client, /role="status"/);
   assert.match(css, /@media/);

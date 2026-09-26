@@ -36,7 +36,7 @@ export function normalizeFigmaPointerEvent(event: RawTrackingEvent, snapshot: Pi
       ...metadata,
       canonicalPoint: Object.freeze({
         transformVersion: canonical.transformVersion,
-        geometryVersionId: canonical.figmaVersionId,
+        geometryVersionId: canonical.geometryVersionId,
         presentedNodeId: canonical.presentedNodeId,
         x: canonical.x,
         y: canonical.y,

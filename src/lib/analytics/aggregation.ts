@@ -51,6 +51,7 @@ export type TaskMetricAggregate = Readonly<{
   failureRate: number | null;
   giveUpRate: number | null;
   successfulDuration: SuccessfulDurationSummary;
+  successfulDurationSamplesMs: readonly number[];
   eligiblePointerInteractions: number;
   misclicks: number;
   misclickRate: number | null;
@@ -504,6 +505,7 @@ function aggregateTaskMetrics(
           p75Ms: p75(successfulDurations),
           p90Ms: p90(successfulDurations),
         }),
+        successfulDurationSamplesMs: Object.freeze([...successfulDurations]),
         eligiblePointerInteractions: eligiblePointerEvents.length,
         misclicks: eligibleMisclickEvents.length,
         misclickRate: misclickRate(

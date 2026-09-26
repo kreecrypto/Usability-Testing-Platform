@@ -1,4 +1,6 @@
 const ACCESS_COOKIE = "utp_access_token";
+const UTP_SUPABASE_URL = "https://qryvrcwbsehrzpersuoc.supabase.co";
+const UTP_SUPABASE_PUBLISHABLE_FALLBACK = "sb_publishable_pSBzT0OGWUGjJB5zRnY-3w_Co3XFjU6";
 
 export type PublicSupabaseConfig = Readonly<{
   url: string;
@@ -16,8 +18,15 @@ export type PasswordSession = Readonly<{
   user: AuthenticatedUser;
 }>;
 
+
+export type PasswordSignup = Readonly<{
+  user: AuthenticatedUser;
+  session: PasswordSession | null;
+  confirmationRequired: boolean;
+}>;
+
 export class AuthSessionError extends Error {
-  code: "config_missing" | "invalid_credentials" | "invalid_session" | "auth_unavailable";
+  code: "config_missing" | "invalid_credentials" | "invalid_session" | "auth_unavailable" | "signup_unavailable" | "anonymous_auth_unavailable";
   status: number;
 
   constructor(
@@ -42,13 +51,15 @@ export function publicSupabaseConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): PublicSupabaseConfig {
   const url = required(env.NEXT_PUBLIC_SUPABASE_URL ?? env.SUPABASE_URL, "SUPABASE_URL");
+  const normalizedUrl = url.replace(/\/$/, "");
   const key = required(
     env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
       env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-      env.SUPABASE_ANON_KEY,
+      env.SUPABASE_ANON_KEY ??
+      (normalizedUrl === UTP_SUPABASE_URL ? UTP_SUPABASE_PUBLISHABLE_FALLBACK : undefined),
     "SUPABASE_PUBLISHABLE_KEY",
   );
-  return Object.freeze({ url: url.replace(/\/$/, ""), key });
+  return Object.freeze({ url: normalizedUrl, key });
 }
 
 function cookieMap(header: string | null): Map<string, string> {
@@ -138,6 +149,55 @@ function normalizedPassword(value: unknown): string {
   return value;
 }
 
+export async function signInAnonymously(
+  options: Readonly<{
+    config?: PublicSupabaseConfig;
+    fetchImpl?: typeof fetch;
+  }> = {},
+): Promise<PasswordSession> {
+  const config = options.config ?? publicSupabaseConfig();
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const response = await fetchImpl(`${config.url}/auth/v1/signup`, {
+    method: "POST",
+    headers: {
+      apikey: config.key,
+      "content-type": "application/json",
+      accept: "application/json",
+    },
+    // Supabase Auth treats signup requests without email/phone as anonymous
+    // when Anonymous Sign-Ins are enabled for the project.
+    body: JSON.stringify({
+      data: {
+        utp_mode: "temporary_researcher",
+      },
+    }),
+    cache: "no-store",
+  });
+
+  if (response.status === 400 || response.status === 403 || response.status === 422) {
+    throw new AuthSessionError("anonymous_auth_unavailable", 503);
+  }
+  if (!response.ok) throw new AuthSessionError("auth_unavailable", 503);
+
+  const payload = (await response.json()) as Record<string, unknown>;
+  const user = payload.user as Record<string, unknown> | undefined;
+  const accessToken = typeof payload.access_token === "string" ? payload.access_token.trim() : "";
+  const expiresIn = typeof payload.expires_in === "number" ? payload.expires_in : Number.NaN;
+  const userId = typeof user?.id === "string" ? user.id.trim() : "";
+  if (!accessToken || !Number.isFinite(expiresIn) || expiresIn <= 0 || !userId) {
+    throw new AuthSessionError("invalid_session", 503);
+  }
+
+  return Object.freeze({
+    accessToken,
+    expiresIn,
+    user: Object.freeze({
+      id: userId,
+      email: null,
+    }),
+  });
+}
+
 export async function signInWithPassword(
   credentials: Readonly<{ email: unknown; password: unknown }>,
   options: Readonly<{
@@ -182,6 +242,55 @@ export async function signInWithPassword(
       id: userId,
       email: typeof user?.email === "string" ? user.email : null,
     }),
+  });
+}
+
+export async function signUpWithPassword(
+  credentials: Readonly<{ email: unknown; password: unknown }>,
+  options: Readonly<{
+    config?: PublicSupabaseConfig;
+    fetchImpl?: typeof fetch;
+  }> = {},
+): Promise<PasswordSignup> {
+  const config = options.config ?? publicSupabaseConfig();
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const response = await fetchImpl(`${config.url}/auth/v1/signup`, {
+    method: "POST",
+    headers: {
+      apikey: config.key,
+      "content-type": "application/json",
+      accept: "application/json",
+    },
+    body: JSON.stringify({
+      email: normalizedEmail(credentials.email),
+      password: normalizedPassword(credentials.password),
+    }),
+    cache: "no-store",
+  });
+
+  if (response.status === 400 || response.status === 409 || response.status === 422) {
+    throw new AuthSessionError("signup_unavailable", 400);
+  }
+  if (!response.ok) throw new AuthSessionError("auth_unavailable", 503);
+
+  const payload = (await response.json()) as Record<string, unknown>;
+  const user = payload.user as Record<string, unknown> | undefined;
+  const userId = typeof user?.id === "string" ? user.id.trim() : "";
+  if (!userId) throw new AuthSessionError("invalid_session", 503);
+  const authenticatedUser = Object.freeze({
+    id: userId,
+    email: typeof user?.email === "string" ? user.email : null,
+  });
+  const accessToken = typeof payload.access_token === "string" ? payload.access_token.trim() : "";
+  const expiresIn = typeof payload.expires_in === "number" ? payload.expires_in : Number.NaN;
+  if (!accessToken) {
+    return Object.freeze({ user: authenticatedUser, session: null, confirmationRequired: true });
+  }
+  if (!Number.isFinite(expiresIn) || expiresIn <= 0) throw new AuthSessionError("invalid_session", 503);
+  return Object.freeze({
+    user: authenticatedUser,
+    session: Object.freeze({ accessToken, expiresIn, user: authenticatedUser }),
+    confirmationRequired: false,
   });
 }
 

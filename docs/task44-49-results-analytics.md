@@ -29,13 +29,17 @@ Task detail reuses the exact Task 25 aggregate for completion, Median/P75/P90, m
 - Backtrack count uses derived `backtrack` evidence; no universal raw browser back event is fabricated.
 - Terminal outcome follows first-terminal canonical ordering.
 
-## Task 47 — Screen Heatmap — BLOCKED
+## Task 47 — Screen Heatmap — IMPLEMENTED / RELEASE QA OPEN
 
-Task 47 remains blocked by Task 39's source/capability gap. GWD-05 has a deterministic transform, but the current simplified V1 publish path has no source-approved immutable Figma geometry snapshot. Results must not substitute browser CSS coordinates.
+Task 39 now supplies the source-supported integration path: source-backed Figma node bounds are stored in the immutable published test-version snapshot, the collector strips any client-supplied canonical point, and server-side normalization emits canonical 0..1 coordinates only when presented/target/scroller geometry resolves consistently.
 
-## Task 48 — Funnel & Drop-off — SOURCE GAP
+`src/lib/analytics/heatmap.ts` consumes only those canonical points. It distinguishes Available, No Data, and Unsupported states and supports exact filtering by test version, task, screen, source-backed device class, and terminal outcome. `src/app/results/[testVersionId]` exposes the filterable heatmap view and scales points using normalized coordinates and stored frame aspect ratio. Browser CSS pixels are never a fallback.
 
-The analytics contract defines the transition formula but explicitly requires funnel configuration to be stored with the published test version. The current `test_versions` schema/publish snapshot has no canonical funnel configuration. Therefore the Results model marks funnel analytics unsupported rather than inventing steps. Task 48 requires a Source-of-Truth decision and persisted funnel definition before implementation can claim acceptance.
+Task 47 must remain short of COMPLETE until the Release Gate has real published-test/provider pointer evidence proving the full persisted geometry → collector normalization → Results heatmap path.
+
+## Task 48 — Funnel & Drop-off — COMPLETE
+
+Task 48 has Release Gate=NO and is COMPLETE in the planning source. `test_versions.funnel_config` stores the versioned ordered funnel definition, `src/lib/analytics/funnel.ts` computes deterministic ordered progression, Largest Drop and No Data semantics, and `tests/task48-funnel.test.ts` covers schema validation, technical-block exclusion, conversion/drop-off formulas and tie-breaking. The hosted migration `20260909123000_task48_funnel_definition.sql` was applied according to the recorded task evidence.
 
 ## Task 49 — Session Timeline & Response Detail
 
@@ -45,6 +49,12 @@ Session detail combines accepted raw/derived canonical events with persisted ans
 
 The Results API uses the existing researcher access token plus the Supabase publishable key. PostgREST RLS remains authoritative. No service-role key is used in the Results read path.
 
+Task 47 canonicalization happens at the collector/server trust boundary before event persistence; a participant-supplied `canonicalPoint` is not trusted.
+
 ## QA
 
-`tests/task44-49-results.test.ts` recomputes the required metrics from deterministic accepted-event fixtures and verifies technical-block exclusion, No Data behavior, raw SEQ scale preservation, expected-vs-actual path behavior, derived backtrack evidence and session feedback timeline coverage.
+- `tests/task44-49-results.test.ts` covers Tasks 44–46/49 canonical results behavior.
+- `tests/task47-screen-heatmap.test.ts` covers canonical-only heatmap points, exact filters, geometry-version matching, and No Data vs Unsupported.
+- `tests/gwd05-heatmap-transform.test.ts` covers scaling, device-frame, overlay, scrolling-frame and fail-closed transform invariants.
+- `tests/task39-geometry-integration.test.ts` covers immutable geometry contract and collector-side canonicalization.
+- `tests/task48-funnel.test.ts` covers Task 48.

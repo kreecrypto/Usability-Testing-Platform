@@ -8,6 +8,7 @@ import {
   AuthSessionError,
   clearAccessCookieHeader,
   signInWithPassword,
+  signUpWithPassword,
   validateAccessToken,
   type PublicSupabaseConfig,
 } from "../src/lib/auth/session.ts";
@@ -72,6 +73,30 @@ test("password sign-in uses current Supabase token endpoint and never sends a se
     email: "user@example.com",
     password: "secret-password",
   });
+});
+
+test("researcher signup uses the public Supabase Auth endpoint and supports confirmation-required state", async () => {
+  const calls: Array<{ url: string; init?: RequestInit }> = [];
+  const result = await signUpWithPassword(
+    { email: "new@example.com", password: "secret-password" },
+    {
+      config,
+      fetchImpl: async (input, init) => {
+        calls.push({ url: String(input), init });
+        return Response.json({
+          user: { id: "10000000-0000-4000-8000-000000000002", email: "new@example.com" },
+        });
+      },
+    },
+  );
+
+  assert.equal(result.user.email, "new@example.com");
+  assert.equal(result.session, null);
+  assert.equal(result.confirmationRequired, true);
+  assert.equal(calls[0].url, "https://example.supabase.co/auth/v1/signup");
+  const headers = calls[0].init?.headers as Record<string, string>;
+  assert.equal(headers.apikey, "sb_publishable_test");
+  assert.equal(JSON.stringify(calls[0].init).includes("service_role"), false);
 });
 
 test("invalid password response is sanitized to invalid_credentials", async () => {
