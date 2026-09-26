@@ -62,3 +62,24 @@ test("Results and Report share capability-aware observations with exact provenan
   const report = buildUsabilityReport({ results, context, findings: [], evidenceByFinding: {}, retests: [] });
   assert.deepEqual(report.metrics, results.metrics);
 });
+
+test("backtrack is not inferred from pointer-only evidence without trusted screen views", () => {
+  const at = "2026-09-26T00:00:00Z";
+  const sessionId = "55555555-5555-4555-8555-555555555555";
+  const taskId = "44444444-4444-4444-8444-444444444444";
+  const common = { schemaVersion: 2 as const, sessionId, participantId: "participant", testId, testVersionId: versionId,
+    taskId, occurredAt: at, receivedAt: at };
+  const raw = (eventId: string, sequence: number, eventType: "task_started" | "pointer_interaction") => ({
+    ...common, eventId, idempotencyKey: eventId, eventLayer: "raw" as const, source: "prototype_adapter" as const,
+    eventType, sequence,
+  });
+  const events = [
+    raw("start", 1, "task_started"), raw("pointer-a", 2, "pointer_interaction"), raw("pointer-b", 3, "pointer_interaction"),
+    { ...common, eventId: "backtrack", idempotencyKey: "backtrack", eventLayer: "derived" as const,
+      source: "rules_engine" as const, eventType: "backtrack" as const, derivedFromEventIds: ["pointer-a", "pointer-b"], ruleVersion: "bad-rule-v1" },
+  ];
+  const results = buildResultsModel({ testVersionId: versionId, context: parseResultsStudyContext(row), events, tasks: [{ taskId, title: "Test", ordinal: 1, expectedPath: [] }] });
+  assert.equal(results.overview.backtrackCount, 0);
+  assert.deepEqual(results.paths[0]?.actualPath, []);
+  assert.equal(results.paths[0]?.backtrackCount, 0);
+});

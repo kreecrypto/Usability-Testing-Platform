@@ -201,6 +201,17 @@ function repeatedScreens(path: readonly string[]): number {
   return repeats;
 }
 
+function isTrustedBacktrack(event: AcceptedTrackingEvent, rawById: ReadonlyMap<string, AcceptedTrackingEvent>): boolean {
+  if (event.eventLayer !== "derived" || event.eventType !== "backtrack" || event.derivedFromEventIds.length < 2) return false;
+  return event.derivedFromEventIds.every((id) => {
+    const source = rawById.get(id);
+    return source?.eventLayer === "raw" && source.eventType === "screen_view"
+      && source.source === "prototype_adapter" && Boolean(source.screenId)
+      && source.sessionId === event.sessionId && source.taskId === event.taskId
+      && source.testVersionId === event.testVersionId;
+  });
+}
+
 function buildPaths(
   events: readonly AcceptedTrackingEvent[],
   tasks: readonly ResultTaskDefinition[],
@@ -222,7 +233,8 @@ function buildPaths(
       .filter((event) => event.eventLayer === "raw" && event.eventType === "screen_view" && event.screenId)
       .map((event) => event.screenId!);
     const expectedSet = new Set(expectedPath);
-    const backtrackCount = scoped.filter((event) => event.eventLayer === "derived" && event.eventType === "backtrack").length;
+    const rawById = new Map(scoped.filter((event) => event.eventLayer === "raw").map((event) => [event.eventId, event]));
+    const backtrackCount = scoped.filter((event) => isTrustedBacktrack(event, rawById)).length;
     output.push(Object.freeze({
       sessionId: first.sessionId,
       taskId: first.taskId!,
@@ -335,7 +347,8 @@ export function buildResultsModel(input: Readonly<{
   const misclickCount = taskMetrics.reduce((sum, task) => sum + task.misclicks, 0);
   const participantCount = new Set(analytics.sessions.map((session) => session.participantId)).size;
   const rageClickCount = scopedEvents.filter((event) => event.eventLayer === "derived" && event.eventType === "rage_click").length;
-  const backtrackCount = scopedEvents.filter((event) => event.eventLayer === "derived" && event.eventType === "backtrack").length;
+  const rawById = new Map(scopedEvents.filter((event) => event.eventLayer === "raw").map((event) => [event.eventId, event]));
+  const backtrackCount = scopedEvents.filter((event) => isTrustedBacktrack(event, rawById)).length;
 
   const taskDetails = taskMetrics.map((metric) => {
     const definition = taskById.get(metric.taskId);
@@ -371,7 +384,7 @@ export function buildResultsModel(input: Readonly<{
     });
   }).sort((a, b) => a.ordinal - b.ordinal || a.taskId.localeCompare(b.taskId));
 
-  const heatmap = buildScreenHeatmap(input.testVersionId, scopedEvents);
+  const heatmap = buildScreenHeatmap(input.testVersionId, scopedEvents, input.context ? input.context.target.provider : "figma_prototype");
   const funnel = input.funnelDefinition ? deriveFunnel(scopedEvents, input.funnelDefinition) : null;
   const unsupportedReasons = [
     ...(heatmap.status === "unsupported" ? ["Canonical heatmap geometry is unavailable for the recorded pointer evidence."] : []),
