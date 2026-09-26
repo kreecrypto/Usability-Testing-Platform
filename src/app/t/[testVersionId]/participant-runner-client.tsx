@@ -11,6 +11,7 @@ import {
 } from "../../../lib/tracking/event-outbox.ts";
 import { createRunnerLifecycle } from "../../../lib/tracking/lifecycle.ts";
 import type { RawTrackingEvent } from "../../../lib/tracking/events.ts";
+import { belongsToTest, remainingTaskTime } from "../../../lib/runner/recovery.ts";
 import styles from "./participant-runner.module.css";
 
 const CONSENT_VERSION = "utp-privacy-v1";
@@ -164,6 +165,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
   const giveUpTriggerRef = useRef<HTMLButtonElement | null>(null);
   const giveUpCancelRef = useRef<HTMLButtonElement | null>(null);
   const runtimeRef = useRef<Runtime | null>(null);
+  const taskStartedAtRef = useRef<string | null>(null);
   const initialCredentialRef = useRef<IngestionCredential | null>(null);
 
   const currentTask = snapshot?.tasks[taskIndex] ?? null;
@@ -173,7 +175,10 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
   const fetchState = useCallback(async (): Promise<{ context: RunnerContext; state: SessionState } | null> => {
     const response = await fetch("/api/public/sessions/state", { cache: "no-store" });
     if (response.status === 401) return null;
-    return readJson<{ context: RunnerContext; state: SessionState }>(response);
+    const result = await readJson<{ context: RunnerContext; state: SessionState }>(response);
+    const active = runtimeRef.current?.context;
+    if (active && (result.context.sessionId !== active.sessionId || !belongsToTest(result.context, active))) return null;
+    return result;
   }, []);
 
   const refreshCredential = useCallback(async (): Promise<IngestionCredential> => {
@@ -198,6 +203,10 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     const sequence = Math.max(state?.lastSequence ?? 0, maxPendingSequence(pending));
     const pendingStarted = pending.some((event) => event.eventType === "session_started");
     const latestTaskState = state?.taskStates.at(-1) ?? null;
+
+    taskStartedAtRef.current = latestTaskState && !latestTaskState.outcome
+      ? latestTaskState.startedAt
+      : pending.findLast((event) => event.eventType === "task_started")?.occurredAt ?? null;
 
     const outbox = createEventOutbox({
       storage,
@@ -251,9 +260,9 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     }
   }, [deliver, fetchState]);
 
-  const moveAfterTerminal = useCallback(async (index: number, state?: SessionState | null) => {
-    if (!snapshot) return;
-    const task = snapshot.tasks[index];
+  const moveAfterTerminal = useCallback(async (index: number, state: SessionState | null | undefined, testSnapshot: TestSnapshot | null) => {
+    if (!testSnapshot) return;
+    const task = testSnapshot.tasks[index];
     const taskState = state?.taskStates.find((item) => item.taskId === task.id);
     if (hasFeedback(task) && !taskState?.feedbackSubmittedAt) {
       setSeq(null);
@@ -262,12 +271,12 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
       setStage("feedback");
       return;
     }
-    if (index + 1 < snapshot.tasks.length) {
+    if (index + 1 < testSnapshot.tasks.length) {
       setStage("transition");
       return;
     }
     await finishSession();
-  }, [finishSession, snapshot]);
+  }, [finishSession]);
 
   const syncTerminalState = useCallback(async () => {
     if (!currentTask) return;
@@ -278,12 +287,12 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     if (taskState?.outcome) {
       const runtime = runtimeRef.current;
       if (runtime && !runtime.lifecycle.getState().activeTaskTerminal) runtime.lifecycle.markTaskTerminal(currentTask.id);
-      await moveAfterTerminal(taskIndex, latest.state);
+      await moveAfterTerminal(taskIndex, latest.state, snapshot);
     }
-  }, [currentTask, fetchState, moveAfterTerminal, taskIndex]);
+  }, [currentTask, fetchState, moveAfterTerminal, snapshot, taskIndex]);
 
-  const inferStageFromState = useCallback(async (state: SessionState) => {
-    if (!snapshot) return;
+  const inferStageFromState = useCallback(async (state: SessionState, testSnapshot: TestSnapshot | null) => {
+    if (!testSnapshot) return;
     setSessionState(state);
     if (state.status === "completed") { setStage("complete"); return; }
     if (state.status === "technical_blocked") {
@@ -295,27 +304,30 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
 
     const active = state.taskStates.find((task) => task.outcome === null);
     if (active) {
-      const index = snapshot.tasks.findIndex((task) => task.id === active.taskId);
-      if (index >= 0) { setTaskIndex(index); setStage("runner"); return; }
+      const index = testSnapshot.tasks.findIndex((task) => task.id === active.taskId);
+      if (index >= 0) { taskStartedAtRef.current = active.startedAt; setTaskIndex(index); setStage("runner"); return; }
     }
 
     let terminalIndex = -1;
-    for (let index = 0; index < snapshot.tasks.length; index += 1) {
-      const taskState = state.taskStates.find((item) => item.taskId === snapshot.tasks[index].id);
+    for (let index = 0; index < testSnapshot.tasks.length; index += 1) {
+      const taskState = state.taskStates.find((item) => item.taskId === testSnapshot.tasks[index].id);
       if (taskState?.outcome) terminalIndex = index;
       else break;
     }
     if (terminalIndex >= 0) {
       setTaskIndex(terminalIndex);
-      await moveAfterTerminal(terminalIndex, state);
+      await moveAfterTerminal(terminalIndex, state, testSnapshot);
       return;
     }
     setTaskIndex(0);
     setStage("task-intro");
-  }, [moveAfterTerminal, snapshot]);
+  }, [moveAfterTerminal]);
 
   useEffect(() => {
     let cancelled = false;
+    runtimeRef.current = null;
+    initialCredentialRef.current = null;
+    taskStartedAtRef.current = null;
     void (async () => {
       if (!browserSupported()) {
         if (!cancelled) {
@@ -331,12 +343,12 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
         setSnapshot(body.test);
         const existing = await fetchState();
         if (cancelled) return;
-        if (!existing) { setStage("consent"); return; }
+        if (!existing || !belongsToTest(existing.context, body.test)) { setStage("consent"); return; }
         setStage("recovery");
         await configureRuntime(existing.context, existing.state);
         try { await deliver(); } catch { return; }
         const refreshed = await fetchState();
-        if (refreshed && !cancelled) await inferStageFromState(refreshed.state);
+        if (refreshed && !cancelled) await inferStageFromState(refreshed.state, body.test);
       } catch {
         if (!cancelled) setStage("invalid");
       }
@@ -442,7 +454,9 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
   }, [snapshot, stage, syncTerminalState]);
 
   useEffect(() => {
-    if (stage !== "runner" || !currentTask?.timeoutSeconds || currentTask.timeoutSeconds <= 0) return;
+    if ((stage !== "runner" && stage !== "give-up-confirm") || !currentTask?.timeoutSeconds) return;
+    const remaining = remainingTaskTime(taskStartedAtRef.current, currentTask.timeoutSeconds, Date.now());
+    if (remaining === null) return;
     const timeout = window.setTimeout(() => {
       const runtime = runtimeRef.current;
       if (!runtime || runtime.lifecycle.getState().activeTaskTerminal) return;
@@ -457,7 +471,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
           setStage("recovery");
         }
       })();
-    }, currentTask.timeoutSeconds * 1000);
+    }, remaining);
     return () => window.clearTimeout(timeout);
   }, [currentTask, deliver, fetchState, stage]);
 
@@ -505,7 +519,8 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
       targetWindowRef.current = null;
     }
     try {
-      await runtimeRef.current.lifecycle.startTask({ id: currentTask.id });
+      const started = await runtimeRef.current.lifecycle.startTask({ id: currentTask.id });
+      if (started) taskStartedAtRef.current = started.occurredAt;
       await deliver();
       if (snapshot?.target.provider === "figma_prototype" && !snapshot.target.liveEmbedUrl) {
         setTechnicalReason("ยังเปิดต้นแบบสำหรับแบบทดสอบนี้ไม่ได้ โปรดติดต่อผู้ที่ส่งแบบทดสอบนี้มา");
@@ -548,9 +563,9 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
       const latest = await fetchState();
       if (latest) {
         setSessionState(latest.state);
-        await moveAfterTerminal(taskIndex, latest.state);
+        await moveAfterTerminal(taskIndex, latest.state, snapshot);
       } else {
-        await moveAfterTerminal(taskIndex, sessionState);
+        await moveAfterTerminal(taskIndex, sessionState, snapshot);
       }
     } catch {
       setStage("recovery");
@@ -586,9 +601,9 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
       const latest = await fetchState();
       if (latest) {
         setSessionState(latest.state);
-        await moveAfterTerminal(taskIndex, latest.state);
+        await moveAfterTerminal(taskIndex, latest.state, snapshot);
       } else {
-        await moveAfterTerminal(taskIndex, sessionState);
+        await moveAfterTerminal(taskIndex, sessionState, snapshot);
       }
     } catch { setStage("recovery"); }
   }
@@ -598,7 +613,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     try {
       await deliver();
       const latest = await fetchState();
-      if (latest) await inferStageFromState(latest.state);
+      if (latest) await inferStageFromState(latest.state, snapshot);
       else setStage("invalid");
     } catch {
       setOffline(true);
