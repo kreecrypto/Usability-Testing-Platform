@@ -1,4 +1,5 @@
-import type { ResultsStudyContext } from "./context.ts";
+import type { ResultsStudyContext, ResultsTargetContext } from "./context.ts";
+import { buildMetricObservations, type MetricObservation } from "./observations.ts";
 import { aggregateAnalytics, type TaskMetricAggregate } from "./aggregation.ts";
 import { deriveFunnel, type FunnelDefinition, type FunnelResult } from "./funnel.ts";
 import { buildScreenHeatmap, type ScreenHeatmapDataset } from "./heatmap.ts";
@@ -111,6 +112,7 @@ export type ResultsModel = Readonly<{
   testId: string | null;
   testVersionId: string;
   context: ResultsStudyContext | null;
+  metrics: readonly MetricObservation[];
   overview: ResultsOverview;
   taskDetails: readonly TaskDetailResult[];
   paths: readonly TaskPathResult[];
@@ -376,7 +378,7 @@ export function buildResultsModel(input: Readonly<{
     ...(funnel ? [] : ["No funnel definition is stored with this published test version."]),
   ];
 
-  return Object.freeze({
+  const base = Object.freeze({
     modelVersion: RESULTS_MODEL_VERSION,
     testId: input.context?.testId ?? scopedEvents[0]?.testId ?? null,
     testVersionId: input.testVersionId,
@@ -410,4 +412,7 @@ export function buildResultsModel(input: Readonly<{
       reasons: Object.freeze(unsupportedReasons),
     }),
   });
+  const missingTarget: ResultsTargetContext = Object.freeze({ provider: null, sourceUrl: null, environment: null,
+    launchMode: null, snapshotVersion: null, capabilities: Object.freeze({}) });
+  return Object.freeze({ ...base, metrics: buildMetricObservations(base, input.context?.target ?? missingTarget) });
 }

@@ -48,3 +48,17 @@ test("conflicting provider and report context cannot claim authoritative provena
   const results = buildResultsModel({ testVersionId: versionId, context: trueContext, events: [], tasks: [] });
   assert.throws(() => buildUsabilityReport({ results, context, findings: [], evidenceByFinding: {}, retests: [] }), /report_results_context_mismatch/);
 });
+
+test("Results and Report share capability-aware observations with exact provenance", () => {
+  const context = parseResultsStudyContext(row);
+  const results = buildResultsModel({ testVersionId: versionId, context, events: [], tasks: [] });
+  const pointer = results.metrics.find((metric) => metric.metricKey === "misclickRate" && metric.scope === "overall");
+  assert.ok(pointer);
+  assert.equal(pointer.availability, "Unsupported");
+  assert.equal(pointer.value, null);
+  assert.equal(pointer.testVersionId, versionId);
+  assert.equal(pointer.targetProvider, "first_party_web");
+  assert.equal(pointer.targetSnapshotVersion, 1);
+  const report = buildUsabilityReport({ results, context, findings: [], evidenceByFinding: {}, retests: [] });
+  assert.deepEqual(report.metrics, results.metrics);
+});
