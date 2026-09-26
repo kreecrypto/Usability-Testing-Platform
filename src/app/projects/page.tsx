@@ -205,6 +205,11 @@ export default function ProjectsPage() {
             )}
           </section>
 
+          <section style={block} aria-labelledby="recent-work-heading">
+            <h2 id="recent-work-heading" style={{ marginTop: 0 }}>Recent work</h2>
+            {!workspaceId ? <p>เลือกหรือสร้าง Workspace เพื่อดูงานล่าสุด</p> : projects.length === 0 ? <p role="status">ยังไม่มี Project ใน Workspace นี้ — สร้าง Project แรกเพื่อเริ่ม Study</p> : <div style={{ display: "grid", gap: 10 }}>{projects.slice(0, 5).map((project) => <article key={project.id} style={{ border: "1px solid var(--ah-hairline)", borderRadius: 8, padding: 12 }}><strong>{project.name}</strong><p style={{ margin: "4px 0 0", color: "var(--ah-slate)" }}>{project.id === projectId && tests.length ? `${tests.length} Test · ${tests.filter((test) => test.status === "draft").length} Draft` : "เปิด Project เพื่อดู Test"}</p></article>)}</div>}
+          </section>
+
           <section style={block}>
             <h2 style={{ marginTop: 0 }}>2. Project</h2>
             {workspaceId ? <form onSubmit={createProject} style={{ display: "grid", gap: 10 }}>
