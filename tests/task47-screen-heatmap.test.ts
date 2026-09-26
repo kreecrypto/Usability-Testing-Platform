@@ -132,3 +132,12 @@ test("Results model exposes heatmap availability without changing funnel No Data
   assert.equal(results.unsupported.heatmap, false);
   assert.equal(results.unsupported.funnel, true);
 });
+
+test("Figma transform cannot be presented as an external target heatmap", () => {
+  const figma = buildScreenHeatmap(VERSION, events, "figma_prototype");
+  const external = buildScreenHeatmap(VERSION, events, "external_web");
+  assert.equal(figma.canonicalPointerCount, 2);
+  assert.equal(external.status, "unsupported");
+  assert.equal(external.canonicalPointerCount, 0);
+  assert.equal(external.rawPointerCount, 3);
+});

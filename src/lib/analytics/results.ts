@@ -1,3 +1,5 @@
+import type { ResultsStudyContext, ResultsTargetContext } from "./context.ts";
+import { buildMetricObservations, type MetricObservation } from "./observations.ts";
 import { aggregateAnalytics, type TaskMetricAggregate } from "./aggregation.ts";
 import { deriveFunnel, type FunnelDefinition, type FunnelResult } from "./funnel.ts";
 import { buildScreenHeatmap, type ScreenHeatmapDataset } from "./heatmap.ts";
@@ -109,6 +111,8 @@ export type ResultsModel = Readonly<{
   modelVersion: typeof RESULTS_MODEL_VERSION;
   testId: string | null;
   testVersionId: string;
+  context: ResultsStudyContext | null;
+  metrics: readonly MetricObservation[];
   overview: ResultsOverview;
   taskDetails: readonly TaskDetailResult[];
   paths: readonly TaskPathResult[];
@@ -197,6 +201,17 @@ function repeatedScreens(path: readonly string[]): number {
   return repeats;
 }
 
+function isTrustedBacktrack(event: AcceptedTrackingEvent, rawById: ReadonlyMap<string, AcceptedTrackingEvent>): boolean {
+  if (event.eventLayer !== "derived" || event.eventType !== "backtrack" || event.derivedFromEventIds.length < 2) return false;
+  return event.derivedFromEventIds.every((id) => {
+    const source = rawById.get(id);
+    return source?.eventLayer === "raw" && source.eventType === "screen_view"
+      && source.source === "prototype_adapter" && Boolean(source.screenId)
+      && source.sessionId === event.sessionId && source.taskId === event.taskId
+      && source.testVersionId === event.testVersionId;
+  });
+}
+
 function buildPaths(
   events: readonly AcceptedTrackingEvent[],
   tasks: readonly ResultTaskDefinition[],
@@ -218,7 +233,8 @@ function buildPaths(
       .filter((event) => event.eventLayer === "raw" && event.eventType === "screen_view" && event.screenId)
       .map((event) => event.screenId!);
     const expectedSet = new Set(expectedPath);
-    const backtrackCount = scoped.filter((event) => event.eventLayer === "derived" && event.eventType === "backtrack").length;
+    const rawById = new Map(scoped.filter((event) => event.eventLayer === "raw").map((event) => [event.eventId, event]));
+    const backtrackCount = scoped.filter((event) => isTrustedBacktrack(event, rawById)).length;
     output.push(Object.freeze({
       sessionId: first.sessionId,
       taskId: first.taskId!,
@@ -307,8 +323,11 @@ export function buildResultsModel(input: Readonly<{
   tasks: readonly ResultTaskDefinition[];
   answers?: readonly ResultAnswer[];
   funnelDefinition?: FunnelDefinition | null;
+  context?: ResultsStudyContext | null;
 }>): ResultsModel {
-  const scopedEvents = input.events.filter((event) => event.testVersionId === input.testVersionId);
+  if (input.context && input.context.testVersionId !== input.testVersionId) throw new Error("results_version_context_mismatch");
+  const scopedEvents = input.events.filter((event) => event.testVersionId === input.testVersionId
+    && (!input.context || event.testId === input.context.testId));
   const answers = input.answers ?? [];
   const analytics = aggregateAnalytics(scopedEvents);
   const taskById = new Map(input.tasks.map((task) => [task.taskId, task]));
@@ -328,7 +347,8 @@ export function buildResultsModel(input: Readonly<{
   const misclickCount = taskMetrics.reduce((sum, task) => sum + task.misclicks, 0);
   const participantCount = new Set(analytics.sessions.map((session) => session.participantId)).size;
   const rageClickCount = scopedEvents.filter((event) => event.eventLayer === "derived" && event.eventType === "rage_click").length;
-  const backtrackCount = scopedEvents.filter((event) => event.eventLayer === "derived" && event.eventType === "backtrack").length;
+  const rawById = new Map(scopedEvents.filter((event) => event.eventLayer === "raw").map((event) => [event.eventId, event]));
+  const backtrackCount = scopedEvents.filter((event) => isTrustedBacktrack(event, rawById)).length;
 
   const taskDetails = taskMetrics.map((metric) => {
     const definition = taskById.get(metric.taskId);
@@ -364,17 +384,18 @@ export function buildResultsModel(input: Readonly<{
     });
   }).sort((a, b) => a.ordinal - b.ordinal || a.taskId.localeCompare(b.taskId));
 
-  const heatmap = buildScreenHeatmap(input.testVersionId, scopedEvents);
+  const heatmap = buildScreenHeatmap(input.testVersionId, scopedEvents, input.context ? input.context.target.provider : "figma_prototype");
   const funnel = input.funnelDefinition ? deriveFunnel(scopedEvents, input.funnelDefinition) : null;
   const unsupportedReasons = [
     ...(heatmap.status === "unsupported" ? ["Canonical heatmap geometry is unavailable for the recorded pointer evidence."] : []),
     ...(funnel ? [] : ["No funnel definition is stored with this published test version."]),
   ];
 
-  return Object.freeze({
+  const base = Object.freeze({
     modelVersion: RESULTS_MODEL_VERSION,
-    testId: scopedEvents[0]?.testId ?? null,
+    testId: input.context?.testId ?? scopedEvents[0]?.testId ?? null,
     testVersionId: input.testVersionId,
+    context: input.context ?? null,
     overview: Object.freeze({
       participantCount,
       sessionCount: analytics.sessions.length,
@@ -404,4 +425,7 @@ export function buildResultsModel(input: Readonly<{
       reasons: Object.freeze(unsupportedReasons),
     }),
   });
+  const missingTarget: ResultsTargetContext = Object.freeze({ provider: null, sourceUrl: null, environment: null,
+    launchMode: null, snapshotVersion: null, capabilities: Object.freeze({}) });
+  return Object.freeze({ ...base, metrics: buildMetricObservations(base, input.context?.target ?? missingTarget) });
 }

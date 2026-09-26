@@ -107,8 +107,8 @@ function sessionDeviceClasses(events: readonly AcceptedTrackingEvent[]): Readonl
   return output;
 }
 
-function canonicalPoint(event: AcceptedTrackingEvent): Omit<ScreenHeatmapPoint, "eventId" | "sessionId" | "taskId" | "screenId" | "deviceClass" | "terminalOutcome"> | null {
-  if (event.eventLayer !== "raw" || event.eventType !== "pointer_interaction") return null;
+function canonicalPoint(event: AcceptedTrackingEvent, provider: string | null): Omit<ScreenHeatmapPoint, "eventId" | "sessionId" | "taskId" | "screenId" | "deviceClass" | "terminalOutcome"> | null {
+  if (event.eventLayer !== "raw" || event.eventType !== "pointer_interaction" || provider !== "figma_prototype") return null;
   if (!isRecord(event.metadata) || !isRecord(event.metadata.canonicalPoint)) return null;
   const point = event.metadata.canonicalPoint;
   const geometryVersionId = text(point.geometryVersionId);
@@ -138,7 +138,7 @@ function unique(values: readonly (string | null)[]): string[] {
   return [...new Set(values.filter((value): value is string => Boolean(value)))].sort();
 }
 
-export function buildScreenHeatmap(testVersionId: string, events: readonly AcceptedTrackingEvent[]): ScreenHeatmapDataset {
+export function buildScreenHeatmap(testVersionId: string, events: readonly AcceptedTrackingEvent[], provider: string | null = "figma_prototype"): ScreenHeatmapDataset {
   const scoped = events.filter((event) => event.testVersionId === testVersionId);
   const outcomes = taskOutcomes(scoped);
   const sessionDevices = sessionDeviceClasses(scoped);
@@ -146,7 +146,7 @@ export function buildScreenHeatmap(testVersionId: string, events: readonly Accep
   const points: ScreenHeatmapPoint[] = [];
 
   for (const event of rawPointers) {
-    const point = canonicalPoint(event);
+    const point = canonicalPoint(event, provider);
     if (!point || !event.screenId) continue;
     const eventDevice = isRecord(event.metadata) ? text(event.metadata.deviceClass) : null;
     const terminalOutcome = event.taskId ? outcomes.get(`${event.sessionId}\u0000${event.taskId}`) ?? null : null;
