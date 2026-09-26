@@ -105,6 +105,22 @@ test("Tasks 44/45 overview and task metrics reproduce canonical eligible evidenc
   assert.deepEqual(task.seqResponses.map((response) => [response.value, response.scaleVersion]), [[6, "seq-7-v1"]]);
 });
 
+test("a late success signal cannot add a duration after give-up won the terminal outcome", () => {
+  const events = [
+    ...fixture(),
+    derived("s3-late-success", "s3", "task_success", "2026-09-09T00:02:06.000Z", "task-1", ["s3-give"], { participantId: "p3", metadata: { outcome: "success_direct" } }),
+  ];
+  const results = buildResultsModel({
+    testVersionId: "version-1",
+    events,
+    tasks: [{ taskId: "task-1", title: "Checkout", ordinal: 1, expectedPath: ["A", "B"] }],
+  });
+  assert.equal(results.taskDetails[0].outcomes.give_up, 1);
+  assert.equal(results.taskDetails[0].successfulDuration.sampleSize, 1);
+  assert.equal(results.overview.successfulDurationSampleSize, 1);
+  assert.equal(results.overview.medianSuccessfulDurationMs, 10000);
+});
+
 test("Task 46 path analysis uses ordered canonical screen_view and separate derived backtrack evidence", () => {
   const results = buildResultsModel({
     testVersionId: "version-1",

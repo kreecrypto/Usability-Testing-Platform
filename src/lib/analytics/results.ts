@@ -3,7 +3,6 @@ import { buildMetricObservations, type MetricObservation } from "./observations.
 import { aggregateAnalytics, type TaskMetricAggregate } from "./aggregation.ts";
 import { deriveFunnel, type FunnelDefinition, type FunnelResult } from "./funnel.ts";
 import { buildScreenHeatmap, type ScreenHeatmapDataset } from "./heatmap.ts";
-import { deriveTaskTimeMetrics } from "./time-metrics.ts";
 import { median, p75, p90, percentage } from "./metrics.ts";
 import type { AcceptedTrackingEvent, TaskOutcome } from "../tracking/events.ts";
 
@@ -331,14 +330,8 @@ export function buildResultsModel(input: Readonly<{
   const answers = input.answers ?? [];
   const analytics = aggregateAnalytics(scopedEvents);
   const taskById = new Map(input.tasks.map((task) => [task.taskId, task]));
-  const successfulKeys = new Set(scopedEvents.flatMap((event) =>
-    event.eventLayer === "derived" && event.eventType === "task_success" && event.taskId
-      ? [`${event.sessionId}\u0000${event.taskId}`] : []));
-  const times = deriveTaskTimeMetrics(scopedEvents);
-  const successfulDurations = times.flatMap((metric) =>
-    metric.timeOnTaskMs !== null && successfulKeys.has(`${metric.sessionId}\u0000${metric.taskId}`)
-      ? [metric.timeOnTaskMs] : []);
   const taskMetrics = analytics.taskMetrics;
+  const successfulDurations = taskMetrics.flatMap((metric) => metric.successfulDurationSamplesMs);
   const eligibleTaskCount = taskMetrics.reduce((sum, task) => sum + task.eligible, 0);
   const successCount = taskMetrics.reduce((sum, task) => sum + task.outcomes.success_direct + task.outcomes.success_indirect, 0);
   const technicalBlockedTaskCount = taskMetrics.reduce((sum, task) => sum + task.outcomes.technical_blocked, 0);
