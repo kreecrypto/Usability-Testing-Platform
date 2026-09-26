@@ -1,6 +1,7 @@
+import { parseResultsStudyContext } from "../analytics/context.ts";
 import { createResultsStore, ResultsStoreError } from "../analytics/results-store.ts";
 import { createFindingsStore, FindingsStoreError } from "../findings/store.ts";
-import { buildUsabilityReport, type ReportAvailability, type ReportStudyContext, type ReportTargetContext, type UsabilityReport } from "./model.ts";
+import { buildUsabilityReport, type ReportStudyContext, type UsabilityReport } from "./model.ts";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 type FetchLike = typeof fetch;
@@ -25,45 +26,6 @@ export class ReportStoreError extends Error {
     this.code = code;
     this.status = status;
   }
-}
-
-function state(value: unknown): ReportAvailability | null {
-  if (value === "Available" || value === "available") return "Available";
-  if (value === "Partial" || value === "partial") return "Partial";
-  if (value === "Unsupported" || value === "unsupported") return "Unsupported";
-  if (value === "No Data" || value === "no_data") return "No Data";
-  return null;
-}
-
-function record(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : {};
-}
-
-function targetContext(row: VersionRow): ReportTargetContext {
-  const snapshot = record(row.target_snapshot);
-  const capabilitiesRaw = record(snapshot.capabilities);
-  const capabilities: Record<string, ReportAvailability> = {};
-  for (const [key, value] of Object.entries(capabilitiesRaw)) {
-    const normalized = state(value);
-    if (normalized) capabilities[key] = normalized;
-  }
-  const snapshotVersion = typeof snapshot.snapshotVersion === "number" && Number.isInteger(snapshot.snapshotVersion)
-    ? snapshot.snapshotVersion
-    : null;
-  return Object.freeze({
-    provider: typeof row.target_provider === "string" && row.target_provider.trim()
-      ? row.target_provider.trim()
-      : typeof snapshot.provider === "string" && snapshot.provider.trim()
-        ? snapshot.provider.trim()
-        : null,
-    sourceUrl: typeof snapshot.sourceUrl === "string" && snapshot.sourceUrl.trim() ? snapshot.sourceUrl.trim() : null,
-    environment: typeof snapshot.environment === "string" && snapshot.environment.trim() ? snapshot.environment.trim() : null,
-    launchMode: typeof snapshot.launchMode === "string" && snapshot.launchMode.trim() ? snapshot.launchMode.trim() : null,
-    snapshotVersion,
-    capabilities: Object.freeze(capabilities),
-  });
 }
 
 export function createReportStore(options: Readonly<{
@@ -112,14 +74,7 @@ export function createReportStore(options: Readonly<{
         [finding.id, await findingsStore.listEvidence(finding.id)] as const,
       ));
       const retests = await findingsStore.listRetestsForVersion(testVersionId);
-      const context: ReportStudyContext = Object.freeze({
-        testId: versionRow.test_id,
-        testVersionId: versionRow.id,
-        versionNo: versionRow.version_no,
-        lifecycleStatus: versionRow.lifecycle_status,
-        publishedAt: versionRow.published_at,
-        target: targetContext(versionRow),
-      });
+      const context: ReportStudyContext = parseResultsStudyContext(versionRow);
       return buildUsabilityReport({
         results,
         context,

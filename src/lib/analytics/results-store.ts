@@ -1,14 +1,15 @@
+import { parseResultsStudyContext, type ResultsStudyContext } from "./context.ts";
 import { parseFunnelDefinition } from "./funnel.ts";
 import { buildResultsModel, type ResultAnswer, type ResultTaskDefinition, type ResultsModel } from "./results.ts";
 import { fromEventStorageRow, type EventStorageRow } from "../tracking/persistence.ts";
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PAGE_SIZE = 1000;
 
 type FetchLike = typeof fetch;
 
 type SessionRow = Readonly<{ id: string }>;
-type VersionRow = Readonly<{ funnel_config: unknown }>;
+type VersionRow = Readonly<{ id: string; test_id: string; version_no: number | null; lifecycle_status: string | null; published_at: string | null; target_provider: string | null; target_snapshot: unknown; funnel_config: unknown }>;
 type TaskRow = Readonly<{
   id: string;
   title: string;
@@ -26,7 +27,7 @@ type AnswerRow = Readonly<{
 }>;
 
 export class ResultsStoreError extends Error {
-  code: "invalid_test_version" | "unauthorized" | "forbidden" | "provider_error";
+  code: "invalid_test_version" | "unauthorized" | "forbidden" | "not_found" | "provider_error";
   status: number;
 
   constructor(code: ResultsStoreError["code"], status: number) {
@@ -93,7 +94,7 @@ export function createResultsStore(options: Readonly<{
 
     const versionQuery = new URLSearchParams({
       id: `eq.${testVersionId}`,
-      select: "funnel_config",
+      select: "id,test_id,version_no,lifecycle_status,published_at,target_provider,target_snapshot,funnel_config",
       limit: "1",
     });
     const sessionQuery = new URLSearchParams({
@@ -118,6 +119,9 @@ export function createResultsStore(options: Readonly<{
       readAll<EventStorageRow>("events", eventQuery),
       readAll<TaskRow>("tasks", taskQuery),
     ]);
+
+    if (!versionRows[0]) throw new ResultsStoreError("not_found", 404);
+    const context: ResultsStudyContext = parseResultsStudyContext(versionRows[0]);
 
     let answerRows: AnswerRow[] = [];
     if (sessions.length > 0) {
@@ -153,7 +157,8 @@ export function createResultsStore(options: Readonly<{
       events: eventRows.map(fromEventStorageRow),
       tasks,
       answers,
-      funnelDefinition: parseFunnelDefinition(versionRows[0]?.funnel_config),
+      funnelDefinition: parseFunnelDefinition(versionRows[0].funnel_config),
+      context,
     });
   }
 

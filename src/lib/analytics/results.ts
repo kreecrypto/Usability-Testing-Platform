@@ -1,3 +1,4 @@
+import type { ResultsStudyContext } from "./context.ts";
 import { aggregateAnalytics, type TaskMetricAggregate } from "./aggregation.ts";
 import { deriveFunnel, type FunnelDefinition, type FunnelResult } from "./funnel.ts";
 import { buildScreenHeatmap, type ScreenHeatmapDataset } from "./heatmap.ts";
@@ -109,6 +110,7 @@ export type ResultsModel = Readonly<{
   modelVersion: typeof RESULTS_MODEL_VERSION;
   testId: string | null;
   testVersionId: string;
+  context: ResultsStudyContext | null;
   overview: ResultsOverview;
   taskDetails: readonly TaskDetailResult[];
   paths: readonly TaskPathResult[];
@@ -307,8 +309,11 @@ export function buildResultsModel(input: Readonly<{
   tasks: readonly ResultTaskDefinition[];
   answers?: readonly ResultAnswer[];
   funnelDefinition?: FunnelDefinition | null;
+  context?: ResultsStudyContext | null;
 }>): ResultsModel {
-  const scopedEvents = input.events.filter((event) => event.testVersionId === input.testVersionId);
+  if (input.context && input.context.testVersionId !== input.testVersionId) throw new Error("results_version_context_mismatch");
+  const scopedEvents = input.events.filter((event) => event.testVersionId === input.testVersionId
+    && (!input.context || event.testId === input.context.testId));
   const answers = input.answers ?? [];
   const analytics = aggregateAnalytics(scopedEvents);
   const taskById = new Map(input.tasks.map((task) => [task.taskId, task]));
@@ -373,8 +378,9 @@ export function buildResultsModel(input: Readonly<{
 
   return Object.freeze({
     modelVersion: RESULTS_MODEL_VERSION,
-    testId: scopedEvents[0]?.testId ?? null,
+    testId: input.context?.testId ?? scopedEvents[0]?.testId ?? null,
     testVersionId: input.testVersionId,
+    context: input.context ?? null,
     overview: Object.freeze({
       participantCount,
       sessionCount: analytics.sessions.length,

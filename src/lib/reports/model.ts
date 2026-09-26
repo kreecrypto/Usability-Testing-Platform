@@ -4,25 +4,11 @@ import type { FindingEvidenceRecord, FindingRecord, RetestMetricComparison } fro
 export const USABILITY_REPORT_VERSION = "mt10-report-v1" as const;
 export const METRIC_DEFINITION_VERSION = "analytics-v1" as const;
 
-export type ReportAvailability = "Available" | "Partial" | "Unsupported" | "No Data";
+import type { EvidenceAvailability, ResultsStudyContext, ResultsTargetContext } from "../analytics/context.ts";
 
-export type ReportTargetContext = Readonly<{
-  provider: string | null;
-  sourceUrl: string | null;
-  environment: string | null;
-  launchMode: string | null;
-  snapshotVersion: number | null;
-  capabilities: Readonly<Record<string, ReportAvailability>>;
-}>;
-
-export type ReportStudyContext = Readonly<{
-  testId: string;
-  testVersionId: string;
-  versionNo: number | null;
-  lifecycleStatus: string | null;
-  publishedAt: string | null;
-  target: ReportTargetContext;
-}>;
+export type ReportAvailability = EvidenceAvailability;
+export type ReportTargetContext = ResultsTargetContext;
+export type ReportStudyContext = ResultsStudyContext;
 
 export type MetricObservation = Readonly<{
   metricKey: string;
@@ -329,6 +315,9 @@ export function buildUsabilityReport(input: Readonly<{
   generatedAt?: string;
 }>): UsabilityReport {
   if (input.results.testVersionId !== input.context.testVersionId) throw new Error("report_version_context_mismatch");
+  if (input.results.context && JSON.stringify(input.results.context) !== JSON.stringify(input.context)) {
+    throw new Error("report_results_context_mismatch");
+  }
   if (input.findings.some((finding) => finding.testVersionId !== input.context.testVersionId)) {
     throw new Error("report_finding_version_mismatch");
   }
