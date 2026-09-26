@@ -68,7 +68,17 @@ export function createFigmaInteractionEventBridge(options: {
     throw new Error("initialSequence must be a non-negative safe integer");
   }
 
-  async function handleMessage(message: FigmaMessageLike): Promise<FigmaBridgeOutcome> {
+  let pending: Promise<unknown> = Promise.resolve();
+
+  function handleMessage(message: FigmaMessageLike): Promise<FigmaBridgeOutcome> {
+    // Capture arrival time before waiting for an earlier async sink.
+    const occurredAt = now().toISOString();
+    const result = pending.then(() => processMessage(message, occurredAt));
+    pending = result.catch(() => undefined);
+    return result;
+  }
+
+  async function processMessage(message: FigmaMessageLike, occurredAt: string): Promise<FigmaBridgeOutcome> {
     if (message.origin !== FIGMA_EMBED_EVENT_ORIGIN) {
       return Object.freeze({ status: "ignored_origin" });
     }
@@ -82,7 +92,6 @@ export function createFigmaInteractionEventBridge(options: {
     }
 
     const candidateSequence = sequence + 1;
-    const occurredAt = now().toISOString();
     const eventId = eventIdFactory(candidateSequence);
 
     let adapted: ReturnType<typeof adaptFigmaEmbedEvent>;
