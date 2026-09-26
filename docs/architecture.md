@@ -16,7 +16,7 @@ Supabase
   └─ Auth
 ```
 
-The active production origin is `https://usability-testing-platform.vercel.app/` and production must be built from the repository `main` branch. Cloudflare Workers and Netlify are historical/fallback runtime evidence only unless the Google Sheet Source Governance explicitly reactivates them.
+The active production origin is `https://usability-testing-platform.vercel.app/` and production must be built from the repository `main` branch. Other historical runtime experiments are superseded by the current Source Governance.
 
 ## Product loop
 
@@ -191,7 +191,7 @@ Production sequence:
 7. Check production runtime errors/logs for regressions.
 8. Record release evidence without treating HTTP smoke as a substitute for browser/device-matrix or UAT gates.
 
-See [`vercel-runtime.md`](vercel-runtime.md) for the operational contract. [`cloudflare-runtime.md`](cloudflare-runtime.md) is retained for historical/fallback compatibility only.
+See [`vercel-runtime.md`](vercel-runtime.md) for the operational contract.
 
 ## Versioning rule
 

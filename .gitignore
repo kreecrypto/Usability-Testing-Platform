@@ -36,6 +36,3 @@ next-env.d.ts.bak
 
 # coverage
 coverage/
-/dist/
-.vinext/
-.wrangler/
