@@ -54,6 +54,7 @@ function availability(input: Readonly<{
   const states = input.requiredCapabilities.map((name) => capabilityState(input.target, name));
   if (states.some((state) => state === "Unsupported")) return "Unsupported";
   if (states.some((state) => state === "Partial" || state === null)) return "Partial";
+  if (states.some((state) => state === "No Data")) return "No Data";
   if (input.value === null || input.evidenceCount <= 0) return "No Data";
   return "Available";
 }

@@ -75,7 +75,7 @@ function Tasks({ results }: { results: ResultsModel }) {
 
 function Paths({ results }: { results: ResultsModel }) {
   const pathCapability = capabilityAvailability(results, "path");
-  if (pathCapability !== "Available") return <EmptyState title={pathCapability === "Unsupported" ? "ไม่รองรับเส้นทาง" : "ข้อมูลเส้นทางยังไม่ครบ"}>Target เวอร์ชันนี้ยังไม่มี capability ที่ยืนยันข้อมูลเส้นทางได้</EmptyState>;
+  if (pathCapability !== "Available") return <EmptyState title={pathCapability === "Unsupported" ? "ไม่รองรับเส้นทาง" : pathCapability === "No Data" ? "ยังไม่มีข้อมูลเส้นทาง" : "ข้อมูลเส้นทางยังไม่ครบ"}>Target เวอร์ชันนี้ยังไม่มี capability ที่ยืนยันข้อมูลเส้นทางได้</EmptyState>;
   const paths = results.paths.filter((path) => path.actualPath.length > 0 || path.expectedPath.length > 0);
   if (paths.length === 0) return <EmptyState title="ยังไม่มีข้อมูลเส้นทาง">ยังไม่มีหลักฐานเส้นทางหน้าจอที่ใช้วิเคราะห์ได้ในเวอร์ชันนี้</EmptyState>;
   return <div className={styles.taskList}>{paths.map((path) => <article key={`${path.sessionId}:${path.taskId}`} className={styles.panel}>
@@ -104,7 +104,7 @@ function Heatmap({ results }: { results: ResultsModel }) {
   }, [dataset.filters.screenIds, screenId]);
 
   const heatmapCapability = capabilityAvailability(results, "pointer", "coordinates");
-  if (heatmapCapability !== "Available") return <EmptyState title={heatmapCapability === "Unsupported" ? "ไม่รองรับฮีตแมป" : "ข้อมูลฮีตแมปยังไม่ครบ"}>Target เวอร์ชันนี้ไม่มี capability ที่ยืนยันพิกัดได้</EmptyState>;
+  if (heatmapCapability !== "Available") return <EmptyState title={heatmapCapability === "Unsupported" ? "ไม่รองรับฮีตแมป" : heatmapCapability === "No Data" ? "ยังไม่มีข้อมูลฮีตแมป" : "ข้อมูลฮีตแมปยังไม่ครบ"}>Target เวอร์ชันนี้ไม่มี capability ที่ยืนยันพิกัดได้</EmptyState>;
   if (dataset.status === "unsupported") return <EmptyState title="ฮีตแมปยังไม่พร้อม">พบ {dataset.rawPointerCount} pointer events แต่ไม่มี canonical geometry ที่ตรวจสอบได้ ระบบจึงไม่ใช้พิกัด browser/CSS เป็น fallback.</EmptyState>;
   if (dataset.status === "no_data") return <EmptyState title="ยังไม่มีข้อมูลฮีตแมป">ยังไม่มี pointer interaction ในเวอร์ชันนี้</EmptyState>;
 
@@ -141,7 +141,7 @@ function Heatmap({ results }: { results: ResultsModel }) {
 
 function Funnel({ results }: { results: ResultsModel }) {
   const funnelCapability = capabilityAvailability(results, "path");
-  if (funnelCapability !== "Available") return <EmptyState title={funnelCapability === "Unsupported" ? "ไม่รองรับ Funnel" : "ข้อมูล Funnel ยังไม่ครบ"}>Target เวอร์ชันนี้ไม่มีข้อมูลเส้นทางที่ยืนยันได้</EmptyState>;
+  if (funnelCapability !== "Available") return <EmptyState title={funnelCapability === "Unsupported" ? "ไม่รองรับ Funnel" : funnelCapability === "No Data" ? "ยังไม่มีข้อมูล Funnel" : "ข้อมูล Funnel ยังไม่ครบ"}>Target เวอร์ชันนี้ไม่มีข้อมูลเส้นทางที่ยืนยันได้</EmptyState>;
   const funnel = results.funnel;
   if (!funnel) return <EmptyState title="ยังไม่มี Funnel">เวอร์ชันนี้ยังไม่ได้กำหนดลำดับ Screen ID สำหรับคำนวณ Conversion และ Drop-off</EmptyState>;
   if (!funnel.eligibleSessionCount) return <EmptyState title="ยังไม่มีข้อมูล Funnel">ยังไม่มีเซสชันที่มีหลักฐาน screen_view สำหรับคำนวณขั้นตอน</EmptyState>;
