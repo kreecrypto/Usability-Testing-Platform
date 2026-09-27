@@ -90,4 +90,54 @@ export function approveInternalFirstPartyTarget(
   });
 }
 
+/** An operator-approved origin can be used by multiple owned UAT targets. */
+export function approveConfiguredFirstPartyTarget(
+  snapshot: TestTargetSnapshotV1,
+  allowedOrigins: readonly string[],
+): TestTargetSnapshotV1 {
+  if (snapshot.provider !== "first_party_web") {
+    throw new TestTargetImportError("preflight_verification_failed", 409);
+  }
+  let source: URL;
+  try { source = new URL(snapshot.sourceUrl); }
+  catch { throw new TestTargetImportError("preflight_verification_failed", 409); }
+  if (
+    source.protocol !== "https:" ||
+    source.username !== "" ||
+    source.password !== "" ||
+    !allowedOrigins.some((candidate) => {
+      try {
+        const allowed = new URL(candidate);
+        return allowed.protocol === "https:" && allowed.username === "" && allowed.password === "" &&
+          allowed.pathname === "/" && allowed.search === "" && allowed.hash === "" && allowed.origin === source.origin;
+      } catch { return false; }
+    })
+  ) {
+    throw new TestTargetImportError("preflight_verification_failed", 409);
+  }
+  return Object.freeze({
+    ...snapshot,
+    launchMode: "new_tab" as const,
+    capabilities: Object.freeze({
+      access: "Available" as const,
+      embed: "Unsupported" as const,
+      instrumentation: "Available" as const,
+      screen: "Available" as const,
+      path: "Available" as const,
+      pointer: "Available" as const,
+      scroll: "Available" as const,
+      coordinates: "Available" as const,
+      publishBlocked: false,
+      reasons: Object.freeze([] as string[]),
+    }),
+    providerConfig: Object.freeze({
+      ...snapshot.providerConfig,
+      origin: source.origin,
+      bridgeVersion: FIRST_PARTY_BRIDGE_VERSION,
+      bridgeTransport: "window_post_message",
+      approvedPath: source.pathname,
+    }),
+  });
+}
+
 export function canPublishTarget(snapshot: TestTargetSnapshotV1): boolean { return !snapshot.capabilities.publishBlocked && snapshot.launchMode !== "unsupported"; }
