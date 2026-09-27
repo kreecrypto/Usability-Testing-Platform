@@ -7,6 +7,7 @@ import {
   authCookieName,
   AuthSessionError,
   clearAccessCookieHeader,
+  publicSupabaseConfig,
   signInWithPassword,
   signUpWithPassword,
   validateAccessToken,
@@ -16,6 +17,25 @@ import {
 const config: PublicSupabaseConfig = Object.freeze({
   url: "https://example.supabase.co",
   key: "sb_publishable_test",
+});
+
+test("UTP project falls back only to its public publishable key", () => {
+  const resolved = publicSupabaseConfig({
+    NODE_ENV: "test",
+    SUPABASE_URL: "https://qryvrcwbsehrzpersuoc.supabase.co",
+  } as NodeJS.ProcessEnv);
+  assert.equal(resolved.url, "https://qryvrcwbsehrzpersuoc.supabase.co");
+  assert.match(resolved.key, /^sb_publishable_/);
+
+  assert.throws(
+    () => publicSupabaseConfig({
+      NODE_ENV: "test",
+      SUPABASE_URL: "https://other-project.supabase.co",
+    } as NodeJS.ProcessEnv),
+    (error: unknown) => error instanceof AuthSessionError &&
+      error.code === "config_missing" &&
+      error.message === "SUPABASE_PUBLISHABLE_KEY missing",
+  );
 });
 
 test("authenticated browser CRUD uses HttpOnly session cookie while bearer API clients still work", () => {
@@ -31,6 +51,19 @@ test("authenticated browser CRUD uses HttpOnly session cookie while bearer API c
     },
   });
   assert.equal(accessTokenFromRequest(bearerRequest), "explicit-api-jwt");
+});
+
+test("old anonymous researcher tokens cannot enter workspace APIs", () => {
+  const payload = Buffer.from(JSON.stringify({ sub: "guest-user", is_anonymous: true })).toString("base64url");
+  const token = `header.${payload}.signature`;
+  const cookieRequest = new Request("https://app.example/api/projects", {
+    headers: { cookie: `${authCookieName()}=${encodeURIComponent(token)}` },
+  });
+  const bearerRequest = new Request("https://app.example/api/projects", {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  assert.equal(accessTokenFromRequest(cookieRequest), null);
+  assert.equal(accessTokenFromRequest(bearerRequest), null);
 });
 
 test("session cookie is HttpOnly SameSite Lax and secure on HTTPS", () => {
@@ -132,4 +165,18 @@ test("server verifies cookie JWT against Supabase Auth user endpoint before repo
   const headers = calls[0].init?.headers as Record<string, string>;
   assert.equal(headers.authorization, "Bearer user-jwt");
   assert.equal(headers.apikey, "sb_publishable_test");
+});
+
+test("server rejects an anonymous Supabase Auth user even with an old session cookie", async () => {
+  await assert.rejects(
+    () => validateAccessToken("old-guest-token", {
+      config,
+      fetchImpl: async () => Response.json({
+        id: "10000000-0000-4000-8000-000000000003",
+        is_anonymous: true,
+      }),
+    }),
+    (error: unknown) => error instanceof AuthSessionError &&
+      error.code === "invalid_session" && error.status === 401,
+  );
 });

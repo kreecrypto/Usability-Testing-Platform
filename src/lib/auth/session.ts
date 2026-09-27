@@ -26,7 +26,7 @@ export type PasswordSignup = Readonly<{
 }>;
 
 export class AuthSessionError extends Error {
-  code: "config_missing" | "invalid_credentials" | "invalid_session" | "auth_unavailable" | "signup_unavailable" | "anonymous_auth_unavailable";
+  code: "config_missing" | "invalid_credentials" | "invalid_session" | "auth_unavailable" | "signup_unavailable";
   status: number;
 
   constructor(
@@ -87,7 +87,18 @@ function bearerToken(request: Request): string | null {
 }
 
 export function accessTokenFromRequest(request: Request): string | null {
-  return bearerToken(request) ?? cookieMap(request.headers.get("cookie")).get(ACCESS_COOKIE) ?? null;
+  const token = bearerToken(request) ?? cookieMap(request.headers.get("cookie")).get(ACCESS_COOKIE) ?? null;
+  if (!token) return null;
+  // Supabase includes this claim in anonymous user JWTs. Reading the unverified
+  // payload is safe here because it can only deny access; Supabase still verifies
+  // the signature before any data operation.
+  try {
+    const payload = token.split(".")[1];
+    if (payload && JSON.parse(Buffer.from(payload, "base64url").toString("utf8")).is_anonymous === true) return null;
+  } catch {
+    // Malformed tokens are passed to Supabase, which rejects their signature.
+  }
+  return token;
 }
 
 export function authCookieName(): string {
@@ -147,55 +158,6 @@ function normalizedPassword(value: unknown): string {
     throw new AuthSessionError("invalid_credentials", 401);
   }
   return value;
-}
-
-export async function signInAnonymously(
-  options: Readonly<{
-    config?: PublicSupabaseConfig;
-    fetchImpl?: typeof fetch;
-  }> = {},
-): Promise<PasswordSession> {
-  const config = options.config ?? publicSupabaseConfig();
-  const fetchImpl = options.fetchImpl ?? fetch;
-  const response = await fetchImpl(`${config.url}/auth/v1/signup`, {
-    method: "POST",
-    headers: {
-      apikey: config.key,
-      "content-type": "application/json",
-      accept: "application/json",
-    },
-    // Supabase Auth treats signup requests without email/phone as anonymous
-    // when Anonymous Sign-Ins are enabled for the project.
-    body: JSON.stringify({
-      data: {
-        utp_mode: "temporary_researcher",
-      },
-    }),
-    cache: "no-store",
-  });
-
-  if (response.status === 400 || response.status === 403 || response.status === 422) {
-    throw new AuthSessionError("anonymous_auth_unavailable", 503);
-  }
-  if (!response.ok) throw new AuthSessionError("auth_unavailable", 503);
-
-  const payload = (await response.json()) as Record<string, unknown>;
-  const user = payload.user as Record<string, unknown> | undefined;
-  const accessToken = typeof payload.access_token === "string" ? payload.access_token.trim() : "";
-  const expiresIn = typeof payload.expires_in === "number" ? payload.expires_in : Number.NaN;
-  const userId = typeof user?.id === "string" ? user.id.trim() : "";
-  if (!accessToken || !Number.isFinite(expiresIn) || expiresIn <= 0 || !userId) {
-    throw new AuthSessionError("invalid_session", 503);
-  }
-
-  return Object.freeze({
-    accessToken,
-    expiresIn,
-    user: Object.freeze({
-      id: userId,
-      email: null,
-    }),
-  });
 }
 
 export async function signInWithPassword(
@@ -319,7 +281,7 @@ export async function validateAccessToken(
   if (!response.ok) throw new AuthSessionError("auth_unavailable", 503);
   const payload = (await response.json()) as Record<string, unknown>;
   const id = typeof payload.id === "string" ? payload.id.trim() : "";
-  if (!id) throw new AuthSessionError("invalid_session", 401);
+  if (!id || payload.is_anonymous === true) throw new AuthSessionError("invalid_session", 401);
   return Object.freeze({
     id,
     email: typeof payload.email === "string" ? payload.email : null,

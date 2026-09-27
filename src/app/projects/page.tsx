@@ -1,269 +1,165 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import styles from "./projects.module.css";
 
-type Workspace = { id: string; name: string; slug: string };
-type Project = { id: string; workspace_id: string; name: string; description: string | null; status: string };
-type StudyTest = { id: string; workspace_id: string; project_id: string; title: string; description: string | null; status: string };
-type Task = { id: string; title: string; ordinal: number };
+type Workspace = { id: string; name: string };
+type Project = { id: string; name: string };
+type StudyTest = { id: string; title: string; status: string };
 
-async function json<T>(response: Response): Promise<T> {
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const code = typeof body?.error === "string" ? body.error : "request_failed";
-    throw new Error(code);
+async function request<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, {
+    ...init,
+    cache: "no-store",
+    headers: init?.body ? { "content-type": "application/json" } : undefined,
+  });
+  if (response.status === 401) {
+    window.location.assign("/login");
+    throw new Error("authentication_required");
   }
-  return body as T;
+  if (!response.ok) throw new Error("request_failed");
+  return await response.json() as T;
 }
 
 export default function ProjectsPage() {
-  const [ready, setReady] = useState(false);
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [workspaceId, setWorkspaceId] = useState("");
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [projectId, setProjectId] = useState("");
-  const [tests, setTests] = useState<StudyTest[]>([]);
-  const [testId, setTestId] = useState("");
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [workspaceName, setWorkspaceName] = useState("UTP Internal Validation");
-  const [projectName, setProjectName] = useState("Golden Path");
-  const [testTitle, setTestTitle] = useState("MAJOR-A Flow Proven");
-  const [targetUrl, setTargetUrl] = useState("https://usability-testing-platform.vercel.app/internal-validation-target");
-  const [taskTitle, setTaskTitle] = useState("");
-  const [scenario, setScenario] = useState("");
-  const [instruction, setInstruction] = useState("");
-  const [publishedVersionId, setPublishedVersionId] = useState("");
-  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
-
-  const loadWorkspaces = useCallback(async () => {
-    const response = await fetch("/api/workspaces", { cache: "no-store" });
-    if (response.status === 401) { window.location.replace("/login"); return; }
-    const body = await json<{ workspaces: Workspace[] }>(response);
-    setWorkspaces(body.workspaces);
-    setWorkspaceId((current) => current || body.workspaces[0]?.id || "");
-  }, []);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [tests, setTests] = useState<StudyTest[]>([]);
+  const [workspaceId, setWorkspaceId] = useState("");
+  const [projectId, setProjectId] = useState("");
+  const [workspaceName, setWorkspaceName] = useState("");
+  const [projectName, setProjectName] = useState("");
+  const [testTitle, setTestTitle] = useState("");
 
   useEffect(() => {
+    let active = true;
     void (async () => {
       const session = await fetch("/api/auth/session", { cache: "no-store" });
-      if (!session.ok) {
-        const temporary = await fetch("/api/auth/guest", { method: "POST", cache: "no-store" });
-        if (!temporary.ok) { window.location.replace("/login"); return; }
-      }
-      await loadWorkspaces();
-      setReady(true);
-    })().catch(() => setMessage("โหลด Researcher workspace ไม่สำเร็จ"));
-  }, [loadWorkspaces]);
+      if (session.status === 401) { window.location.assign("/login"); return; }
+      if (!session.ok) throw new Error("session_unavailable");
+      const result = await request<{ workspaces: Workspace[] }>("/api/workspaces");
+      if (active) setWorkspaces(result.workspaces);
+    })().catch(() => { if (active) setError("เปิดรายการเวิร์กสเปซไม่สำเร็จ โปรดลองโหลดหน้าใหม่"); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (!workspaceId) { setProjects([]); setProjectId(""); return; }
-    void fetch(`/api/projects?workspaceId=${encodeURIComponent(workspaceId)}`, { cache: "no-store" })
-      .then((r) => json<{ projects: Project[] }>(r))
-      .then((body) => {
-        setProjects(body.projects);
-        setProjectId((current) => body.projects.some((p) => p.id === current) ? current : body.projects[0]?.id || "");
-      })
-      .catch(() => setMessage("โหลด Project ไม่สำเร็จ"));
+    let active = true;
+    void request<{ projects: Project[] }>(`/api/projects?workspaceId=${encodeURIComponent(workspaceId)}`)
+      .then((result) => { if (active) setProjects(result.projects); })
+      .catch(() => { if (active) setError("โหลดโปรเจกต์ไม่สำเร็จ โปรดลองอีกครั้ง"); });
+    return () => { active = false; };
   }, [workspaceId]);
 
   useEffect(() => {
-    if (!workspaceId || !projectId) { setTests([]); setTestId(""); return; }
-    void fetch(`/api/tests?workspaceId=${encodeURIComponent(workspaceId)}&projectId=${encodeURIComponent(projectId)}`, { cache: "no-store" })
-      .then((r) => json<{ tests: StudyTest[] }>(r))
-      .then((body) => {
-        setTests(body.tests);
-        setTestId((current) => body.tests.some((t) => t.id === current) ? current : body.tests[0]?.id || "");
-      })
-      .catch(() => setMessage("โหลด Test ไม่สำเร็จ"));
+    if (!workspaceId || !projectId) { setTests([]); return; }
+    let active = true;
+    void request<{ tests: StudyTest[] }>(`/api/tests?workspaceId=${encodeURIComponent(workspaceId)}&projectId=${encodeURIComponent(projectId)}`)
+      .then((result) => { if (active) setTests(result.tests); })
+      .catch(() => { if (active) setError("โหลดแบบทดสอบไม่สำเร็จ โปรดลองอีกครั้ง"); });
+    return () => { active = false; };
   }, [workspaceId, projectId]);
 
-  const loadTasks = useCallback(async (selectedTestId: string) => {
-    if (!selectedTestId) { setTasks([]); return; }
-    const body = await json<{ tasks: Task[] }>(await fetch(`/api/tests/${encodeURIComponent(selectedTestId)}/tasks`, { cache: "no-store" }));
-    setTasks(body.tasks);
-  }, []);
-
-  useEffect(() => { void loadTasks(testId).catch(() => setTasks([])); }, [testId, loadTasks]);
-
-  async function run(label: string, action: () => Promise<void>) {
-    if (working) return;
-    setWorking(true);
-    setMessage("");
-    try { await action(); setMessage(`${label} สำเร็จ`); }
-    catch (error) { setMessage(`${label} ไม่สำเร็จ: ${error instanceof Error ? error.message : "unknown"}`); }
+  async function createWorkspace(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (working || !workspaceName.trim()) return;
+    setWorking(true); setError(""); setMessage("");
+    try {
+      const result = await request<{ workspaceId: string }>("/api/workspaces", { method: "POST", body: JSON.stringify({ name: workspaceName.trim() }) });
+      const refreshed = await request<{ workspaces: Workspace[] }>("/api/workspaces");
+      setWorkspaces(refreshed.workspaces);
+      setWorkspaceId(result.workspaceId);
+      setProjectId(""); setProjects([]); setTests([]); setWorkspaceName("");
+      setMessage("สร้างเวิร์กสเปซแล้ว เลือกหรือสร้างโปรเจกต์ต่อได้เลย");
+    } catch { setError("สร้างเวิร์กสเปซไม่สำเร็จ โปรดตรวจชื่อและลองอีกครั้ง"); }
     finally { setWorking(false); }
   }
 
-  function createWorkspace(event: FormEvent) {
+  async function createProject(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    void run("สร้าง Workspace", async () => {
-      await json(await fetch("/api/workspaces", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: workspaceName }) }));
-      await loadWorkspaces();
-    });
+    if (working || !workspaceId || !projectName.trim()) return;
+    setWorking(true); setError(""); setMessage("");
+    try {
+      const result = await request<{ project: Project }>("/api/projects", { method: "POST", body: JSON.stringify({ workspaceId, name: projectName.trim() }) });
+      setProjects((current) => [...current, result.project]);
+      setProjectId(result.project.id); setTests([]); setProjectName("");
+      setMessage("สร้างโปรเจกต์แล้ว สร้างแบบทดสอบต่อได้เลย");
+    } catch { setError("สร้างโปรเจกต์ไม่สำเร็จ โปรดตรวจชื่อและลองอีกครั้ง"); }
+    finally { setWorking(false); }
   }
 
-  function createProject(event: FormEvent) {
+  async function createTest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    void run("สร้าง Project", async () => {
-      const body = await json<{ project: Project }>(await fetch("/api/projects", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ workspaceId, name: projectName, description: "Internal real-flow validation for MAJOR-A" }) }));
-      setProjects((items) => [body.project, ...items]);
-      setProjectId(body.project.id);
-    });
+    if (working || !workspaceId || !projectId || !testTitle.trim()) return;
+    setWorking(true); setError(""); setMessage("");
+    try {
+      const result = await request<{ test: StudyTest }>("/api/tests", { method: "POST", body: JSON.stringify({ workspaceId, projectId, title: testTitle.trim() }) });
+      window.location.assign(`/builder/${encodeURIComponent(result.test.id)}/prototype`);
+    } catch { setError("สร้างแบบทดสอบไม่สำเร็จ โปรดตรวจชื่อและลองอีกครั้ง"); setWorking(false); }
   }
 
-  function createTest(event: FormEvent) {
-    event.preventDefault();
-    void run("สร้าง Test", async () => {
-      const body = await json<{ test: StudyTest }>(await fetch("/api/tests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ workspaceId, projectId, title: testTitle, description: "Flow Proven real study" }) }));
-      setTests((items) => [body.test, ...items]);
-      setTestId(body.test.id);
-    });
-  }
-
-  function configureTarget(event: FormEvent) {
-    event.preventDefault();
-    void run("ตั้งค่า Test Target", async () => {
-      await json(await fetch(`/api/tests/${encodeURIComponent(testId)}/prototype`, {
-        method: "PUT", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ targetUrl, ownership: "owned", environment: "production" }),
-      }));
-    });
-  }
-
-  function preflightTarget() {
-    if (!testId) return;
-    void run("ตรวจ Target", async () => {
-      await json(await fetch(`/api/tests/${encodeURIComponent(testId)}/prototype`, {
-        method: "POST",
-        cache: "no-store",
-      }));
-    });
-  }
-
-  function createTask(event: FormEvent) {
-    event.preventDefault();
-    void run("เพิ่ม Task", async () => {
-      await json(await fetch(`/api/tests/${encodeURIComponent(testId)}/tasks`, {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ title: taskTitle, scenario, instruction }),
-      }));
-      setTaskTitle(""); setScenario(""); setInstruction("");
-      await loadTasks(testId);
-    });
-  }
-
-  function publish() {
-    void run("Publish", async () => {
-      const body = await json<{ preview: { testVersionId: string } }>(await fetch(`/api/tests/${encodeURIComponent(testId)}/publish`, {
-        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "publish" }),
-      }));
-      setPublishedVersionId(body.preview.testVersionId);
-    });
-  }
-
-  async function signOut() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    window.location.replace("/login");
-  }
-
-  if (!ready) return <main style={{ padding: 32 }}>กำลังโหลด Researcher workspace…</main>;
-
-  const block = { background: "var(--ah-canvas)", border: "1px solid var(--ah-hairline)", borderRadius: 12, padding: 20 } as const;
-  const input = { minHeight: 42, border: "1px solid var(--ah-hairline)", borderRadius: 8, padding: "0 10px", background: "white", width: "100%" } as const;
-
-  return (
-    <main className="shell">
-      <aside className="sidebar">
-        <div className="brand">UT Platform</div>
-        <nav className="nav" aria-label="Researcher menu">
-          <a className="navItem active" href="/projects">Projects</a>
-          <a className="navItem" href="/high-fi">Design QA</a>
-          <button className="navItem" type="button" onClick={() => void signOut()} style={{ border: 0, textAlign: "left", background: "transparent" }}>เริ่ม Session ใหม่</button>
-        </nav>
-      </aside>
-
-      <section className="content">
-        <header className="topbar">
-          <div><p className="eyebrow">MAJOR-A / Flow Proven</p><h1>สร้าง Study จริงบน Production</h1></div>
-        </header>
-
-        {message ? <p role="status" style={{ ...block, marginBottom: 16 }}>{message}</p> : null}
-
-        <div style={{ display: "grid", gap: 16 }}>
-          <section style={block}>
-            <h2 style={{ marginTop: 0 }}>1. Workspace</h2>
-            {workspaces.length ? (
-              <select value={workspaceId} onChange={(e) => setWorkspaceId(e.target.value)} style={input}>
-                {workspaces.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-              </select>
-            ) : (
-              <form onSubmit={createWorkspace} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <input required value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} style={{ ...input, flex: "1 1 260px" }} />
-                <button className="primaryButton" disabled={working}>สร้าง Workspace</button>
-              </form>
-            )}
-          </section>
-
-          <section style={block}>
-            <h2 style={{ marginTop: 0 }}>2. Project</h2>
-            {workspaceId ? <form onSubmit={createProject} style={{ display: "grid", gap: 10 }}>
-              <select value={projectId} onChange={(e) => setProjectId(e.target.value)} style={input}>
-                <option value="">เลือก Project</option>
-                {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <input required value={projectName} onChange={(e) => setProjectName(e.target.value)} style={{ ...input, flex: "1 1 260px" }} />
-                <button className="primaryButton" disabled={working}>สร้าง Project</button>
-              </div>
-            </form> : <p>สร้าง Workspace ก่อน</p>}
-          </section>
-
-          <section style={block}>
-            <h2 style={{ marginTop: 0 }}>3. Test</h2>
-            {projectId ? <form onSubmit={createTest} style={{ display: "grid", gap: 10 }}>
-              <select value={testId} onChange={(e) => setTestId(e.target.value)} style={input}>
-                <option value="">เลือก Test</option>
-                {tests.map((t) => <option key={t.id} value={t.id}>{t.title} — {t.status}</option>)}
-              </select>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <input required value={testTitle} onChange={(e) => setTestTitle(e.target.value)} style={{ ...input, flex: "1 1 260px" }} />
-                <button className="primaryButton" disabled={working}>สร้าง Test</button>
-              </div>
-            </form> : <p>เลือก Project ก่อน</p>}
-          </section>
-
-          <section style={block}>
-            <h2 style={{ marginTop: 0 }}>4. First-party Production Target</h2>
-            {testId ? <form onSubmit={configureTarget} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <input required type="url" value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)} style={{ ...input, flex: "1 1 420px" }} />
-              <button className="primaryButton" disabled={working}>บันทึก Target</button>
-              <button className="primaryButton" type="button" disabled={working} onClick={preflightTarget}>ตรวจ Target</button>
-            </form> : <p>เลือก Test ก่อน</p>}
-          </section>
-
-          <section style={block}>
-            <h2 style={{ marginTop: 0 }}>5. Scenario / Tasks</h2>
-            {testId ? <>
-              <form onSubmit={createTask} style={{ display: "grid", gap: 8 }}>
-                <input required placeholder="ชื่อ Task" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} style={input} />
-                <input placeholder="Scenario" value={scenario} onChange={(e) => setScenario(e.target.value)} style={input} />
-                <textarea placeholder="คำสั่งสำหรับผู้เข้าร่วม" value={instruction} onChange={(e) => setInstruction(e.target.value)} rows={3} style={{ ...input, padding: 10 }} />
-                <button className="primaryButton" disabled={working}>เพิ่ม Task</button>
-              </form>
-              <ol>{tasks.map((task) => <li key={task.id}>{task.ordinal}. {task.title}</li>)}</ol>
-              {tasks.length > 0 ? <p><a className="primaryButton" href={`/builder/${testId}/rules`}>กำหนด Success / Failure Rules</a></p> : null}
-              <p style={{ color: "var(--ah-slate)" }}>Flow Gate ใช้ข้อมูลจริงเท่านั้น; Publish จะผ่านเมื่อทุก Task มี deterministic rule ที่ Target capability รองรับและไม่ขัดแย้งกัน</p>
-            </> : <p>เลือก Test ก่อน</p>}
-          </section>
-
-          <section style={block}>
-            <h2 style={{ marginTop: 0 }}>6. Publish</h2>
-            <button className="primaryButton" type="button" disabled={working || !testId || tasks.length === 0} onClick={publish}>Publish immutable version</button>
-            {publishedVersionId ? <p>Participant link: <a href={`/t/${publishedVersionId}`} target="_blank" rel="noreferrer">{`/t/${publishedVersionId}`}</a></p> : null}
-          </section>
-        </div>
+  return <main className={styles.page}>
+    <header className={styles.header}>
+      <a href="/" className={styles.backLink}>← หน้าหลัก</a>
+      <span className={styles.eyebrow}>Researcher Workspace</span>
+      <h1>สร้างการทดสอบ</h1>
+      <p>เลือกเวิร์กสเปซและโปรเจกต์ แล้วสร้างแบบทดสอบเพื่อกำหนดเป้าหมายและงาน</p>
+    </header>
+    {error ? <p className={styles.error} role="alert">{error}</p> : null}
+    {message ? <p className={styles.notice} role="status">{message}</p> : null}
+    {loading ? <p role="status">กำลังโหลดเวิร์กสเปซ…</p> : <div className={styles.steps}>
+      <section className={styles.card} aria-labelledby="workspace-heading">
+        <div className={styles.stepHeading}><span>1</span><div><h2 id="workspace-heading">เวิร์กสเปซ</h2><p>พื้นที่ทำงานของทีมที่เป็นเจ้าของการทดสอบ</p></div></div>
+        {workspaces.length ? <label className={styles.field} htmlFor="workspace-select">เลือกเวิร์กสเปซ
+          <select id="workspace-select" value={workspaceId} disabled={working} onChange={(event) => { setWorkspaceId(event.target.value); setProjectId(""); setProjects([]); setTests([]); }}>
+            <option value="">เลือกเวิร์กสเปซ</option>
+            {workspaces.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </select>
+        </label> : <p className={styles.helper}>ยังไม่มีเวิร์กสเปซ สร้างพื้นที่ทำงานแรกด้านล่าง</p>}
+        <form className={styles.form} onSubmit={(event) => void createWorkspace(event)}>
+          <label className={styles.field} htmlFor="workspace-name">ชื่อเวิร์กสเปซใหม่
+            <input id="workspace-name" required value={workspaceName} disabled={working} onChange={(event) => setWorkspaceName(event.target.value)} />
+          </label>
+          <button type="submit" className={styles.secondaryButton} disabled={working || !workspaceName.trim()}>สร้างเวิร์กสเปซ</button>
+        </form>
       </section>
-    </main>
-  );
+
+      <section className={styles.card} aria-labelledby="project-heading">
+        <div className={styles.stepHeading}><span>2</span><div><h2 id="project-heading">โปรเจกต์</h2><p>รวมแบบทดสอบของงานเดียวกันไว้ด้วยกัน</p></div></div>
+        {!workspaceId ? <p className={styles.helper}>เลือกเวิร์กสเปซก่อน</p> : <>
+          {projects.length ? <label className={styles.field} htmlFor="project-select">เลือกโปรเจกต์
+            <select id="project-select" value={projectId} disabled={working} onChange={(event) => { setProjectId(event.target.value); setTests([]); }}>
+              <option value="">เลือกโปรเจกต์</option>
+              {projects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+          </label> : <p className={styles.helper}>ยังไม่มีโปรเจกต์ในเวิร์กสเปซนี้</p>}
+          <form className={styles.form} onSubmit={(event) => void createProject(event)}>
+            <label className={styles.field} htmlFor="project-name">ชื่อโปรเจกต์ใหม่
+              <input id="project-name" required value={projectName} disabled={working} onChange={(event) => setProjectName(event.target.value)} />
+            </label>
+            <button type="submit" className={styles.secondaryButton} disabled={working || !projectName.trim()}>สร้างโปรเจกต์</button>
+          </form>
+        </>}
+      </section>
+
+      <section className={styles.card} aria-labelledby="test-heading">
+        <div className={styles.stepHeading}><span>3</span><div><h2 id="test-heading">แบบทดสอบ</h2><p>ตั้งชื่อแล้วไปกำหนดเป้าหมายทดสอบในขั้นถัดไป</p></div></div>
+        {!projectId ? <p className={styles.helper}>เลือกโปรเจกต์ก่อน</p> : <>
+          {tests.length ? <ul className={styles.testList}>{tests.map((item) => <li key={item.id}><div><strong>{item.title}</strong><span>{item.status === "published" ? "เผยแพร่แล้ว" : "ฉบับร่าง"}</span></div><a href={`/builder/${encodeURIComponent(item.id)}/prototype`}>เปิดแบบทดสอบ</a></li>)}</ul> : <p className={styles.helper}>ยังไม่มีแบบทดสอบในโปรเจกต์นี้</p>}
+          <form className={styles.form} onSubmit={(event) => void createTest(event)}>
+            <label className={styles.field} htmlFor="test-title">ชื่อแบบทดสอบใหม่
+              <input id="test-title" required value={testTitle} disabled={working} onChange={(event) => setTestTitle(event.target.value)} />
+            </label>
+            <button type="submit" className={styles.primaryButton} disabled={working || !testTitle.trim()}>{working ? "กำลังดำเนินการ…" : "สร้างและตั้งค่าเป้าหมายทดสอบ"}</button>
+          </form>
+        </>}
+      </section>
+    </div>}
+  </main>;
 }

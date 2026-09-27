@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { availabilityLabel } from "../../../lib/analytics/presentation.ts";
 import type {
   MetricObservation,
   ReportAvailability,
@@ -15,13 +16,6 @@ type LoadState =
   | { status: "ready"; report: UsabilityReport };
 
 type ReportView = "summary" | "evidence";
-
-const availabilityLabels: Record<ReportAvailability, string> = {
-  Available: "พร้อมใช้",
-  Partial: "ข้อมูลบางส่วน",
-  Unsupported: "ไม่รองรับ",
-  "No Data": "ยังไม่มีข้อมูล",
-};
 
 const metricLabels: Record<string, string> = {
   completionRate: "อัตรางานสำเร็จ",
@@ -38,6 +32,19 @@ const severityLabels: Record<string, string> = {
   high: "สูง",
   medium: "กลาง",
   low: "ต่ำ",
+};
+
+const findingStatusLabels: Record<string, string> = {
+  open: "รอดำเนินการ",
+  fixed: "แก้ไขแล้ว",
+  retest_needed: "รอทดสอบซ้ำ",
+  verified: "ยืนยันผลแล้ว",
+  dismissed: "ปิดประเด็น",
+};
+
+const retestStatusLabels: Record<string, string> = {
+  running: "กำลังทดสอบซ้ำ",
+  completed: "ทดสอบซ้ำแล้ว",
 };
 
 const providerLabels: Record<string, string> = {
@@ -110,15 +117,15 @@ function evidenceDestination(report: UsabilityReport, ref: string): string | nul
 }
 
 function AvailabilityBadge({ value }: { value: ReportAvailability }) {
-  return <span className={styles.availability} data-state={value}>{availabilityLabels[value]}</span>;
+  return <span className={styles.availability} data-state={value}>{availabilityLabel(value)}</span>;
 }
 
 function StudyNav({ versionId }: { versionId: string }) {
   return <nav className={styles.studyNav} aria-label="เมนูการวิเคราะห์ของเวอร์ชันนี้">
     <a href={`/results/${versionId}`}>ผลการทดสอบ</a>
-    <a href={`/findings/${versionId}`}>Findings</a>
+    <a href={`/findings/${versionId}`}>ประเด็นที่พบ</a>
     <a href={`/reports/${versionId}`} aria-current="page">รายงาน</a>
-    <a href="#retest">Retest</a>
+    <a href="#retest">ทดสอบซ้ำ</a>
   </nav>;
 }
 
@@ -131,7 +138,7 @@ function MetricCard({ item, report }: { item: MetricObservation; report: Usabili
     <strong>{metricValue(item)}</strong>
     <div className={styles.metricSummary}>
       <span>n={item.sampleSize}</span>
-      {item.technicalBlockedCount > 0 ? <span>{item.technicalBlockedCount} technical block</span> : null}
+      {item.technicalBlockedCount > 0 ? <span>ติดปัญหาทางเทคนิค {item.technicalBlockedCount}</span> : null}
     </div>
     <details className={styles.trace}>
       <summary>วิธีคำนวณและหลักฐาน</summary>
@@ -162,17 +169,17 @@ function StudyContext({ report }: { report: UsabilityReport }) {
   const ctx = report.study.context;
   return <section className={styles.section} id="study-context">
     <div className={styles.sectionHeader}>
-      <div><span className={styles.eyebrow}>บริบทการทดสอบ</span><h2>Study snapshot</h2></div>
-      <span className={styles.versionBadge}>Version {ctx.versionNo ?? "N/A"}</span>
+      <div><span className={styles.eyebrow}>บริบทการทดสอบ</span><h2>แบบทดสอบที่เผยแพร่</h2></div>
+      <span className={styles.versionBadge}>เวอร์ชัน {ctx.versionNo ?? "ไม่ทราบ"}</span>
     </div>
     <div className={styles.studySummary}>
-      <div><span>Target</span><strong>{providerLabel(ctx.target.provider)}</strong></div>
+      <div><span>เป้าหมายทดสอบ</span><strong>{providerLabel(ctx.target.provider)}</strong></div>
       <div><span>ผู้เข้าร่วม</span><strong>{report.study.participantCount}</strong></div>
-      <div><span>Sessions</span><strong>{report.study.sessionCount}</strong></div>
+      <div><span>เซสชัน</span><strong>{report.study.sessionCount}</strong></div>
       <div><span>งานที่นำมาคำนวณ</span><strong>{report.study.eligibleTaskCount}</strong></div>
     </div>
     <details className={styles.advancedDetails}>
-      <summary>รายละเอียดเวอร์ชันและ capability</summary>
+      <summary>ที่มาและรายละเอียดเวอร์ชัน</summary>
       <div className={styles.contextGrid}>
         <div><span>Test Version</span><strong>{ctx.testVersionId}</strong></div>
         <div><span>Environment</span><strong>{ctx.target.environment ?? "—"}</strong></div>
@@ -183,7 +190,7 @@ function StudyContext({ report }: { report: UsabilityReport }) {
       <div className={styles.capabilityGrid}>
         {report.study.capabilityCoverage.length ? report.study.capabilityCoverage.map((item) =>
           <div key={item.capability}><span>{item.capability}</span><AvailabilityBadge value={item.state} /></div>,
-        ) : <p className={styles.muted}>ยังไม่มี capability snapshot ที่อ่านได้</p>}
+        ) : <p className={styles.muted}>ยังไม่มีข้อมูลความสามารถของเป้าหมายทดสอบ</p>}
       </div>
     </details>
   </section>;
@@ -216,22 +223,22 @@ function ExecutiveSummary({ report }: { report: UsabilityReport }) {
   return <section className={styles.section} id="executive-summary">
     <div className={styles.sectionHeader}>
       <div><span className={styles.eyebrow}>สรุปสำหรับตัดสินใจ</span><h2>สิ่งสำคัญที่ควรรู้ตอนนี้</h2></div>
-      <span className={styles.noteBadge}>Findings โดย Researcher</span>
+      <span className={styles.noteBadge}>ประเด็นที่ผู้วิจัยยืนยัน</span>
     </div>
     <div className={styles.summaryStrip}>
-      <div><strong>{report.executiveSummary.totalFindings}</strong><span>Findings ทั้งหมด</span></div>
+      <div><strong>{report.executiveSummary.totalFindings}</strong><span>ประเด็นที่พบทั้งหมด</span></div>
       <div><strong>{report.executiveSummary.criticalHighFindings}</strong><span>ระดับสูงขึ้นไป</span></div>
       <div><strong>{report.executiveSummary.openFindings}</strong><span>ยังต้องดำเนินการ</span></div>
     </div>
     <div className={styles.metricsGrid}>{headline.map((item) => <MetricCard key={item.metricKey} item={item} report={report} />)}</div>
     <div className={styles.decisionHeader}>
-      <div><span className={styles.eyebrow}>Top Findings</span><h3>ปัญหาที่ควรจัดการก่อน</h3></div>
-      <a href="#findings">ดู Findings ทั้งหมด</a>
+      <div><span className={styles.eyebrow}>ประเด็นสำคัญ</span><h3>ปัญหาที่ควรจัดการก่อน</h3></div>
+      <a href="#findings">ดูประเด็นทั้งหมด</a>
     </div>
     {topFindings.length === 0 ? <div className={styles.empty}>
-      <strong>ยังไม่มี Finding ที่ Researcher ยืนยัน</strong>
-      <p>Metric ไม่ถูกแปลงเป็นข้อสรุปอัตโนมัติ ให้สร้าง Finding เมื่อมี evidence เพียงพอ</p>
-      <a className={styles.primaryAction} href={`/findings/${report.study.context.testVersionId}`}>สร้าง Finding</a>
+      <strong>ยังไม่มีประเด็นที่ผู้วิจัยยืนยัน</strong>
+      <p>ระบบไม่สรุปปัญหาจากตัวเลขอัตโนมัติ เมื่อมีหลักฐานเพียงพอให้บันทึกประเด็นที่พบ</p>
+      <a className={styles.primaryAction} href={`/findings/${report.study.context.testVersionId}`}>บันทึกประเด็นที่พบ</a>
     </div> : <div className={styles.topFindings}>{topFindings.map((item) => <TopFinding key={item.finding.id} item={item} report={report} />)}</div>}
   </section>;
 }
@@ -239,23 +246,23 @@ function ExecutiveSummary({ report }: { report: UsabilityReport }) {
 function TaskOutcomes({ report }: { report: UsabilityReport }) {
   return <section className={styles.section} id="task-outcomes">
     <div className={styles.sectionHeader}>
-      <div><span className={styles.eyebrow}>Task Analysis</span><h2>ผลลัพธ์รายงาน</h2></div>
+      <div><span className={styles.eyebrow}>วิเคราะห์รายงาน</span><h2>ผลลัพธ์รายงาน</h2></div>
       <span className={styles.versionBadge}>{report.tasks.length} งาน</span>
     </div>
     <div className={styles.taskStack}>
-      {report.tasks.length === 0 ? <div className={styles.empty}>ยังไม่มี Task ในเวอร์ชันนี้</div> : report.tasks.map((task) => {
+      {report.tasks.length === 0 ? <div className={styles.empty}>ยังไม่มีงานทดสอบในเวอร์ชันนี้</div> : report.tasks.map((task) => {
         const completion = observation(task, "completionRate");
         const duration = observation(task, "medianSuccessfulDurationMs");
         const seq = observation(task, "seqMedian");
         const relatedFindings = report.findings.filter((item) => item.finding.taskId === task.taskId);
         return <details className={styles.taskCard} key={task.taskId}>
           <summary className={styles.taskSummary}>
-            <div><span>Task {task.ordinal}</span><strong>{task.title}</strong></div>
+            <div><span>งาน {task.ordinal}</span><strong>{task.title}</strong></div>
             <div className={styles.taskSnapshot}>
               <span><b>{completion ? metricValue(completion) : "—"}</b> สำเร็จ</span>
               <span><b>{duration ? metricValue(duration) : "—"}</b> เวลา</span>
               <span><b>{seq ? metricValue(seq) : "—"}</b> SEQ</span>
-              <span><b>{relatedFindings.length}</b> Findings</span>
+              <span><b>{relatedFindings.length}</b> ประเด็นที่พบ</span>
             </div>
           </summary>
           <div className={styles.taskDetails}>
@@ -273,14 +280,14 @@ function TaskOutcomes({ report }: { report: UsabilityReport }) {
 function Findings({ report }: { report: UsabilityReport }) {
   return <section className={styles.section} id="findings">
     <div className={styles.sectionHeader}>
-      <div><span className={styles.eyebrow}>Findings</span><h2>จาก Evidence ไปสู่สิ่งที่ควรแก้</h2></div>
-      <a className={styles.actionLink} href={`/findings/${report.study.context.testVersionId}`}>จัดการ Findings</a>
+      <div><span className={styles.eyebrow}>ประเด็นที่พบ</span><h2>จากหลักฐานไปสู่สิ่งที่ควรแก้</h2></div>
+      <a className={styles.actionLink} href={`/findings/${report.study.context.testVersionId}`}>จัดการประเด็นที่พบ</a>
     </div>
     <div className={styles.findingStack}>
       {report.findings.length === 0 ? <div className={styles.empty}>
-        <strong>ยังไม่มี Finding</strong>
-        <p>ระบบจะไม่สรุปสาเหตุหรือ severity จาก metric โดยอัตโนมัติ</p>
-        <a className={styles.primaryAction} href={`/findings/${report.study.context.testVersionId}`}>สร้าง Finding จาก Evidence</a>
+        <strong>ยังไม่มีประเด็นที่พบ</strong>
+        <p>ระบบไม่สรุปสาเหตุหรือความรุนแรงจากตัวชี้วัดโดยอัตโนมัติ</p>
+        <a className={styles.primaryAction} href={`/findings/${report.study.context.testVersionId}`}>บันทึกประเด็นจากหลักฐาน</a>
       </div> : report.findings.map((item) =>
         <article className={styles.findingCard} key={item.finding.id} id={`finding-${anchorId(item.finding.id)}`}>
           <header>
@@ -292,29 +299,29 @@ function Findings({ report }: { report: UsabilityReport }) {
               <h3>{item.finding.title}</h3>
               <p className={styles.findingProblem}>{item.finding.problem}</p>
             </div>
-            <span className={styles.statusBadge}>{item.finding.status}</span>
+            <span className={styles.statusBadge}>{findingStatusLabels[item.finding.status] ?? item.finding.status}</span>
           </header>
           <div className={styles.interpretationBlock}>
-            <span>การตีความของ Researcher</span>
+            <span>การตีความของผู้วิจัย</span>
             <p>{item.finding.researcherInterpretation ?? "ยังไม่ได้ระบุ"}</p>
           </div>
           <div className={styles.actionBox}>
-            <span>Recommendation</span>
+            <span>ข้อเสนอแนะ</span>
             <strong>{item.finding.recommendation ?? "ยังไม่ได้ระบุ"}</strong>
           </div>
-          {item.metricObservation ? <div className={styles.findingMetric}><MetricCard item={item.metricObservation} report={report} /></div> : <div className={styles.warning}>Metric snapshot ของ Finding นี้ยัง map กลับ Metric Observation ปัจจุบันไม่ได้</div>}
+          {item.metricObservation ? <div className={styles.findingMetric}><MetricCard item={item.metricObservation} report={report} /></div> : <div className={styles.warning}>ยังเชื่อมตัวชี้วัดของประเด็นนี้กับหลักฐานในเวอร์ชันปัจจุบันไม่ได้</div>}
           <details className={styles.evidenceBundle}>
-            <summary>ดู Evidence Bundle · {item.evidence.length} records · {item.evidenceRefs.length} refs</summary>
+            <summary>ดูชุดหลักฐาน · {item.evidence.length} รายการ · {item.evidenceRefs.length} แหล่งอ้างอิง</summary>
             <div className={styles.evidenceList}>
-              {item.evidence.length === 0 ? <p className={styles.muted}>ยังไม่มี linked evidence record เพิ่มเติม</p> : item.evidence.map((evidence) => {
+              {item.evidence.length === 0 ? <p className={styles.muted}>ยังไม่มีหลักฐานเพิ่มเติมที่เชื่อมกับประเด็นนี้</p> : item.evidence.map((evidence) => {
                 const sessionHref = evidence.sessionId ? `#session-${anchorId(evidence.sessionId)}` : null;
                 const eventHref = evidence.eventId ? `#evidence-${anchorId(evidence.eventId)}` : null;
                 const answerHref = evidence.answerId ? `#evidence-${anchorId(evidence.answerId)}` : null;
                 return <div key={evidence.id}>
                   <strong>{evidence.type}</strong>
-                  {sessionHref ? <a href={sessionHref}>เปิด Session</a> : null}
-                  {eventHref ? <a href={eventHref}>ไปที่ Event</a> : null}
-                  {answerHref ? <a href={answerHref}>ไปที่ Feedback</a> : null}
+                  {sessionHref ? <a href={sessionHref}>เปิดเซสชัน</a> : null}
+                  {eventHref ? <a href={eventHref}>ไปที่เหตุการณ์</a> : null}
+                  {answerHref ? <a href={answerHref}>ไปที่คำตอบ</a> : null}
                   {Object.keys(evidence.payload).length ? <details><summary>ดู payload</summary><pre>{JSON.stringify(evidence.payload, null, 2)}</pre></details> : null}
                 </div>;
               })}
@@ -341,29 +348,29 @@ function EvidenceExplorer({ report }: { report: UsabilityReport }) {
 
   return <section className={styles.section} id="evidence-explorer">
     <div className={styles.sectionHeader}>
-      <div><span className={styles.eyebrow}>Evidence View</span><h2>ตรวจย้อนกลับถึงสิ่งที่เกิดขึ้นจริง</h2></div>
+      <div><span className={styles.eyebrow}>ตรวจหลักฐาน</span><h2>ตรวจย้อนกลับถึงสิ่งที่เกิดขึ้นจริง</h2></div>
       <AvailabilityBadge value={report.evidenceExplorer.heatmapStatus} />
     </div>
     <div className={styles.summaryStrip}>
-      <div><strong>{report.evidenceExplorer.sessions.length}</strong><span>Sessions</span></div>
-      <div><strong>{report.evidenceExplorer.paths.length}</strong><span>Task paths</span></div>
-      <div><strong>{report.evidenceExplorer.feedbackCount}</strong><span>Feedback</span></div>
+      <div><strong>{report.evidenceExplorer.sessions.length}</strong><span>เซสชัน</span></div>
+      <div><strong>{report.evidenceExplorer.paths.length}</strong><span>เส้นทางการทำงาน</span></div>
+      <div><strong>{report.evidenceExplorer.feedbackCount}</strong><span>คำตอบ</span></div>
     </div>
     <div className={styles.explorerColumns}>
       <div>
-        <h3>Participant journey</h3>
-        {sessions.length === 0 ? <p className={styles.muted}>ยังไม่มี session evidence</p> : sessions.map((session) =>
+        <h3>การทำงานของผู้เข้าร่วม</h3>
+        {sessions.length === 0 ? <p className={styles.muted}>ยังไม่มีหลักฐานจากเซสชัน</p> : sessions.map((session) =>
           <details className={styles.session} key={session.sessionId} id={`session-${anchorId(session.sessionId)}`}>
             <summary>
-              <span>Session {session.sessionId.slice(0, 8)}</span>
+              <span>เซสชัน {session.sessionId.slice(0, 8)}</span>
               <b>{session.terminal ?? "กำลังดำเนินการ"}</b>
             </summary>
             <div className={styles.timeline}>
               {session.timeline.map((item) => <div key={`${item.kind}:${item.id}`} id={`evidence-${anchorId(item.id)}`} className={styles.timelineItem}>
                 <time dateTime={item.occurredAt}>{new Date(item.occurredAt).toLocaleString("th-TH")}</time>
                 <div>
-                  <strong>{eventLabels[item.eventType] ?? (item.kind === "feedback" ? "Feedback" : "เหตุการณ์")}</strong>
-                  <span>{item.taskId ? `Task ${item.taskId.slice(0, 8)}` : "ระดับ Session"}{item.screenId ? ` · Screen ${item.screenId}` : ""}</span>
+                  <strong>{eventLabels[item.eventType] ?? (item.kind === "feedback" ? "คำตอบ" : "เหตุการณ์")}</strong>
+                  <span>{item.taskId ? `งาน ${item.taskId.slice(0, 8)}` : "ทั้งเซสชัน"}{item.screenId ? ` · หน้าจอ ${item.screenId}` : ""}</span>
                 </div>
                 <details>
                   <summary>รายละเอียดเทคนิค</summary>
@@ -373,13 +380,13 @@ function EvidenceExplorer({ report }: { report: UsabilityReport }) {
             </div>
           </details>,
         )}
-        {report.evidenceExplorer.sessions.length > 5 ? <button className={styles.secondaryButton} type="button" onClick={() => setShowAllSessions((value) => !value)}>{showAllSessions ? "แสดงน้อยลง" : `แสดงทั้งหมด ${report.evidenceExplorer.sessions.length} Sessions`}</button> : null}
+        {report.evidenceExplorer.sessions.length > 5 ? <button className={styles.secondaryButton} type="button" onClick={() => setShowAllSessions((value) => !value)}>{showAllSessions ? "แสดงน้อยลง" : `แสดงเซสชันทั้งหมด ${report.evidenceExplorer.sessions.length} รายการ`}</button> : null}
       </div>
       <div>
         <h3>เส้นทางการใช้งาน</h3>
-        {paths.length === 0 ? <p className={styles.muted}>ยังไม่มี trusted screen path evidence</p> : paths.map((path) =>
+        {paths.length === 0 ? <p className={styles.muted}>ยังไม่มีหลักฐานเส้นทางหน้าจอที่ตรวจสอบได้</p> : paths.map((path) =>
           <details className={styles.session} key={`${path.sessionId}:${path.taskId}`}>
-            <summary><span>Session {path.sessionId.slice(0, 8)}</span><b>{path.terminalOutcome ?? "active"}</b></summary>
+            <summary><span>เซสชัน {path.sessionId.slice(0, 8)}</span><b>{path.terminalOutcome ? eventLabels[path.terminalOutcome] ?? path.terminalOutcome : "กำลังทำ"}</b></summary>
             <div className={styles.pathInfo}>
               <p><b>เส้นทางที่คาดไว้:</b> {path.expectedPath.length ? path.expectedPath.join(" → ") : "ไม่ได้กำหนด"}</p>
               <p><b>เส้นทางจริง:</b> {path.actualPath.length ? path.actualPath.join(" → ") : "ยังไม่มีข้อมูล"}</p>
@@ -387,11 +394,11 @@ function EvidenceExplorer({ report }: { report: UsabilityReport }) {
             </div>
           </details>,
         )}
-        {report.evidenceExplorer.paths.length > 5 ? <button className={styles.secondaryButton} type="button" onClick={() => setShowAllPaths((value) => !value)}>{showAllPaths ? "แสดงน้อยลง" : `แสดงทั้งหมด ${report.evidenceExplorer.paths.length} Paths`}</button> : null}
+        {report.evidenceExplorer.paths.length > 5 ? <button className={styles.secondaryButton} type="button" onClick={() => setShowAllPaths((value) => !value)}>{showAllPaths ? "แสดงน้อยลง" : `แสดงเส้นทางทั้งหมด ${report.evidenceExplorer.paths.length} รายการ`}</button> : null}
         <div className={styles.heatmapState}>
-          <div><b>Heatmap</b><AvailabilityBadge value={report.evidenceExplorer.heatmapStatus} /></div>
-          <p>{report.evidenceExplorer.heatmapReason ?? "ใช้เฉพาะ canonical coordinates ที่ผ่าน capability gate"}</p>
-          <a href={`/results/${report.study.context.testVersionId}`}>เปิด Heatmap ใน Results</a>
+          <div><b>ฮีตแมป</b><AvailabilityBadge value={report.evidenceExplorer.heatmapStatus} /></div>
+          <p>{report.evidenceExplorer.heatmapStatus === "Unsupported" ? "เป้าหมายทดสอบนี้ไม่ส่งตำแหน่งที่ตรวจสอบได้" : report.evidenceExplorer.heatmapStatus === "No Data" ? "ยังไม่มีหลักฐานตำแหน่งสำหรับฮีตแมป" : "แสดงเฉพาะตำแหน่งที่ตรวจสอบได้จากเป้าหมายทดสอบ"}</p>
+          <a href={`/results/${report.study.context.testVersionId}`}>เปิดฮีตแมปในผลการทดสอบ</a>
         </div>
       </div>
     </div>
@@ -401,16 +408,16 @@ function EvidenceExplorer({ report }: { report: UsabilityReport }) {
 function Methodology({ report }: { report: UsabilityReport }) {
   return <section className={styles.section} id="methodology">
     <div className={styles.sectionHeader}>
-      <div><span className={styles.eyebrow}>Methodology</span><h2>กติกาการตีความข้อมูล</h2></div>
+      <div><span className={styles.eyebrow}>วิธีอ่านผล</span><h2>กติกาการตีความข้อมูล</h2></div>
     </div>
     <div className={styles.methodGrid}>
-      <div><strong>No Data ≠ 0</strong><p>ค่าศูนย์จะแสดงเมื่อมี evidence และ denominator ที่รองรับเท่านั้น</p></div>
-      <div><strong>Technical block แยกจาก usability</strong><p>ปัญหาการเข้าถึงหรือ provider failure ไม่ถูกรวมเป็น usability failure</p></div>
-      <div><strong>Finding ต้องมาจาก Researcher</strong><p>Metric anomaly ไม่ถูกเปลี่ยนเป็น cause, severity หรือ recommendation อัตโนมัติ</p></div>
-      <div><strong>Exact version only</strong><p>ทุก claim ผูกกับ published test version และ target snapshot เดียวกัน</p></div>
+      <div><strong>ไม่มีข้อมูลต่างจากค่า 0</strong><p>ระบบจะแสดงค่า 0 เมื่อมีหลักฐานและจำนวนตัวอย่างที่คำนวณได้เท่านั้น</p></div>
+      <div><strong>แยกปัญหาทางเทคนิค</strong><p>ปัญหาการเข้าถึงเป้าหมายทดสอบไม่นับเป็นความล้มเหลวด้านการใช้งาน</p></div>
+      <div><strong>ผู้วิจัยยืนยันประเด็นที่พบ</strong><p>ระบบไม่สรุปสาเหตุหรือความรุนแรงจากตัวเลขเพียงอย่างเดียว</p></div>
+      <div><strong>อ้างอิงเวอร์ชันเดียวกัน</strong><p>ข้อสรุปทุกข้อผูกกับแบบทดสอบที่เผยแพร่และเป้าหมายทดสอบเวอร์ชันเดียวกัน</p></div>
     </div>
     <details className={styles.advancedDetails}>
-      <summary>Capability coverage</summary>
+      <summary>ความสามารถในการเก็บหลักฐาน</summary>
       <div className={styles.capabilityGrid}>{report.study.capabilityCoverage.map((item) =>
         <div key={item.capability}><span>{item.capability}</span><AvailabilityBadge value={item.state} /></div>,
       )}</div>
@@ -421,20 +428,20 @@ function Methodology({ report }: { report: UsabilityReport }) {
 function Retest({ report }: { report: UsabilityReport }) {
   return <section className={styles.section} id="retest">
     <div className={styles.sectionHeader}>
-      <div><span className={styles.eyebrow}>Retest</span><h2>ก่อนแก้เทียบกับหลังแก้</h2></div>
-      <span className={styles.versionBadge}>{report.retests.length} comparisons</span>
+      <div><span className={styles.eyebrow}>ทดสอบซ้ำ</span><h2>ก่อนแก้เทียบกับหลังแก้</h2></div>
+      <span className={styles.versionBadge}>เปรียบเทียบ {report.retests.length} รายการ</span>
     </div>
     {report.retests.length === 0 ? <div className={styles.empty}>
-      <strong>ยังไม่มี Retest comparison</strong>
-      <p>เมื่อมีเวอร์ชัน Retest ระบบจะแสดง baseline, retest, sample size และ technical blocks โดยไม่สรุป significance เอง</p>
+      <strong>ยังไม่มีการเปรียบเทียบผลทดสอบซ้ำ</strong>
+      <p>เมื่อมีผลทดสอบหลังแก้ไข ระบบจะแสดงค่าก่อนและหลังพร้อมจำนวนตัวอย่าง โดยไม่สรุปนัยสำคัญทางสถิติเอง</p>
     </div> : <div className={styles.retestGrid}>
       {report.retests.map((item) => <article key={item.retestId} className={styles.retestCard}>
-        <header><strong>{metricLabels[item.comparison.metricKey] ?? item.comparison.metricKey}</strong><span>{item.status}</span></header>
+        <header><strong>{metricLabels[item.comparison.metricKey] ?? item.comparison.metricKey}</strong><span>{retestStatusLabels[item.status] ?? item.status}</span></header>
         <div className={styles.retestValues}>
-          <div><span>Baseline</span><strong>{item.comparison.baseline.value ?? "No Data"}</strong><small>n={item.comparison.baseline.sampleSize} · blocks={item.comparison.baseline.technicalBlockedCount}</small></div>
-          <div><span>Retest</span><strong>{item.comparison.retest.value ?? "No Data"}</strong><small>n={item.comparison.retest.sampleSize} · blocks={item.comparison.retest.technicalBlockedCount}</small></div>
+          <div><span>ก่อนแก้</span><strong>{item.comparison.baseline.value ?? "ยังไม่มีข้อมูล"}</strong><small>n={item.comparison.baseline.sampleSize} · ติดปัญหาทางเทคนิค {item.comparison.baseline.technicalBlockedCount}</small></div>
+          <div><span>หลังแก้</span><strong>{item.comparison.retest.value ?? "ยังไม่มีข้อมูล"}</strong><small>n={item.comparison.retest.sampleSize} · ติดปัญหาทางเทคนิค {item.comparison.retest.technicalBlockedCount}</small></div>
         </div>
-        <p>Absolute delta: <b>{item.comparison.absoluteDelta ?? "N/A"}</b> · Relative delta: <b>{item.comparison.relativeDeltaPercent === null ? "N/A" : `${Math.round(item.comparison.relativeDeltaPercent * 10) / 10}%`}</b></p>
+        <p>ผลต่าง: <b>{item.comparison.absoluteDelta ?? "ยังไม่มีข้อมูล"}</b> · เปลี่ยนแปลงเทียบกับก่อนแก้: <b>{item.comparison.relativeDeltaPercent === null ? "ยังไม่มีข้อมูล" : `${Math.round(item.comparison.relativeDeltaPercent * 10) / 10}%`}</b></p>
       </article>)}
     </div>}
   </section>;
@@ -466,22 +473,22 @@ export default function ReportPage({ params }: { params: Promise<{ testVersionId
     return () => controller.abort();
   }, [testVersionId]);
 
-  const title = useMemo(() => testVersionId ? `Usability Report · ${testVersionId.slice(0, 8)}` : "Usability Report", [testVersionId]);
+  const title = useMemo(() => testVersionId ? `รายงานการทดสอบ · ${testVersionId.slice(0, 8)}` : "รายงานการทดสอบ", [testVersionId]);
 
   return <main className={styles.page}>
     <a className={styles.skipLink} href="#report-content">ข้ามไปเนื้อหารายงาน</a>
     <header className={styles.hero}>
       <div>
-        <span className={styles.eyebrow}>Stage 12 · Understand</span>
+        <span className={styles.eyebrow}>สรุปผลจากหลักฐาน</span>
         <h1>{title}</h1>
-        <p>สรุปสิ่งที่เกิดขึ้น สิ่งที่ควรแก้ และหลักฐานที่รองรับ โดยคงการ trace กลับ exact version ไว้ครบ</p>
+        <p>สรุปสิ่งที่เกิดขึ้น สิ่งที่ควรแก้ และหลักฐานที่รองรับในเวอร์ชันนี้</p>
       </div>
       {testVersionId ? <StudyNav versionId={testVersionId} /> : null}
     </header>
 
     <div className={styles.viewSwitch} role="group" aria-label="รูปแบบการดูรายงาน">
       <button type="button" aria-pressed={view === "summary"} className={view === "summary" ? styles.viewActive : styles.viewButton} onClick={() => setView("summary")}>สรุปเพื่อการตัดสินใจ</button>
-      <button type="button" aria-pressed={view === "evidence"} className={view === "evidence" ? styles.viewActive : styles.viewButton} onClick={() => setView("evidence")}>Evidence & Methodology</button>
+      <button type="button" aria-pressed={view === "evidence"} className={view === "evidence" ? styles.viewActive : styles.viewButton} onClick={() => setView("evidence")}>หลักฐานและวิธีอ่านผล</button>
     </div>
 
     {state.status === "loading" ? <div className={styles.state} role="status" aria-live="polite">กำลังสังเคราะห์รายงานจากหลักฐาน…</div> : null}
