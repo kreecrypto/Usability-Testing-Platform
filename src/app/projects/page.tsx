@@ -42,7 +42,13 @@ export default function ProjectsPage() {
       if (session.status === 401) { window.location.assign("/login"); return; }
       if (!session.ok) throw new Error("session_unavailable");
       const result = await request<{ workspaces: Workspace[] }>("/api/workspaces");
-      if (active) setWorkspaces(result.workspaces);
+      if (active) {
+        setWorkspaces(result.workspaces);
+        const requestedWorkspaceId = new URLSearchParams(window.location.search).get("workspaceId");
+        if (requestedWorkspaceId && result.workspaces.some((item) => item.id === requestedWorkspaceId)) {
+          setWorkspaceId(requestedWorkspaceId);
+        }
+      }
     })().catch(() => { if (active) setError("เปิดรายการเวิร์กสเปซไม่สำเร็จ โปรดลองโหลดหน้าใหม่"); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -52,7 +58,14 @@ export default function ProjectsPage() {
     if (!workspaceId) { setProjects([]); setProjectId(""); return; }
     let active = true;
     void request<{ projects: Project[] }>(`/api/projects?workspaceId=${encodeURIComponent(workspaceId)}`)
-      .then((result) => { if (active) setProjects(result.projects); })
+      .then((result) => {
+        if (!active) return;
+        setProjects(result.projects);
+        const requestedProjectId = new URLSearchParams(window.location.search).get("projectId");
+        if (requestedProjectId && result.projects.some((item) => item.id === requestedProjectId)) {
+          setProjectId(requestedProjectId);
+        }
+      })
       .catch(() => { if (active) setError("โหลดโปรเจกต์ไม่สำเร็จ โปรดลองอีกครั้ง"); });
     return () => { active = false; };
   }, [workspaceId]);

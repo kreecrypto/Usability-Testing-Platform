@@ -1,0 +1,14 @@
+.section { margin-top: var(--ah-space-32); }
+.heading { display: flex; justify-content: space-between; align-items: end; gap: var(--ah-space-16); margin-bottom: var(--ah-space-16); }
+.heading h2 { margin: var(--ah-space-4) 0 0; }
+.heading a, .card a, .state a { color: var(--ah-primary); font-weight: 700; }
+.state, .card { padding: var(--ah-space-24); border: 1px solid var(--ah-hairline); border-radius: var(--ah-radius-lg); background: var(--ah-canvas); }
+.state p, .card p { margin: 0 0 var(--ah-space-12); }
+.state button { min-height: 44px; border: 1px solid var(--ah-primary); border-radius: var(--ah-radius-sm); background: var(--ah-canvas); color: var(--ah-primary); padding: 0 var(--ah-space-16); }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ah-space-16); }
+.card h3 { margin: 0 0 var(--ah-space-12); }
+.card ul { margin: 0; padding: 0; list-style: none; }
+.card li { display: flex; justify-content: space-between; align-items: baseline; gap: var(--ah-space-12); padding: var(--ah-space-12) 0; border-top: 1px solid var(--ah-hairline); }
+.card li span { color: var(--ah-slate); font-size: var(--ah-type-body-sm-size); white-space: nowrap; }
+.card li a { overflow-wrap: anywhere; }
+@media (max-width: 700px) { .grid { grid-template-columns: 1fr; } .heading { align-items: start; flex-direction: column; } }
