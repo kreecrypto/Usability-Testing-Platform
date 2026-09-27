@@ -15,7 +15,7 @@ type Target = Readonly<{
   snapshotVersion: 1;
 }>;
 type Draft = Readonly<{ id: string; workspaceId: string; testId: string; versionNo: number; target: Target }>;
-type RequestState = "idle" | "validating" | "valid" | "saving" | "saved" | "error";
+type RequestState = "idle" | "validating" | "valid" | "saving" | "preflighting" | "saved" | "error";
 const capabilityLabels = { access: "การเข้าถึง", embed: "การแสดงในหน้า", instrumentation: "การบันทึกพฤติกรรม", screen: "การเปลี่ยนหน้าจอ", path: "เส้นทาง", pointer: "การคลิกหรือแตะ", scroll: "การเลื่อน", coordinates: "ตำแหน่งคลิก" } as const;
 
 async function jsonRequest<T>(url: string, init?: RequestInit): Promise<T> {
@@ -24,6 +24,34 @@ async function jsonRequest<T>(url: string, init?: RequestInit): Promise<T> {
   if (response.status === 401) { window.location.assign("/login"); throw new Error("authentication_required"); }
   if (!response.ok) throw new Error(typeof body.message === "string" ? body.message : String(body.error ?? "request_failed"));
   return body as T;
+}
+
+function waitForLiveOwnedBridge(targetUrl: string): Promise<void> {
+  const expectedOrigin = new URL(targetUrl).origin;
+  const opened = window.open("about:blank", "utp-owned-target-preflight");
+  if (!opened) return Promise.reject(new Error("target_window_blocked"));
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (error?: Error) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      window.removeEventListener("message", onMessage);
+      try { opened.close(); } catch { /* browser may already have closed it */ }
+      if (error) reject(error); else resolve();
+    };
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== expectedOrigin || event.source !== opened) return;
+      const payload = event.data;
+      if (!payload || typeof payload !== "object") return;
+      if (payload.protocol === "utp:first-party-web" && payload.version === 1 && payload.type === "ready" &&
+        payload.data?.bridgeVersion === "first-party-web-v1") finish();
+    };
+    const timeout = window.setTimeout(() => finish(new Error("target_bridge_timeout")), 10000);
+    window.addEventListener("message", onMessage);
+    try { opened.location.href = targetUrl; }
+    catch { finish(new Error("target_navigation_failed")); }
+  });
 }
 
 export default function PrototypeImportClient({ testId }: { testId: string }) {
@@ -39,7 +67,10 @@ export default function PrototypeImportClient({ testId }: { testId: string }) {
     let active = true;
     void jsonRequest<{ draft: Draft | null }>(`/api/tests/${encodeURIComponent(testId)}/prototype`).then(({ draft: loaded }) => {
       if (!active || !loaded) return;
-      setDraft(loaded); setTarget(loaded.target); setTargetUrl(loaded.target.sourceUrl); setState("saved");
+      setDraft(loaded); setTarget(loaded.target); setTargetUrl(loaded.target.sourceUrl);
+      setOwnership(loaded.target.provider === "first_party_web" ? "owned" : "external");
+      if (loaded.target.environment === "uat" || loaded.target.environment === "production") setEnvironment(loaded.target.environment);
+      setState("saved");
       setMessage(`โหลดเป้าหมายทดสอบของฉบับร่างเวอร์ชัน ${loaded.versionNo} แล้ว`);
     }).catch((error) => { if (!active || String(error).includes("authentication_required")) return; setState("error"); setMessage("โหลดเป้าหมายทดสอบของฉบับร่างไม่สำเร็จ"); });
     return () => { active = false; };
@@ -64,7 +95,21 @@ export default function PrototypeImportClient({ testId }: { testId: string }) {
     } catch { setState("error"); setMessage("บันทึกเป้าหมายทดสอบไม่สำเร็จ โปรดลองอีกครั้ง"); }
   }
 
-  const busy = state === "validating" || state === "saving";
+  async function verifyOwnedTarget() {
+    if (!draft || draft.target.provider !== "first_party_web") return;
+    setState("preflighting"); setMessage(null);
+    try {
+      await waitForLiveOwnedBridge(draft.target.sourceUrl);
+      const result = await jsonRequest<{ draft: Draft }>(`/api/tests/${encodeURIComponent(testId)}/prototype`, { method: "POST" });
+      setDraft(result.draft); setTarget(result.draft.target); setState("saved");
+      setMessage("ตรวจการเชื่อมต่อเว็บไซต์แล้ว พร้อมกำหนดงานและตรวจสอบก่อนเผยแพร่");
+    } catch {
+      setState("error");
+      setMessage("ยังยืนยันเว็บนี้ไม่ได้ โปรดตรวจว่าเว็บเข้าถึงได้และติดตั้งการเชื่อมต่อที่ผู้ดูแลอนุมัติ แล้วลองอีกครั้ง");
+    }
+  }
+
+  const busy = state === "validating" || state === "saving" || state === "preflighting";
   const providerLabel = target?.provider === "figma_prototype" ? "Figma Prototype" : target?.provider === "first_party_web" ? "เว็บไซต์ของทีม" : target ? "เว็บไซต์ภายนอก" : "—";
   const embedUrl = target?.provider === "figma_prototype" ? String(target.providerConfig.embedUrl ?? "") : "";
 
@@ -82,6 +127,6 @@ export default function PrototypeImportClient({ testId }: { testId: string }) {
       {target.capabilities.reasons.length ? <div className={styles.notice} role="status">มีข้อจำกัดบางอย่างที่ต้องตรวจสอบก่อนเผยแพร่<details><summary>รายละเอียดสำหรับผู้ดูแล</summary>{target.capabilities.reasons.join(" ")}</details></div> : null}
       {embedUrl ? <div className={styles.previewFrame}><iframe title="พรีวิวเป้าหมายทดสอบ" src={embedUrl} allowFullScreen loading="lazy" referrerPolicy="strict-origin-when-cross-origin" /></div> : <div className={styles.empty}>เป้าหมายทดสอบนี้จะเปิดแยกจากหน้าแบบทดสอบ ระบบจะแสดงเฉพาะหลักฐานที่ตรวจสอบได้</div>}</> : <div className={styles.empty}>เพิ่ม URL แล้วกดตรวจสอบเพื่อดูความพร้อม</div>}
     </section>
-    <section className={styles.card} aria-labelledby="save-title"><div className={styles.sectionHeading}><div><h2 id="save-title">3. บันทึกลงฉบับร่าง</h2><p>บันทึกเป้าหมายทดสอบไว้กับฉบับร่าง ระบบจะตรวจความพร้อมอีกครั้งก่อนเผยแพร่</p></div>{draft ? <span className={styles.status}>ฉบับร่าง v{draft.versionNo}</span> : null}</div><button className={styles.primaryButton} type="button" onClick={save} disabled={!target || busy}>{state === "saving" ? "กำลังบันทึก…" : "บันทึกเป้าหมายทดสอบ"}</button>{draft && !busy ? <p><a href={`/builder/${encodeURIComponent(testId)}/tasks`}>ไปตั้งค่างานทดสอบ →</a></p> : null}</section>
+    <section className={styles.card} aria-labelledby="save-title"><div className={styles.sectionHeading}><div><h2 id="save-title">3. บันทึกลงฉบับร่าง</h2><p>บันทึกเป้าหมายทดสอบไว้กับฉบับร่าง ระบบจะตรวจความพร้อมอีกครั้งก่อนเผยแพร่</p></div>{draft ? <span className={styles.status}>ฉบับร่าง v{draft.versionNo}</span> : null}</div><button className={styles.primaryButton} type="button" onClick={save} disabled={!target || busy}>{state === "saving" ? "กำลังบันทึก…" : "บันทึกเป้าหมายทดสอบ"}</button>{draft?.target.provider === "first_party_web" && draft.target.capabilities.publishBlocked ? <p><button type="button" onClick={() => void verifyOwnedTarget()} disabled={busy}>{state === "preflighting" ? "กำลังตรวจการเชื่อมต่อ…" : "ตรวจการเชื่อมต่อเว็บ UAT"}</button></p> : null}{draft && !busy ? <p><a href={`/builder/${encodeURIComponent(testId)}/tasks`}>ไปตั้งค่างานทดสอบ →</a></p> : null}</section>
   </main>;
 }

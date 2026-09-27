@@ -5,7 +5,7 @@ import styles from "./review-publish.module.css";
 
 type Task = { id: string; ordinal: number; title: string; scenario: string | null; instruction: string | null; timeoutSeconds: number | null; successRule: Record<string, unknown>; failureRule: Record<string, unknown>; postTaskQuestions: Record<string, unknown> };
 type FunnelConfig = { version: "screen-funnel-v1"; screenIds: string[] };
-type Preview = { testId: string; testVersionId: string; versionNo: number; lifecycleStatus: "draft" | "published"; sourceUrl: string; embedUrl: string; fileKey: string; startNodeId: string; funnelConfig: FunnelConfig | null; tasks: Task[] };
+type Preview = { testId: string; testVersionId: string; versionNo: number; lifecycleStatus: "draft" | "published"; target: { provider: "figma_prototype" | "first_party_web" | "external_web"; sourceUrl: string; environment: "uat" | "production" | "external" | null; providerConfig: Record<string, unknown> }; funnelConfig: FunnelConfig | null; tasks: Task[] };
 type State = "loading" | "ready" | "working" | "error";
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
@@ -32,6 +32,7 @@ export default function ReviewPublishClient({ testId }: { testId: string }) {
   const [funnelText, setFunnelText] = useState("");
   const [state, setState] = useState<State>("loading");
   const [error, setError] = useState("");
+  const [copyMessage, setCopyMessage] = useState("");
 
   const applyPreview = useCallback((value: Preview) => { setPreview(value); setFunnelText(value.funnelConfig?.screenIds.join("\n") ?? ""); }, []);
   const load = useCallback(async () => {
@@ -57,8 +58,16 @@ export default function ReviewPublishClient({ testId }: { testId: string }) {
     catch (cause) { setError(cause instanceof Error ? cause.message : "บันทึก Funnel ไม่สำเร็จ"); setState("error"); }
   }
 
+  async function copyParticipantLink() {
+    if (!preview) return;
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/t/${encodeURIComponent(preview.testVersionId)}`);
+      setCopyMessage("คัดลอกลิงก์ผู้เข้าร่วมแล้ว");
+    } catch { setCopyMessage("คัดลอกไม่สำเร็จ โปรดเปิดลิงก์แล้วคัดลอกจากแถบที่อยู่"); }
+  }
+
   if (state === "loading" && !preview) return <main className={styles.shell}><p>กำลังเตรียมพรีวิว…</p></main>;
-  if (!preview) return <main className={styles.shell}><h1>ตรวจสอบก่อนเผยแพร่</h1><p role="alert">{error || "ยังเปิดพรีวิวไม่ได้"}</p><button onClick={() => void load()}>ลองอีกครั้ง</button></main>;
+  if (!preview) return <main className={styles.shell}><h1>ตรวจสอบก่อนเผยแพร่</h1><p role="alert">{error === "target_preflight_required" ? "เป้าหมายทดสอบยังไม่ผ่านการตรวจความพร้อมก่อนเผยแพร่" : error || "ยังเปิดพรีวิวไม่ได้"}</p><button onClick={() => void load()}>ลองอีกครั้ง</button><p><a href={`/builder/${encodeURIComponent(testId)}/prototype`}>กลับไปตรวจเป้าหมายทดสอบ</a></p></main>;
 
   return (
     <main className={styles.shell}>
@@ -71,11 +80,20 @@ export default function ReviewPublishClient({ testId }: { testId: string }) {
 
       {error ? <p className={styles.error} role="alert">{error}</p> : null}
 
+      {preview.lifecycleStatus === "published" ? <section className={styles.card} aria-labelledby="share-heading">
+        <h2 id="share-heading">ส่งลิงก์ให้ผู้เข้าร่วม</h2>
+        <p><a href={`/t/${encodeURIComponent(preview.testVersionId)}`} target="_blank" rel="noreferrer">เปิดลิงก์ User Test เวอร์ชัน {preview.versionNo}</a></p>
+        <button className={styles.secondary} type="button" onClick={() => void copyParticipantLink()}>คัดลอกลิงก์ผู้เข้าร่วม</button>
+        {copyMessage ? <p role="status">{copyMessage}</p> : null}
+        <p><a href={`/results/${encodeURIComponent(preview.testVersionId)}`}>ดู Results</a> · <a href={`/reports/${encodeURIComponent(preview.testVersionId)}`}>ดู Report</a></p>
+      </section> : null}
+
       <section className={styles.card} aria-labelledby="prototype-heading">
-        <h2 id="prototype-heading">ต้นแบบที่จะเผยแพร่</h2>
+        <h2 id="prototype-heading">เป้าหมายทดสอบ</h2>
         <dl className={styles.definition}>
-          <div><dt>ต้นแบบสาธารณะ</dt><dd><a href={preview.sourceUrl} target="_blank" rel="noreferrer">{preview.sourceUrl}</a></dd></div>
-          <div><dt>Node เริ่มต้น</dt><dd><code>{preview.startNodeId}</code></dd></div>
+          <div><dt>ประเภท</dt><dd>{preview.target.provider === "figma_prototype" ? "Figma Prototype" : preview.target.provider === "first_party_web" ? "เว็บไซต์ของทีม" : "เว็บไซต์ภายนอก"}</dd></div>
+          <div><dt>URL</dt><dd><a href={preview.target.sourceUrl} target="_blank" rel="noreferrer">{preview.target.sourceUrl}</a></dd></div>
+          {typeof preview.target.providerConfig.startNodeId === "string" ? <div><dt>Node เริ่มต้น</dt><dd><code>{preview.target.providerConfig.startNodeId}</code></dd></div> : null}
           <div><dt>รหัสเวอร์ชันภายใน</dt><dd><code>{preview.testVersionId}</code></dd></div>
         </dl>
         <p className={styles.note}>เมื่อเผยแพร่ ระบบจะล็อก snapshot และงานของเวอร์ชันนี้ เพื่อให้ผลการทดสอบอ้างอิงการตั้งค่าชุดเดิมได้</p>
