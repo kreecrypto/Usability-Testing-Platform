@@ -1,7 +1,7 @@
 const workflowSteps = [
   {
     title: "ใส่ลิงก์ Prototype หรือ UAT",
-    description: "สร้างการทดสอบในโปรเจกต์ แล้วเพิ่มลิงก์สิ่งที่ต้องการให้ผู้เข้าร่วมลองใช้",
+    description: "สร้างการทดสอบในโปรเจกต์ แล้วเพิ่มลิงก์ Figma Prototype หรือเว็บไซต์ที่รองรับ เช่น UAT",
   },
   {
     title: "กำหนดงาน User Test",
