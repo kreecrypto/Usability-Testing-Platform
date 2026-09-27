@@ -10,9 +10,10 @@ test("production surface skips account creation and boots a temporary researcher
   const home = read("src/app/page.tsx");
   const login = read("src/app/login/page.tsx");
   const projects = read("src/app/projects/page.tsx");
+  const internalValidation = read("src/app/internal-validation/page.tsx");
   const highFi = read("src/app/high-fi/page.tsx");
 
-  assert.match(home, /href=["']\/login["']/);
+  assert.match(home, /href=["']\/projects["']/);
   assert.match(home, /href:\s*["']\/projects["']/);
 
   assert.match(login, /\/api\/auth\/guest/);
@@ -27,9 +28,16 @@ test("production surface skips account creation and boots a temporary researcher
   assert.match(projects, /\/api\/workspaces/);
   assert.match(projects, /\/api\/projects/);
   assert.match(projects, /\/api\/tests/);
-  assert.match(projects, /\/prototype/);
-  assert.match(projects, /\/tasks/);
-  assert.match(projects, /\/publish/);
+  assert.match(projects, /\/builder\/\$\{encodeURIComponent\(result\.test\.id\)\}\/prototype/);
+  for (const field of ["workspace-select", "workspace-name", "project-select", "project-name", "test-title"]) {
+    assert.match(projects, new RegExp(`htmlFor="${field}"`));
+    assert.match(projects, new RegExp(`id="${field}"`));
+  }
+  assert.doesNotMatch(projects, /UTP Internal Validation|Golden Path|MAJOR-A Flow Proven|internal-validation-target/);
+  assert.match(internalValidation, /MAJOR-A/);
+  assert.match(internalValidation, /\/prototype/);
+  assert.match(internalValidation, /\/tasks/);
+  assert.match(internalValidation, /\/publish/);
   assert.doesNotMatch(projects, /redirect\(["']\/high-fi["']\)/);
 
   // Design QA remains available, but it is explicitly not production research data.

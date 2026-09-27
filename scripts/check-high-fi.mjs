@@ -113,10 +113,11 @@ for (const signal of cssSignals) if (!css.includes(signal)) fail(`base high-fi C
 const fixSignals = ['.reviewStage--mobile .appSidebar','width:280px','.navBackdrop','.componentChips','.reviewStepper','.inlineError','.choiceGrid','.hfButton{','border-radius:var(--ut-radius-pill)','.appTopbar h1','.participantPrototype','var(--ut-touch-target-min)'];
 for (const signal of fixSignals) if (!fixes.includes(signal)) fail(`post-review CSS missing ${signal}`);
 
-for (const signal of ['href: "/high-fi"','หน้าจอผลิตภัณฑ์','48','170','เป้าหมายทดสอบ → หลักฐาน → การตัดสินใจ UX','Figma Prototype','เว็บไซต์ UAT/Production','เว็บไซต์ภายนอก']) if (!home.includes(signal)) fail(`Thai home missing ${signal}`);
+for (const signal of ['href: "/high-fi"','แบบหน้าจอ (ตัวอย่าง)','เป้าหมายทดสอบ → หลักฐาน → การตัดสินใจ UX','Figma Prototype','เว็บไซต์ที่รองรับ','เริ่มสร้างการทดสอบ']) if (!home.includes(signal)) fail(`Thai home missing ${signal}`);
 if (home.includes('รุ่นปัจจุบันเน้นการทดสอบต้นแบบ Figma')) fail('home must not imply Figma is the only test target');
 if (!home.includes('href: "/projects"')) fail('home must expose Researcher Projects entry for Flow Proven');
-if (!home.includes('href="/login"')) fail('home must expose Researcher Login entry for Flow Proven');
+if (!home.includes('href="/projects"')) fail('home must lead to Researcher Projects');
+if (home.includes('170 สถานะ QA') || home.includes('48 หน้าจอหลัก')) fail('home must not present internal QA counts as product value');
 if (!layout.includes('<html lang="th">')) fail('document language must be Thai');
 for (const signal of ['--ut-color-brand','--ut-color-text-primary','--ut-color-bg-surface','--ut-color-focus-ring','--ut-color-outcome-technical','--ut-font-family-sans','--ut-space-4']) if (!tokens.includes(signal)) fail(`tokens missing ${signal}`);
 for (const screen of map.screens) {
