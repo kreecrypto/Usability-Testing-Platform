@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { guestSessionHistory, markGuestSessionStarted } from "../../lib/auth/guest-client.ts";
 import styles from "./projects.module.css";
 
 type Workspace = { id: string; name: string };
@@ -40,12 +39,8 @@ export default function ProjectsPage() {
     let active = true;
     void (async () => {
       const session = await fetch("/api/auth/session", { cache: "no-store" });
-      if (session.status === 401) {
-        if (guestSessionHistory() !== "new") { window.location.assign("/login"); return; }
-        const guest = await fetch("/api/auth/guest", { method: "POST", cache: "no-store" });
-        if (!guest.ok) { window.location.assign("/login"); return; }
-        markGuestSessionStarted();
-      } else if (!session.ok) throw new Error("session_unavailable");
+      if (session.status === 401) { window.location.assign("/login"); return; }
+      if (!session.ok) throw new Error("session_unavailable");
       const result = await request<{ workspaces: Workspace[] }>("/api/workspaces");
       if (active) setWorkspaces(result.workspaces);
     })().catch(() => { if (active) setError("เปิดรายการเวิร์กสเปซไม่สำเร็จ โปรดลองโหลดหน้าใหม่"); })
@@ -116,7 +111,6 @@ export default function ProjectsPage() {
       <h1>สร้างการทดสอบ</h1>
       <p>เลือกเวิร์กสเปซและโปรเจกต์ แล้วสร้างแบบทดสอบเพื่อกำหนดเป้าหมายและงาน</p>
     </header>
-    <p className={styles.guestWarning} role="note">ใช้พื้นที่ทำงานนี้ได้ชั่วคราว เมื่อเซสชันหมดอายุหรือล้างข้อมูลเบราว์เซอร์ คุณจะกลับมาแก้งานเดิมไม่ได้</p>
     {error ? <p className={styles.error} role="alert">{error}</p> : null}
     {message ? <p className={styles.notice} role="status">{message}</p> : null}
     {loading ? <p role="status">กำลังโหลดเวิร์กสเปซ…</p> : <div className={styles.steps}>
