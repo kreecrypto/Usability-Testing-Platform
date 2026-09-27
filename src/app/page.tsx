@@ -1,3 +1,5 @@
+import RecentWork from "./recent-work";
+
 const workflowSteps = [
   {
     title: "ใส่ลิงก์ Prototype หรือ UAT",
@@ -68,6 +70,8 @@ export default function Home() {
             ))}
           </div>
         </section>
+
+        <RecentWork />
       </section>
     </main>
   );
