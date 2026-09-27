@@ -33,6 +33,7 @@ export default function ProjectsClient({ view, projectId }: { view: View; projec
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [workspaceId, setWorkspaceId] = useState("");
   const [projects, setProjects] = useState<Project[]>([]);
+  const [projectsRetry, setProjectsRetry] = useState(0);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
@@ -68,7 +69,13 @@ export default function ProjectsClient({ view, projectId }: { view: View; projec
       .then((data) => { if (active) { setProjects(data.projects.filter((item) => item.status !== "archived")); setState("ready"); } })
       .catch(() => { if (active) { setState("error"); setError("โหลดโปรเจกต์ไม่สำเร็จ โปรดลองอีกครั้ง"); } });
     return () => { active = false; };
-  }, [workspaceId, projectId, view]);
+  }, [workspaceId, projectId, view, projectsRetry]);
+
+  function retryLoad() {
+    if (view === "index" && workspaceId && workspaces.length) {
+      setState("loading"); setError(""); setProjectsRetry((current) => current + 1);
+    } else void load();
+  }
 
   const visibleProjects = useMemo(() => projects.filter((item) => `${item.name} ${item.description ?? ""}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())), [projects, search]);
   const visibleTests = useMemo(() => (overview?.tests ?? []).filter((item) => status === "all" || item.status === status), [overview, status]);
@@ -108,7 +115,7 @@ export default function ProjectsClient({ view, projectId }: { view: View; projec
     <div className={styles.content}>
       <header className={styles.header}><div><a className={styles.backLink} href={projectId ? projectHref(projectId) : "/"}>← {projectId ? "โปรเจกต์" : "หน้าหลัก"}</a><p className={styles.eyebrow}>Researcher Workspace</p><h1>{title}</h1><p>{view === "index" ? "จัดการโปรเจกต์และเริ่มการทดสอบของทีม" : view === "overview" ? overview?.project.description || "แบบทดสอบและประเด็นที่พบในโปรเจกต์นี้" : view === "tests" ? "เลือกแบบทดสอบเพื่อสร้างงานหรือดูผลจากเวอร์ชันที่เผยแพร่" : "กรอกข้อมูลเพื่อเริ่มงานวิจัย"}</p></div>{view === "index" ? <a className={styles.primaryButton} href="/projects/new">สร้างโปรเจกต์</a> : view === "overview" && projectId ? <a className={styles.primaryButton} href={newTestHref(projectId)}>สร้างแบบทดสอบ</a> : null}</header>
       {error ? <p role="alert" className={styles.error}>{error}</p> : null}
-      {state === "loading" ? <div className={styles.card} role="status">กำลังโหลดข้อมูล…</div> : state === "error" ? <div className={styles.card}><button className={styles.secondaryButton} type="button" onClick={() => void load()}>ลองอีกครั้ง</button></div> : null}
+      {state === "loading" ? <div className={styles.card} role="status">กำลังโหลดข้อมูล…</div> : state === "error" ? <div className={styles.card}><button className={styles.secondaryButton} type="button" onClick={retryLoad}>ลองอีกครั้ง</button></div> : null}
       {state === "ready" && (view === "index" || view === "new-project") ? <>
         {workspaces.length ? <label className={styles.field} htmlFor="workspace-select">เวิร์กสเปซ<select id="workspace-select" value={workspaceId} onChange={(event) => setWorkspaceId(event.target.value)} disabled={busy}>{workspaces.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label> : <section className={styles.card}><h2>เริ่มจากเวิร์กสเปซ</h2><p className={styles.helper}>สร้างพื้นที่ทำงานของทีมก่อนเพิ่มโปรเจกต์</p><form className={styles.form} onSubmit={(event) => void createWorkspace(event)}><label className={styles.field} htmlFor="workspace-name">ชื่อเวิร์กสเปซ<input id="workspace-name" required value={workspaceName} onChange={(event) => setWorkspaceName(event.target.value)} /></label><button className={styles.secondaryButton} disabled={busy || !workspaceName.trim()}>สร้างเวิร์กสเปซ</button></form></section>}
         {view === "index" && workspaces.length ? <><label className={styles.field} htmlFor="project-search">ค้นหาโปรเจกต์<input id="project-search" type="search" placeholder="ค้นหาชื่อหรือรายละเอียด" value={search} onChange={(event) => setSearch(event.target.value)} /></label>{projects.length === 0 ? <div className={styles.card}><h2>ยังไม่มีโปรเจกต์</h2><p>สร้างโปรเจกต์แรกเพื่อรวมแบบทดสอบและผลการศึกษา</p><a className={styles.primaryButton} href="/projects/new">สร้างโปรเจกต์</a></div> : visibleProjects.length === 0 ? <div className={styles.card}><h2>ไม่พบโปรเจกต์</h2><p>ลองคำค้นอื่น หรือแสดงโปรเจกต์ทั้งหมด</p><button type="button" className={styles.secondaryButton} onClick={() => setSearch("")}>ล้างคำค้น</button></div> : <ul className={styles.list}>{visibleProjects.map((item) => <li className={styles.card} key={item.id}><h2><a href={projectHref(item.id)}>{item.name}</a></h2><p>{item.description || "ยังไม่มีคำอธิบาย"}</p><a href={projectHref(item.id)}>เปิดโปรเจกต์ →</a></li>)}</ul>}</> : null}
