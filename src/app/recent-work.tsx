@@ -49,10 +49,10 @@ export default function RecentWork() {
     {state === "error" ? <div className={styles.state} role="alert"><p>โหลดงานล่าสุดไม่สำเร็จ</p><button type="button" onClick={() => void load()}>ลองอีกครั้ง</button></div> : null}
     {state === "ready" && work ? (
       work.projects.length === 0 && work.tests.length === 0
-        ? <div className={styles.state}><p>ยังไม่มีงานล่าสุด สร้างโปรเจกต์เพื่อเริ่มการทดสอบครั้งแรก</p><a href="/projects">สร้างโปรเจกต์</a></div>
+        ? <div className={styles.state}><p>ยังไม่มีงานล่าสุด สร้างโปรเจกต์เพื่อเริ่มการทดสอบครั้งแรก</p><a href="/projects/new">สร้างโปรเจกต์</a></div>
         : <div className={styles.grid}>
           <div className={styles.card}><h3>แบบทดสอบ</h3>{work.tests.length ? <ul>{work.tests.map((item) => <li key={item.id}><a href={`/builder/${encodeURIComponent(item.id)}/prototype`}>{item.title}</a><span>{statusLabel(item.status)}</span></li>)}</ul> : <p>ยังไม่มีแบบทดสอบ</p>}</div>
-          <div className={styles.card}><h3>โปรเจกต์</h3>{work.projects.length ? <ul>{work.projects.map((item) => <li key={item.id}><a href={`/projects?workspaceId=${encodeURIComponent(item.workspace_id)}&projectId=${encodeURIComponent(item.id)}`}>{item.name}</a></li>)}</ul> : <p>ยังไม่มีโปรเจกต์</p>}</div>
+          <div className={styles.card}><h3>โปรเจกต์</h3>{work.projects.length ? <ul>{work.projects.map((item) => <li key={item.id}><a href={`/projects/${encodeURIComponent(item.id)}`}>{item.name}</a></li>)}</ul> : <p>ยังไม่มีโปรเจกต์</p>}</div>
         </div>
     ) : null}
   </section>;

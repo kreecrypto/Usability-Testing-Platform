@@ -9,7 +9,8 @@ function read(path: string): string {
 test("researcher flow requires login and never creates a guest identity", () => {
   const home = read("src/app/page.tsx");
   const login = read("src/app/login/page.tsx");
-  const projects = read("src/app/projects/page.tsx");
+  const projects = read("src/app/projects/projects-client.tsx");
+  const projectRoutes = ["src/app/projects/page.tsx", "src/app/projects/new/page.tsx", "src/app/projects/[projectId]/page.tsx", "src/app/projects/[projectId]/tests/page.tsx", "src/app/projects/[projectId]/tests/new/page.tsx"].map(read).join("\n");
   const internalValidation = read("src/app/internal-validation/page.tsx");
   const session = read("src/lib/auth/session.ts");
 
@@ -27,11 +28,12 @@ test("researcher flow requires login and never creates a guest identity", () => 
   assert.match(projects, /\/api\/workspaces/);
   assert.match(projects, /\/api\/projects/);
   assert.match(projects, /\/api\/tests/);
-  assert.match(projects, /\/builder\/\$\{encodeURIComponent\(result\.test\.id\)\}\/prototype/);
-  for (const field of ["workspace-select", "workspace-name", "project-select", "project-name", "test-title"]) {
+  assert.match(projects, /\/builder\/\$\{query\(result\.test\.id\)\}\/prototype/);
+  for (const field of ["workspace-select", "workspace-name", "project-name", "test-title"]) {
     assert.match(projects, new RegExp(`htmlFor="${field}"`));
     assert.match(projects, new RegExp(`id="${field}"`));
   }
+  for (const view of ["index", "new-project", "overview", "tests", "new-test"]) assert.match(projectRoutes, new RegExp(`view="${view}"`));
   assert.doesNotMatch(projects, /UTP Internal Validation|Golden Path|MAJOR-A Flow Proven/);
 });
 
