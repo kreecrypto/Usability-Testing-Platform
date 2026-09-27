@@ -17,7 +17,10 @@ test("production surface skips account creation and boots a temporary researcher
   assert.match(home, /href:\s*["']\/projects["']/);
 
   assert.match(login, /\/api\/auth\/guest/);
-  assert.match(login, /Temporary Researcher Session/);
+  assert.match(login, /guestSessionHistory\(\)/);
+  assert.match(login, /markGuestSessionStarted\(\)/);
+  assert.match(login, /เซสชันก่อนหน้าหมดอายุแล้ว/);
+  assert.match(login, /เริ่มเซสชันใหม่/);
   assert.doesNotMatch(login, /\/api\/auth\/signup/);
   assert.doesNotMatch(login, /type="email"/);
   assert.doesNotMatch(login, /type="password"/);
@@ -25,6 +28,8 @@ test("production surface skips account creation and boots a temporary researcher
 
   assert.match(projects, /\/api\/auth\/session/);
   assert.match(projects, /\/api\/auth\/guest/);
+  assert.match(projects, /guestSessionHistory\(\)/);
+  assert.match(projects, /กลับมาแก้งานเดิมไม่ได้/);
   assert.match(projects, /\/api\/workspaces/);
   assert.match(projects, /\/api\/projects/);
   assert.match(projects, /\/api\/tests/);

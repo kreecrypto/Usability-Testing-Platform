@@ -90,7 +90,7 @@
   .reviewControls{grid-template-columns:repeat(2,minmax(0,1fr))}.componentSummary{grid-column:1/-1}
   .detailSplit,.analyticsGrid,.comparisonGrid{grid-template-columns:1fr}.comparisonGrid .deltaColumn{grid-auto-flow:column;justify-content:center}
 }
-.reviewStage--mobile{padding:0}.reviewStage--mobile .deviceFrame{width:390px;min-width:390px;min-height:760px}
+.reviewStage--mobile{padding:0;justify-content:safe center}.reviewStage--mobile .deviceFrame{width:390px;min-width:390px;min-height:760px}
 .reviewStage--mobile .appFrame{position:relative;display:block;min-height:760px;overflow:hidden}.reviewStage--mobile .appMain{width:100%;min-height:760px}
 .reviewStage--mobile .appSidebar{position:absolute;inset:0 auto 0 0;z-index:50;width:280px;min-height:100%;display:flex;padding:var(--ut-space-4);transform:translateX(-100%);transition:transform var(--ut-motion-default) var(--ut-motion-ease);box-shadow:var(--ut-shadow-modal)}
 .reviewStage--mobile .appSidebar.appSidebar--open{transform:translateX(0)}
@@ -110,6 +110,7 @@
 .reviewStage--mobile .participantHeader{align-items:flex-start;flex-direction:column}.reviewStage--mobile .participantProgress{width:100%}.reviewStage--mobile .participantProgress>span{text-align:left}
 .reviewStage--mobile .participantMain{padding:var(--ut-space-4)}.reviewStage--mobile .participantCard,.reviewStage--mobile .deleteModal{padding:var(--ut-space-4)}.reviewStage--mobile .participantPrototype{min-height:24rem}.reviewStage--mobile .roleEditor{grid-template-columns:1fr}
 .mobileNavToggle:focus-visible,.mobileNavClose:focus-visible,.builderStep:focus-visible,.reviewStepper button:focus-visible{outline:var(--ut-focus-ring-width) solid var(--ut-color-focus-ring);outline-offset:var(--ut-focus-ring-offset)}
+.reviewControls button,.reviewStepper button{min-height:var(--ut-touch-target-min)}
 
 @media(max-width:640px){.reviewPage{padding:var(--ut-space-3)}.reviewHeader{align-items:flex-start;flex-direction:column}.reviewControls{position:static;grid-template-columns:1fr}.componentSummary{grid-column:auto}.reviewStage{min-height:0;overflow-x:auto}}
 @media(prefers-reduced-motion:reduce){.reviewStage--mobile .appSidebar,.reviewStage--mobile .navBackdrop,.skeletonStack span{transition:none;animation:none}}

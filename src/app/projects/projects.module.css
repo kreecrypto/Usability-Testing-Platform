@@ -20,6 +20,7 @@
 .secondaryButton{border:1px solid var(--ah-primary);background:var(--ah-canvas);color:var(--ah-primary)}
 .primaryButton:disabled,.secondaryButton:disabled{border-color:var(--ah-disabled);background:var(--ah-action-disabled-bg);color:var(--ah-action-disabled-text);cursor:not-allowed}
 .error,.notice{padding:var(--ah-space-12) var(--ah-space-16);margin-bottom:var(--ah-space-16);border-radius:var(--ah-radius-sm)}
+.guestWarning{max-width:960px;margin:0 auto var(--ah-space-16);padding:var(--ah-space-12) var(--ah-space-16);border:1px solid var(--ah-neutral-border);border-radius:var(--ah-radius-sm);background:var(--ah-canvas);color:var(--ah-ink);line-height:var(--ah-type-body-md-line-height)}
 .error{border:1px solid var(--ah-critical);background:var(--ah-canvas)}
 .notice{border:1px solid var(--ah-primary);background:var(--ah-primary-soft)}
 .testList{list-style:none;margin:0;padding:0;display:grid;gap:var(--ah-space-8)}
