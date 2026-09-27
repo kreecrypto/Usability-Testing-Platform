@@ -96,7 +96,7 @@ export default function PrototypeImportClient({ testId }: { testId: string }) {
   }
 
   async function verifyOwnedTarget() {
-    if (!draft || draft.target.provider !== "first_party_web") return;
+    if (!draft || draft.target.provider !== "first_party_web" || target?.sourceUrl !== draft.target.sourceUrl || ownership !== "owned") return;
     setState("preflighting"); setMessage(null);
     try {
       await waitForLiveOwnedBridge(draft.target.sourceUrl);
@@ -127,6 +127,6 @@ export default function PrototypeImportClient({ testId }: { testId: string }) {
       {target.capabilities.reasons.length ? <div className={styles.notice} role="status">มีข้อจำกัดบางอย่างที่ต้องตรวจสอบก่อนเผยแพร่<details><summary>รายละเอียดสำหรับผู้ดูแล</summary>{target.capabilities.reasons.join(" ")}</details></div> : null}
       {embedUrl ? <div className={styles.previewFrame}><iframe title="พรีวิวเป้าหมายทดสอบ" src={embedUrl} allowFullScreen loading="lazy" referrerPolicy="strict-origin-when-cross-origin" /></div> : <div className={styles.empty}>เป้าหมายทดสอบนี้จะเปิดแยกจากหน้าแบบทดสอบ ระบบจะแสดงเฉพาะหลักฐานที่ตรวจสอบได้</div>}</> : <div className={styles.empty}>เพิ่ม URL แล้วกดตรวจสอบเพื่อดูความพร้อม</div>}
     </section>
-    <section className={styles.card} aria-labelledby="save-title"><div className={styles.sectionHeading}><div><h2 id="save-title">3. บันทึกลงฉบับร่าง</h2><p>บันทึกเป้าหมายทดสอบไว้กับฉบับร่าง ระบบจะตรวจความพร้อมอีกครั้งก่อนเผยแพร่</p></div>{draft ? <span className={styles.status}>ฉบับร่าง v{draft.versionNo}</span> : null}</div><button className={styles.primaryButton} type="button" onClick={save} disabled={!target || busy}>{state === "saving" ? "กำลังบันทึก…" : "บันทึกเป้าหมายทดสอบ"}</button>{draft?.target.provider === "first_party_web" && draft.target.capabilities.publishBlocked ? <p><button type="button" onClick={() => void verifyOwnedTarget()} disabled={busy}>{state === "preflighting" ? "กำลังตรวจการเชื่อมต่อ…" : "ตรวจการเชื่อมต่อเว็บ UAT"}</button></p> : null}{draft && !busy ? <p><a href={`/builder/${encodeURIComponent(testId)}/tasks`}>ไปตั้งค่างานทดสอบ →</a></p> : null}</section>
+    <section className={styles.card} aria-labelledby="save-title"><div className={styles.sectionHeading}><div><h2 id="save-title">3. บันทึกลงฉบับร่าง</h2><p>บันทึกเป้าหมายทดสอบไว้กับฉบับร่าง ระบบจะตรวจความพร้อมอีกครั้งก่อนเผยแพร่</p></div>{draft ? <span className={styles.status}>ฉบับร่าง v{draft.versionNo}</span> : null}</div><button className={styles.primaryButton} type="button" onClick={save} disabled={!target || busy}>{state === "saving" ? "กำลังบันทึก…" : "บันทึกเป้าหมายทดสอบ"}</button>{draft?.target.provider === "first_party_web" && draft.target.capabilities.publishBlocked ? <p><button type="button" onClick={() => void verifyOwnedTarget()} disabled={busy || ownership !== "owned" || target?.sourceUrl !== draft.target.sourceUrl}>{state === "preflighting" ? "กำลังตรวจการเชื่อมต่อ…" : "ตรวจการเชื่อมต่อเว็บ UAT"}</button></p> : null}{draft && !busy ? <p><a href={`/builder/${encodeURIComponent(testId)}/tasks`}>ไปตั้งค่างานทดสอบ →</a></p> : null}</section>
   </main>;
 }
