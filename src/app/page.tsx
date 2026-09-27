@@ -1,23 +1,15 @@
-const modules = [
+const workflowSteps = [
   {
-    title: "สร้างการทดสอบ",
-    description: "สร้างแบบทดสอบ เลือกเป้าหมาย และกำหนดงานให้ผู้เข้าร่วม",
+    title: "ใส่ลิงก์ Prototype หรือ UAT",
+    description: "สร้างการทดสอบในโปรเจกต์ แล้วเพิ่มลิงก์สิ่งที่ต้องการให้ผู้เข้าร่วมลองใช้",
   },
   {
-    title: "ผู้เข้าร่วมทดสอบ",
-    description: "ส่งลิงก์ให้ผู้เข้าร่วมทำงานโดยไม่เปิดเผยเกณฑ์สำเร็จ",
+    title: "กำหนดงาน User Test",
+    description: "เขียนงานที่ให้ผู้เข้าร่วมทำ ตรวจความพร้อม แล้วส่งลิงก์ทดสอบให้ผู้เข้าร่วม",
   },
   {
-    title: "บันทึกพฤติกรรม",
-    description: "เก็บพฤติกรรมที่เป้าหมายทดสอบรองรับและตรวจสอบหลักฐานย้อนหลังได้",
-  },
-  {
-    title: "วิเคราะห์ผล",
-    description: "ดูความสำเร็จ เวลา เส้นทาง และจุดติดขัด โดยแยกข้อมูลที่ไม่มีออกจากค่า 0",
-  },
-  {
-    title: "ประเด็นที่พบและทดสอบซ้ำ",
-    description: "บันทึกประเด็น UX จากหลักฐาน แล้วเปรียบเทียบผลหลังปรับแบบ",
+    title: "ดู Report",
+    description: "เมื่อมีผลทดสอบแล้ว ดูพฤติกรรมและหลักฐานเพื่อสรุปปัญหา UX ที่ควรแก้",
   },
 ];
 
@@ -51,10 +43,9 @@ export default function Home() {
         <section id="overview" className="heroCard">
           <div>
             <span className="status">โฟลว์หลัก</span>
-            <h2>เริ่มจากงานที่อยากเรียนรู้ แล้วใช้พฤติกรรมจริงช่วยตัดสินใจ</h2>
+            <h2>ลิงก์ Prototype หรือ UAT → งาน User Test → Report</h2>
             <p>
-              สร้างงานทดสอบกับ Figma Prototype หรือเว็บไซต์ที่รองรับ ส่งลิงก์ให้ผู้เข้าร่วม
-              แล้วดูหลักฐานเพื่อระบุปัญหาและทดสอบซ้ำหลังแก้ไข
+              เพิ่มลิงก์เป้าหมายทดสอบ กำหนดงานให้ผู้เข้าร่วม แล้วดูรายงานจากผลที่เกิดขึ้นจริง
             </p>
           </div>
         </section>
@@ -63,16 +54,16 @@ export default function Home() {
           <div className="sectionHeading">
             <div>
               <p className="eyebrow">โฟลว์ผลิตภัณฑ์</p>
-              <h2>จากเป้าหมายทดสอบสู่การปรับ UX</h2>
+              <h2>สามขั้นจากลิงก์สู่รายงาน</h2>
             </div>
           </div>
 
           <div className="cardGrid">
-            {modules.map((module, index) => (
-              <article className="moduleCard" key={module.title}>
+            {workflowSteps.map((step, index) => (
+              <article className="moduleCard" key={step.title}>
                 <span className="moduleIndex">0{index + 1}</span>
-                <h3>{module.title}</h3>
-                <p>{module.description}</p>
+                <h3>{step.title}</h3>
+                <p>{step.description}</p>
               </article>
             ))}
           </div>
