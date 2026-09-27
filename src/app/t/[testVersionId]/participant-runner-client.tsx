@@ -12,6 +12,7 @@ import {
 import { createRunnerLifecycle } from "../../../lib/tracking/lifecycle.ts";
 import type { RawTrackingEvent } from "../../../lib/tracking/events.ts";
 import { belongsToTest, remainingTaskTime } from "../../../lib/runner/recovery.ts";
+import { classifyAccessFailure, type AccessFailure } from "../../../lib/runner/access-failure.ts";
 import styles from "./participant-runner.module.css";
 
 const CONSENT_VERSION = "utp-privacy-v1";
@@ -89,6 +90,7 @@ type SessionResponse = {
 type Stage =
   | "access-loading"
   | "invalid"
+  | "ended"
   | "consent"
   | "declined"
   | "task-intro"
@@ -154,6 +156,8 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
   const [taskIndex, setTaskIndex] = useState(0);
   const [sessionState, setSessionState] = useState<SessionState | null>(null);
   const [technicalReason, setTechnicalReason] = useState("ขั้นตอนนี้ยังดำเนินการต่อไม่ได้บนอุปกรณ์หรือต้นแบบปัจจุบัน");
+  const [technicalRecoverable, setTechnicalRecoverable] = useState(false);
+  const [accessFailure, setAccessFailure] = useState<AccessFailure>("invalid");
   const [offline, setOffline] = useState(false);
   const [working, setWorking] = useState(false);
   const [feedbackError, setFeedbackError] = useState("");
@@ -300,7 +304,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
       setStage("technical");
       return;
     }
-    if (state.status === "abandoned") { setStage("invalid"); return; }
+    if (state.status === "abandoned") { setStage("ended"); return; }
 
     const active = state.taskStates.find((task) => task.outcome === null);
     if (active) {
@@ -349,8 +353,11 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
         try { await deliver(); } catch { return; }
         const refreshed = await fetchState();
         if (refreshed && !cancelled) await inferStageFromState(refreshed.state, body.test);
-      } catch {
-        if (!cancelled) setStage("invalid");
+      } catch (error) {
+        if (!cancelled) {
+          setAccessFailure(classifyAccessFailure(error));
+          setStage("invalid");
+        }
       }
     })();
     return () => { cancelled = true; };
@@ -505,7 +512,8 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
       setTaskIndex(0);
       setStage("task-intro");
     } catch {
-      setTechnicalReason("เริ่มแบบทดสอบไม่สำเร็จ โปรดโหลดหน้าใหม่แล้วลองอีกครั้ง");
+      setTechnicalReason("เริ่มแบบทดสอบไม่สำเร็จ โปรดลองอีกครั้ง");
+      setTechnicalRecoverable(true);
       setStage("technical");
     } finally { setWorking(false); }
   }
@@ -627,13 +635,22 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     return <ParticipantShell progress={0} meta="กำลังตรวจสอบ"><StatusCard title="กำลังตรวจสอบแบบทดสอบ" body="กำลังตรวจสอบว่าแบบทดสอบนี้พร้อมใช้งาน" loading /></ParticipantShell>;
   }
   if (stage === "invalid") {
-    return <ParticipantShell progress={0} meta="ใช้งานไม่ได้"><StatusCard title="แบบทดสอบนี้ใช้งานไม่ได้" body="ลิงก์อาจหมดอายุหรือแบบทดสอบอาจถูกปิด โปรดตรวจสอบลิงก์หรือติดต่อผู้ที่ส่งแบบทดสอบนี้มา" /></ParticipantShell>;
+    const title = accessFailure === "temporary" ? "ตรวจสอบแบบทดสอบไม่ได้ชั่วคราว" : "แบบทดสอบนี้ใช้งานไม่ได้";
+    const body = accessFailure === "invalid"
+      ? "ลิงก์แบบทดสอบไม่ถูกต้อง โปรดตรวจสอบลิงก์หรือติดต่อผู้ที่ส่งแบบทดสอบนี้มา"
+      : accessFailure === "unavailable"
+        ? "แบบทดสอบนี้ไม่พร้อมให้เข้าร่วม โปรดติดต่อผู้ที่ส่งแบบทดสอบนี้มา"
+        : "เกิดปัญหาในการเชื่อมต่อ โปรดลองอีกครั้ง";
+    return <ParticipantShell progress={0} meta="ใช้งานไม่ได้"><StatusCard title={title} body={body}>{accessFailure === "temporary" ? <button className={styles.primaryButton} type="button" onClick={() => window.location.reload()}>ลองอีกครั้ง</button> : null}</StatusCard></ParticipantShell>;
+  }
+  if (stage === "ended") {
+    return <ParticipantShell progress={progress} meta="สิ้นสุดแล้ว"><StatusCard title="การเข้าร่วมครั้งนี้สิ้นสุดแล้ว" body="คุณออกจากแบบทดสอบนี้แล้ว หากต้องการเข้าร่วมอีกครั้ง โปรดติดต่อผู้ที่ส่งแบบทดสอบนี้มา" /></ParticipantShell>;
   }
   if (stage === "declined") {
     return <ParticipantShell progress={0} meta="ความยินยอม"><StatusCard title="คุณเลือกไม่เข้าร่วม" body="แบบทดสอบจะไม่เริ่ม และจะไม่มีการบันทึกการโต้ตอบ" /></ParticipantShell>;
   }
   if (stage === "technical") {
-    return <ParticipantShell progress={progress} meta="สถานะแบบทดสอบ"><StatusCard title="แบบทดสอบยังดำเนินการต่อไม่ได้" body={technicalReason} technical /></ParticipantShell>;
+    return <ParticipantShell progress={progress} meta="สถานะแบบทดสอบ"><StatusCard title="แบบทดสอบยังดำเนินการต่อไม่ได้" body={technicalReason} technical>{technicalRecoverable ? <button className={styles.primaryButton} type="button" onClick={() => window.location.reload()}>ลองอีกครั้ง</button> : <a className={styles.secondaryButton} href="/">ออกจากแบบทดสอบ</a>}</StatusCard></ParticipantShell>;
   }
   if (stage === "recovery") {
     return <ParticipantShell progress={progress} meta="การเชื่อมต่อ"><StatusCard title={offline ? "คุณออฟไลน์อยู่" : "กำลังเชื่อมต่ออีกครั้ง"} body="งานที่ทำเสร็จแล้วถูกบันทึกไว้ เราจะกลับไปยังจุดเดิมเมื่อเชื่อมต่อได้" loading={!offline}><button className={styles.primaryButton} type="button" onClick={() => void retryRecovery()} disabled={working}>{working ? "กำลังลองอีกครั้ง…" : "ลองอีกครั้ง"}</button></StatusCard></ParticipantShell>;
