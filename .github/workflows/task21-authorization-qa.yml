@@ -102,15 +102,18 @@ jobs:
 
       - name: Verify RLS, policies, and grants
         run: |
-          rls_count="$(psql -h 127.0.0.1 -U postgres -d postgres -Atc "select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and c.relname in ('users','workspaces','workspace_members','projects','tests','test_versions','tasks','participants','sessions','task_sessions','events','answers','findings','finding_evidence','retests') and c.relrowsecurity;")"
-          test "$rls_count" = "15"
+          rls_count="$(psql -h 127.0.0.1 -U postgres -d postgres -Atc "select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and c.relname in ('users','workspaces','workspace_members','projects','tests','test_versions','tasks','participants','sessions','task_sessions','events','answers','findings','finding_evidence','retests','study_blocks','study_responses','study_invites') and c.relrowsecurity and c.relforcerowsecurity;")"
+          test "$rls_count" = "18"
 
           policy_count="$(psql -h 127.0.0.1 -U postgres -d postgres -Atc "select count(*) from pg_policies where schemaname='public';")"
-          test "$policy_count" = "44"
+          test "$policy_count" -ge "52"
 
           test "$(psql -h 127.0.0.1 -U postgres -d postgres -Atc "select has_table_privilege('anon','public.projects','select');")" = "f"
           test "$(psql -h 127.0.0.1 -U postgres -d postgres -Atc "select has_table_privilege('authenticated','public.events','insert');")" = "f"
           test "$(psql -h 127.0.0.1 -U postgres -d postgres -Atc "select has_table_privilege('service_role','public.events','insert');")" = "t"
+          test "$(psql -h 127.0.0.1 -U postgres -d postgres -Atc "select has_table_privilege('anon','public.study_responses','select');")" = "f"
+          test "$(psql -h 127.0.0.1 -U postgres -d postgres -Atc "select has_table_privilege('authenticated','public.study_responses','insert');")" = "f"
+          test "$(psql -h 127.0.0.1 -U postgres -d postgres -Atc "select has_function_privilege('anon','public.start_method_participant_session(uuid,text,jsonb,text,text)','execute');")" = "f"
 
       - name: Seed authorization matrix
         run: |
