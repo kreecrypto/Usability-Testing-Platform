@@ -25,6 +25,7 @@ test("preview resolves provider-neutral immutable target snapshot in determinist
   const store = storeWithResponses([Response.json([draftVersion]), Response.json([taskRow])], calls);
   const preview = await store.preview(TEST_ID);
   assert.equal(preview.testVersionId, VERSION_ID); assert.equal(preview.versionNo, 3);
+  assert.ok(preview.target);
   assert.equal(preview.target.provider, "figma_prototype"); assert.equal(preview.target.sourceUrl, sourceUrl);
   assert.equal(preview.target.providerConfig.startNodeId, "10:20"); assert.equal(preview.tasks[0].title, "Complete checkout");
   assert.deepEqual(preview.tasks[0].expectedPath, ["10:20", "10:30"]); assert.match(calls[0].url, /order=version_no\.desc/); assert.match(calls[1].url, /order=ordinal\.asc/);
@@ -35,6 +36,7 @@ test("legacy Figma history remains readable through compatibility adapter", asyn
   const calls: Array<{ url: string; init?: RequestInit }> = [];
   const legacy = { ...draftVersion, target_provider: null, target_snapshot: null };
   const preview = await storeWithResponses([Response.json([legacy]), Response.json([taskRow])], calls).preview(TEST_ID);
+  assert.ok(preview.target);
   assert.equal(preview.target.provider, "figma_prototype"); assert.equal(preview.target.sourceUrl, sourceUrl); assert.equal(preview.target.providerConfig.startNodeId, "10:20");
 });
 
