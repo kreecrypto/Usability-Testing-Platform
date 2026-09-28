@@ -1,4 +1,5 @@
 import { parseFunnelDefinition, type FunnelDefinition } from "../analytics/funnel.ts";
+import { parseMethodConfig, StudyContractError, type StudyKind } from "../methods/study-contract.ts";
 import { validateStoredTaskOutcomeRules } from "./task-outcome-rules.ts";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -23,7 +24,9 @@ export type PublishPreviewTask = Readonly<{
 
 export type PublishPreview = Readonly<{
   testId: string; testVersionId: string; versionNo: number; lifecycleStatus: "draft" | "published";
-  target: TestTargetSnapshot; funnelConfig: FunnelDefinition | null; tasks: readonly PublishPreviewTask[];
+  studyMode: "usability" | "methods" | "mixed";
+  target: TestTargetSnapshot | null; funnelConfig: FunnelDefinition | null; tasks: readonly PublishPreviewTask[];
+  blocks: readonly Readonly<{ id: string; ordinal: number; kind: StudyKind; title: string }> [];
 }>;
 
 type PublishVersioningErrorCode = "invalid_test_id" | "test_version_not_found" | "permission_denied" | "not_publishable" | "data_request_failed";
@@ -38,7 +41,9 @@ type VersionRow = Readonly<{
   id: string; test_id: string; version_no: number; lifecycle_status: "draft" | "published" | "archived";
   target_provider: string | null; target_snapshot: unknown; prototype_mapping: Record<string, unknown>;
   figma_file_key: string | null; figma_start_node_id: string | null; funnel_config: unknown;
+  study_mode?: "usability" | "methods" | "mixed";
 }>;
+type BlockRow = Readonly<{ id: string; ordinal: number; kind: StudyKind; title: string; config: unknown }>;
 type TaskRow = Readonly<{
   id: string; ordinal: number; title: string; scenario: string | null; instruction: string | null;
   expected_path: unknown; success_rule: Record<string, unknown>; failure_rule: Record<string, unknown>;
@@ -97,17 +102,18 @@ export function createPublishVersioningStore(options: { supabaseUrl: string; pub
   }
   async function preview(testId: string): Promise<PublishPreview> {
     testId = requiredTestId(testId);
-    const params = new URLSearchParams({ test_id: `eq.${testId}`, lifecycle_status: "in.(draft,published)", select: "id,test_id,version_no,lifecycle_status,target_provider,target_snapshot,prototype_mapping,figma_file_key,figma_start_node_id,funnel_config", order: "version_no.desc", limit: "1" });
+    const params = new URLSearchParams({ test_id: `eq.${testId}`, lifecycle_status: "in.(draft,published)", select: "id,test_id,version_no,lifecycle_status,target_provider,target_snapshot,prototype_mapping,figma_file_key,figma_start_node_id,funnel_config,study_mode", order: "version_no.desc", limit: "1" });
     const versions = await request<VersionRow[]>(`/rest/v1/test_versions?${params}`); const version = versions[0];
     if (!version || version.lifecycle_status === "archived") throw new PublishVersioningError("test_version_not_found", 404);
+    const studyMode = version.study_mode ?? "usability";
     const target = parseTargetSnapshot(version.target_snapshot) ?? legacyFigmaTarget(version);
-    if (!target || (version.target_provider && version.target_provider !== target.provider)) throw new PublishVersioningError("not_publishable", 409, "publishable_target_snapshot_required");
-    if (version.lifecycle_status === "draft" && (target.launchMode === "unsupported" || target.capabilities.publishBlocked === true)) {
+    if (studyMode !== "methods" && (!target || (version.target_provider && version.target_provider !== target.provider))) throw new PublishVersioningError("not_publishable", 409, "publishable_target_snapshot_required");
+    if (studyMode !== "methods" && version.lifecycle_status === "draft" && target && (target.launchMode === "unsupported" || target.capabilities.publishBlocked === true)) {
       throw new PublishVersioningError("not_publishable", 409, "target_preflight_required");
     }
     const taskParams = new URLSearchParams({ test_version_id: `eq.${version.id}`, select: "id,ordinal,title,scenario,instruction,expected_path,success_rule,failure_rule,timeout_seconds,post_task_questions", order: "ordinal.asc" });
     const taskRows = await request<TaskRow[]>(`/rest/v1/tasks?${taskParams}`);
-    if (version.lifecycle_status === "draft") {
+    if (version.lifecycle_status === "draft" && target) {
       for (const task of taskRows) {
         const validation = validateStoredTaskOutcomeRules({
           target,
@@ -121,8 +127,18 @@ export function createPublishVersioningStore(options: { supabaseUrl: string; pub
     }
     const tasks = taskRows.map((task) => Object.freeze({ id: task.id, ordinal: task.ordinal, title: task.title, scenario: task.scenario, instruction: task.instruction,
       expectedPath: Object.freeze(Array.isArray(task.expected_path) ? [...task.expected_path] : []), successRule: Object.freeze({ ...(task.success_rule ?? {}) }), failureRule: Object.freeze({ ...(task.failure_rule ?? {}) }), timeoutSeconds: task.timeout_seconds, postTaskQuestions: Object.freeze({ ...(task.post_task_questions ?? {}) }) }));
-    if (tasks.length === 0) throw new PublishVersioningError("not_publishable", 409, "at_least_one_task_required");
-    return Object.freeze({ testId, testVersionId: version.id, versionNo: version.version_no, lifecycleStatus: version.lifecycle_status, target, funnelConfig: parseFunnelDefinition(version.funnel_config), tasks: Object.freeze(tasks) });
+    if (studyMode !== "methods" && tasks.length === 0) throw new PublishVersioningError("not_publishable", 409, "at_least_one_task_required");
+    let blocks: BlockRow[] = [];
+    if (studyMode !== "usability") {
+      const blockParams = new URLSearchParams({ test_version_id: `eq.${version.id}`, select: "id,ordinal,kind,title,config", order: "ordinal.asc" });
+      blocks = await request<BlockRow[]>(`/rest/v1/study_blocks?${blockParams}`);
+      if (!blocks.some((block) => block.kind !== "usability_task")) throw new PublishVersioningError("not_publishable", 409, "at_least_one_method_block_required");
+      try { for (const block of blocks) if (block.kind !== "usability_task") parseMethodConfig(block.kind, block.config); }
+      catch (error) { if (error instanceof StudyContractError) throw new PublishVersioningError("not_publishable", 409, error.code); throw error; }
+    }
+    return Object.freeze({ testId, testVersionId: version.id, versionNo: version.version_no, lifecycleStatus: version.lifecycle_status,
+      studyMode, target, funnelConfig: studyMode === "methods" ? null : parseFunnelDefinition(version.funnel_config),
+      tasks: Object.freeze(tasks), blocks: Object.freeze(blocks.map(({ id, ordinal, kind, title }) => ({ id, ordinal, kind, title }))) });
   }
   async function saveFunnel(testId: string, screenIds: readonly string[]): Promise<PublishPreview> { testId = requiredTestId(testId); await request<string>("/rest/v1/rpc/save_draft_funnel_config", { method: "POST", body: JSON.stringify({ p_test_id: testId, p_screen_ids: cleanFunnelScreenIds(screenIds) }) }); return preview(testId); }
   async function publish(testId: string): Promise<PublishPreview> { testId = requiredTestId(testId); await request<string>("/rest/v1/rpc/publish_draft_test_version", { method: "POST", body: JSON.stringify({ p_test_id: testId }) }); return preview(testId); }

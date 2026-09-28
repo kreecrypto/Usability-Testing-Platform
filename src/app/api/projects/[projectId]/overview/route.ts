@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type Context = { params: Promise<{ projectId: string }> };
-type VersionRow = { id: string; test_id: string; version_no: number };
+type VersionRow = { id: string; test_id: string; version_no: number; lifecycle_status: "draft" | "published"; study_mode?: "usability" | "methods" | "mixed" };
 type FindingRow = { id: string; title: string; severity: string; status: string; test_version_id: string; updated_at: string };
 
 function providerError(status: number): Response {
@@ -41,10 +41,10 @@ export async function GET(request: Request, context: Context): Promise<Response>
       limit: "5",
     });
     const versionsQuery = new URLSearchParams({
-      select: "id,test_id,version_no",
+      select: "id,test_id,version_no,lifecycle_status,study_mode",
       workspace_id: `eq.${project.workspace_id}`,
       test_id: `in.(${tests.map((test) => test.id).join(",")})`,
-      lifecycle_status: "eq.published",
+      lifecycle_status: "in.(draft,published)",
       order: "version_no.desc",
     });
     const [findingsResponse, versionsResponse] = await Promise.all([
@@ -60,13 +60,18 @@ export async function GET(request: Request, context: Context): Promise<Response>
       findingsResponse.json() as Promise<FindingRow[]>,
       versionsResponse.json() as Promise<VersionRow[]>,
     ]);
+    const latestPublishedByTest = new Map<string, VersionRow>();
     const latestVersionByTest = new Map<string, VersionRow>();
     for (const version of versions) {
       if (!latestVersionByTest.has(version.test_id)) latestVersionByTest.set(version.test_id, version);
+      if (version.lifecycle_status === "published" && !latestPublishedByTest.has(version.test_id)) latestPublishedByTest.set(version.test_id, version);
     }
     return jsonResponse({
       project,
-      tests: tests.map((test) => ({ ...test, latestPublishedVersionId: latestVersionByTest.get(test.id)?.id ?? null })),
+      tests: tests.map((test) => ({ ...test,
+        latestPublishedVersionId: latestPublishedByTest.get(test.id)?.id ?? null,
+        latestStudyMode: latestVersionByTest.get(test.id)?.study_mode ?? "usability",
+      })),
       findings,
     });
   } catch (error) {

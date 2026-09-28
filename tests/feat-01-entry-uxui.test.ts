@@ -29,7 +29,7 @@ test("project overview scopes every read to the project and links results to its
       : url.pathname.endsWith("/tests")
         ? [{ id: testId, workspace_id: workspaceId, project_id: projectId, title: "Checkout", status: "published" }]
         : url.pathname.endsWith("/test_versions")
-          ? [{ id: versionId, test_id: testId, version_no: 2 }]
+          ? [{ id: versionId, test_id: testId, version_no: 2, lifecycle_status: "published", study_mode: "usability" }]
           : [{ id: "finding-1", title: "Navigation", severity: "high", status: "open", test_version_id: versionId }];
     return Response.json(rows);
   };

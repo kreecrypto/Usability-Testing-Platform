@@ -5,7 +5,7 @@ import styles from "./review-publish.module.css";
 
 type Task = { id: string; ordinal: number; title: string; scenario: string | null; instruction: string | null; timeoutSeconds: number | null; successRule: Record<string, unknown>; failureRule: Record<string, unknown>; postTaskQuestions: Record<string, unknown> };
 type FunnelConfig = { version: "screen-funnel-v1"; screenIds: string[] };
-type Preview = { testId: string; testVersionId: string; versionNo: number; lifecycleStatus: "draft" | "published"; target: { provider: "figma_prototype" | "first_party_web" | "external_web"; sourceUrl: string; environment: "uat" | "production" | "external" | null; providerConfig: Record<string, unknown> }; funnelConfig: FunnelConfig | null; tasks: Task[] };
+type Preview = { testId: string; testVersionId: string; versionNo: number; lifecycleStatus: "draft" | "published"; studyMode: "usability" | "methods" | "mixed"; target: { provider: "figma_prototype" | "first_party_web" | "external_web"; sourceUrl: string; environment: "uat" | "production" | "external" | null; providerConfig: Record<string, unknown> } | null; funnelConfig: FunnelConfig | null; tasks: Task[]; blocks: { id: string; ordinal: number; kind: string; title: string }[] };
 type State = "loading" | "ready" | "working" | "error";
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
@@ -61,7 +61,7 @@ export default function ReviewPublishClient({ testId }: { testId: string }) {
   async function copyParticipantLink() {
     if (!preview) return;
     try {
-      await navigator.clipboard.writeText(`${window.location.origin}/t/${encodeURIComponent(preview.testVersionId)}`);
+      await navigator.clipboard.writeText(`${window.location.origin}/${preview.studyMode === "methods" ? "m" : "t"}/${encodeURIComponent(preview.testVersionId)}`);
       setCopyMessage("คัดลอกลิงก์ผู้เข้าร่วมแล้ว");
     } catch { setCopyMessage("คัดลอกไม่สำเร็จ โปรดเปิดลิงก์แล้วคัดลอกจากแถบที่อยู่"); }
   }
@@ -82,13 +82,13 @@ export default function ReviewPublishClient({ testId }: { testId: string }) {
 
       {preview.lifecycleStatus === "published" ? <section className={styles.card} aria-labelledby="share-heading">
         <h2 id="share-heading">ส่งลิงก์ให้ผู้เข้าร่วม</h2>
-        <p><a href={`/t/${encodeURIComponent(preview.testVersionId)}`} target="_blank" rel="noreferrer">เปิดลิงก์ User Test เวอร์ชัน {preview.versionNo}</a></p>
+        <p><a href={`/${preview.studyMode === "methods" ? "m" : "t"}/${encodeURIComponent(preview.testVersionId)}`} target="_blank" rel="noreferrer">เปิดลิงก์ User Test เวอร์ชัน {preview.versionNo}</a></p>
         <button className={styles.secondary} type="button" onClick={() => void copyParticipantLink()}>คัดลอกลิงก์ผู้เข้าร่วม</button>
         {copyMessage ? <p role="status">{copyMessage}</p> : null}
-        <p><a href={`/results/${encodeURIComponent(preview.testVersionId)}`}>ดู Results</a> · <a href={`/reports/${encodeURIComponent(preview.testVersionId)}`}>ดู Report</a></p>
+        <p><a href={`/${preview.studyMode === "methods" ? "methods/results" : "results"}/${encodeURIComponent(preview.testVersionId)}`}>ดู Results</a> · <a href={`/${preview.studyMode === "methods" ? "methods/reports" : "reports"}/${encodeURIComponent(preview.testVersionId)}`}>ดู Report</a></p>
       </section> : null}
 
-      <section className={styles.card} aria-labelledby="prototype-heading">
+      {preview.target ? <section className={styles.card} aria-labelledby="prototype-heading">
         <h2 id="prototype-heading">เป้าหมายทดสอบ</h2>
         <dl className={styles.definition}>
           <div><dt>ประเภท</dt><dd>{preview.target.provider === "figma_prototype" ? "Figma Prototype" : preview.target.provider === "first_party_web" ? "เว็บไซต์ของทีม" : "เว็บไซต์ภายนอก"}</dd></div>
@@ -97,9 +97,9 @@ export default function ReviewPublishClient({ testId }: { testId: string }) {
           <div><dt>รหัสเวอร์ชันภายใน</dt><dd><code>{preview.testVersionId}</code></dd></div>
         </dl>
         <p className={styles.note}>เมื่อเผยแพร่ ระบบจะล็อก snapshot และงานของเวอร์ชันนี้ เพื่อให้ผลการทดสอบอ้างอิงการตั้งค่าชุดเดิมได้</p>
-      </section>
+      </section> : <section className={styles.card}><h2>วิธีวิจัย</h2><p>เวอร์ชันนี้ไม่ต้องใช้ Prototype หรือเว็บไซต์เป็นเป้าหมาย</p><p><a href={`/builder/${encodeURIComponent(testId)}/methods`}>จัดการ Survey / Card Sort / Tree Test</a></p></section>}
 
-      <section className={styles.card} aria-labelledby="funnel-heading">
+      {preview.target ? <section className={styles.card} aria-labelledby="funnel-heading">
         <h2 id="funnel-heading">Funnel ของผลการทดสอบ</h2>
         <p className={styles.note}>กำหนด Screen ID ตามลำดับที่ต้องการวัด conversion และ drop-off ค่านี้จะถูกเก็บกับเวอร์ชันที่เผยแพร่ และไม่เดาจากเส้นทางจริงของผู้เข้าร่วม</p>
         {preview.lifecycleStatus === "draft" ? (
@@ -111,9 +111,11 @@ export default function ReviewPublishClient({ testId }: { testId: string }) {
         ) : preview.funnelConfig ? (
           <ol className={styles.funnelSteps}>{preview.funnelConfig.screenIds.map((screenId) => <li key={screenId}><code>{screenId}</code></li>)}</ol>
         ) : <p>เวอร์ชันนี้ยังไม่มี Funnel จึงยังไม่มีข้อมูล Funnel ให้แสดง</p>}
-      </section>
+      </section> : null}
 
-      <section aria-labelledby="task-heading">
+      {preview.blocks?.length ? <section className={styles.card}><h2>กิจกรรมวิจัย ({preview.blocks.length})</h2><ol>{preview.blocks.map((block) => <li key={block.id}>{block.title} — {block.kind}</li>)}</ol></section> : null}
+
+      {preview.tasks.length ? <section aria-labelledby="task-heading">
         <div className={styles.sectionTitle}><h2 id="task-heading">งานทดสอบ</h2><span>{preview.tasks.length}</span></div>
         <div className={styles.tasks}>
           {preview.tasks.map((task) => {
@@ -121,7 +123,7 @@ export default function ReviewPublishClient({ testId }: { testId: string }) {
             return <article className={styles.task} key={task.id}><div className={styles.ordinal}>{task.ordinal}</div><div><h3>{task.title}</h3>{task.scenario ? <p>{task.scenario}</p> : null}{task.instruction ? <p className={styles.instruction}>{task.instruction}</p> : null}<ul className={styles.meta}><li>เกณฑ์สำเร็จ: {ruleCount(task.successRule)}</li><li>เกณฑ์ไม่สำเร็จ: {ruleCount(task.failureRule)}</li><li>เวลาสูงสุด: {task.timeoutSeconds ? `${task.timeoutSeconds} วินาที` : "ไม่ได้กำหนด"}</li><li>คำถามหลังงาน: {questions.length ? questions.join(", ") : "ไม่มี"}</li></ul></div></article>;
           })}
         </div>
-      </section>
+      </section> : null}
     </main>
   );
 }
