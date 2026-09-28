@@ -3,7 +3,7 @@ export const RETEST_COMPARISON_VERSION = "retest-v1" as const;
 
 export const findingSeverities = ["critical", "high", "medium", "low"] as const;
 export const findingStatuses = ["open", "fixed", "retest_needed", "verified", "dismissed"] as const;
-export const evidenceTypes = ["session", "event", "answer", "path", "heatmap"] as const;
+export const evidenceTypes = ["session", "event", "answer", "path", "heatmap", "method_response"] as const;
 
 export type FindingSeverity = (typeof findingSeverities)[number];
 export type FindingStatus = (typeof findingStatuses)[number];
@@ -46,6 +46,7 @@ export type FindingEvidenceRecord = Readonly<{
   sessionId: string | null;
   eventId: string | null;
   answerId: string | null;
+  studyResponseId?: string | null;
   note: string | null;
   payload: Readonly<Record<string, unknown>>;
   createdAt: string;
