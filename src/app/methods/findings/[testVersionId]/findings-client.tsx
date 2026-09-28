@@ -46,17 +46,10 @@ export default function MethodFindingsClient({ testVersionId }: { testVersionId:
     event.preventDefault(); if (!block || !responseId || busy) return;
     setBusy(true); setError("");
     try {
-      const result = await api<{ finding: Finding }>("/api/findings", { method: "POST", body: JSON.stringify({
-        testVersionId, title, problem, researcherInterpretation: interpretation, recommendation, severity,
-        metricSnapshot: { metricKey: `method:${block.kind}:${block.blockId}:responseCount`, value: block.sampleSize || null,
-          sampleSize: block.sampleSize, technicalBlockedCount: 0, testVersionId,
-          aggregationVersion: "method-results-v1", ruleVersions: [], sourceEventIds: [] },
+      await api<{ findingId: string }>("/api/methods/findings", { method: "POST", body: JSON.stringify({
+        testVersionId, studyResponseId: responseId, title, problem,
+        researcherInterpretation: interpretation, recommendation, severity,
       }) });
-      const selected = evidence.find((item) => item.id === responseId);
-      if (selected) await api(`/api/findings/${encodeURIComponent(result.finding.id)}/evidence`, {
-          method: "POST", body: JSON.stringify({ type: "method_response", sessionId: selected.sessionId, studyResponseId: selected.id,
-            payload: { blockId: selected.blockId } }),
-        });
       setTitle(""); setProblem(""); setInterpretation(""); setRecommendation(""); setResponseId(""); await load();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "สร้าง Finding ไม่สำเร็จ"); }
     finally { setBusy(false); }
