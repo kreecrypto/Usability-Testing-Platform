@@ -72,6 +72,7 @@ do $$ begin
 end $$;
 reset role;
 set local request.jwt.claim.sub = '11111111-1111-4111-8111-111111111111';
+set local "request.jwt.claims" = '{"sub":"11111111-1111-4111-8111-111111111111"}';
 set local role authenticated;
 do $$ begin
   if (select count(*) from public.study_blocks) <> 1 then raise exception 'researcher cannot read study blocks'; end if;
@@ -80,10 +81,33 @@ do $$ begin
 end $$;
 reset role;
 set local request.jwt.claim.sub = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+set local "request.jwt.claims" = '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"}';
 set local role authenticated;
 do $$ begin
   if (select count(*) from public.study_blocks) <> 0 then raise exception 'other user can read study blocks'; end if;
   if (select count(*) from public.study_responses) <> 0 then raise exception 'other user can read method evidence'; end if;
 end $$;
 reset role;
+set local request.jwt.claim.sub = '';
+set local "request.jwt.claims" = '';
+do $$
+declare v_new_version uuid;
+declare v_session uuid;
+begin
+  v_new_version := public.create_draft_from_published('44444444-4444-4444-8444-444444444444');
+  if (select count(*) from public.study_blocks where test_version_id=v_new_version) <> 1 then
+    raise exception 'published method block was not copied into draft';
+  end if;
+  if (select count(*) from public.study_blocks where test_version_id='55555555-5555-4555-8555-555555555555') <> 1 then
+    raise exception 'published method block changed during clone';
+  end if;
+  select used_session_id into v_session from public.study_invites where id='77777777-7777-4777-8777-777777777777';
+  delete from public.sessions where id=v_session;
+  if (select count(*) from public.study_responses where session_id=v_session) <> 0 then
+    raise exception 'session deletion retained method responses';
+  end if;
+  if (select count(*) from public.study_invites where id='77777777-7777-4777-8777-777777777777') <> 0 then
+    raise exception 'session deletion retained redeemed invite';
+  end if;
+end $$;
 rollback;
