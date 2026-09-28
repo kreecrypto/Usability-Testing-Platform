@@ -6,7 +6,7 @@ The reviewable PR stack is [contract #127](https://github.com/kreecrypto/Usabili
 
 Local QA on the complete stack: `npm test` passed 299/299; `npm run typecheck`, `npm run build`, `npm run check:design-system`, and `npm run check:high-fi` passed. The repository has no separate lint script. All repository migrations were applied in order to a disposable PostgreSQL 16 database. `tests/feat13-migration-smoke.sql` passed publish, immutable published blocks, screener acceptance/rejection, invite replay prevention, exact-version response uniqueness, clone to a new draft, researcher/non-member/anon RLS, atomic Finding → method response citation with database-derived response count, rejection without an orphan Finding, and session deletion cascades. The same smoke runs in Task 21 Authorization QA.
 
-GitHub CI on previously validated code commits `4bbcd11` (contract), `a1a2ed0` (runner), and `b692700` (results) passed GWD-11 Build QA, Task 20 Schema QA, Task 21 Authorization QA, and Local Demo QA. The [results Preview](https://usability-testing-platform-3ebavd6we.vercel.app) for `b692700` reached READY. The new atomic Finding changes have passed local QA but await CI on updated PR commits. Preview READY verifies deployment/build only; no real participant session was run there.
+GitHub CI on updated commits `9b80420` (contract), `9a1a8ca` (runner), and `466d208` (results) passed GWD-11 Build QA, Task 20 Schema QA, Task 21 Authorization QA, and Local Demo QA on each branch. The [results Preview](https://usability-testing-platform-ogwaua3d7.vercel.app) for `466d208` reached READY. Preview READY verifies deployment/build only; no real participant session was run there.
 
 Remaining release gates:
 
