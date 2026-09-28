@@ -259,3 +259,6 @@ jobs:
             echo "anon direct researcher-table read unexpectedly succeeded"
             exit 1
           fi
+
+      - name: Verify research method migration and authorization smoke
+        run: psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/feat13-migration-smoke.sql
