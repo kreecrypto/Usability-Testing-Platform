@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from "node:util";
 import { parseMethodConfig, parseMethodResponse, parseScreenerConfig, publicMethodConfig, publicScreenerConfig, StudyContractError, type StudyKind } from "./study-contract.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -74,39 +75,68 @@ export function createMethodRunnerStore(options: { supabaseUrl: string; secretKe
 
   async function progress(testVersionId: string, sessionId: string) {
     const row = await session(testVersionId, sessionId);
-    const params = new URLSearchParams({ session_id: `eq.${row.id}`, test_version_id: `eq.${row.test_version_id}`, select: "id,block_id,response", order: "submitted_at.asc" });
-    const responses = await request<ResponseRow[]>(`study_responses?${params}`);
+    const responses = await loadResponses(row);
     return { status: row.status, completedBlockIds: responses.map((response) => response.block_id) };
+  }
+
+  async function loadResponses(row: SessionRow): Promise<ResponseRow[]> {
+    const params = new URLSearchParams({ session_id: `eq.${row.id}`, test_version_id: `eq.${row.test_version_id}`, select: "id,block_id,response", order: "submitted_at.asc" });
+    return request<ResponseRow[]>(`study_responses?${params}`);
+  }
+
+  async function completeSession(row: SessionRow): Promise<void> {
+    if (row.status === "completed") return;
+    const sessionParams = new URLSearchParams({ id: `eq.${row.id}`, status: "eq.active" });
+    await request<unknown>(`sessions?${sessionParams}`, {
+      method: "PATCH", body: JSON.stringify({ status: "completed", completed_at: new Date().toISOString() }),
+    });
   }
 
   async function submit(testVersionId: string, sessionId: string, blockId: string, rawResponse: unknown) {
     const row = await session(testVersionId, sessionId);
-    if (row.status !== "active") throw new MethodRunnerError("session_not_active", 409);
     const { blocks } = await internalSnapshot(testVersionId);
     const block = blocks.find((item) => item.id === uuid(blockId));
     if (!block) throw new MethodRunnerError("block_not_found", 404);
-    const current = await progress(testVersionId, sessionId);
-    if (current.completedBlockIds.includes(block.id)) throw new MethodRunnerError("already_submitted", 409);
-    const next = blocks.find((item) => !current.completedBlockIds.includes(item.id));
-    if (next?.id !== block.id) throw new MethodRunnerError("block_out_of_order", 409);
     let response: Record<string, unknown>;
     try { response = parseMethodResponse(block.kind, parseMethodConfig(block.kind, block.config), rawResponse); }
     catch (error) { if (error instanceof StudyContractError) throw new MethodRunnerError(error.code, 400); throw error; }
+    const current = await loadResponses(row);
+    const existing = current.find((item) => item.block_id === block.id);
+    if (existing) {
+      if (!isDeepStrictEqual(existing.response, response)) throw new MethodRunnerError("already_submitted", 409);
+      const completed = current.length === blocks.length;
+      if (completed) await completeSession(row);
+      return { responseId: existing.id, completed };
+    }
+    if (row.status !== "active") throw new MethodRunnerError("session_not_active", 409);
+    const next = blocks.find((item) => !current.some((response) => response.block_id === item.id));
+    if (next?.id !== block.id) throw new MethodRunnerError("block_out_of_order", 409);
     const timestamp = new Date().toISOString();
     const insertParams = new URLSearchParams({ select: "id" });
-    const saved = await request<{ id: string }[]>(`study_responses?${insertParams}`, {
-      method: "POST", headers: { prefer: "return=representation" },
-      body: JSON.stringify({ workspace_id: row.workspace_id, test_version_id: row.test_version_id,
-        session_id: row.id, block_id: block.id, response, started_at: timestamp, submitted_at: timestamp }),
-    });
-    if (!saved[0]) throw new MethodRunnerError("data_request_failed", 502);
-    if (current.completedBlockIds.length + 1 === blocks.length) {
-      const sessionParams = new URLSearchParams({ id: `eq.${row.id}`, status: "eq.active" });
-      await request<unknown>(`sessions?${sessionParams}`, {
-        method: "PATCH", body: JSON.stringify({ status: "completed", completed_at: new Date().toISOString() }),
+    let saved: { id: string }[];
+    try {
+      saved = await request<{ id: string }[]>(`study_responses?${insertParams}`, {
+        method: "POST", headers: { prefer: "return=representation" },
+        body: JSON.stringify({ workspace_id: row.workspace_id, test_version_id: row.test_version_id,
+          session_id: row.id, block_id: block.id, response, started_at: timestamp, submitted_at: timestamp }),
       });
+    } catch (error) {
+      if (error instanceof MethodRunnerError && error.code === "already_submitted") {
+        const afterRace = await loadResponses(row);
+        const duplicate = afterRace.find((item) => item.block_id === block.id);
+        if (duplicate && isDeepStrictEqual(duplicate.response, response)) {
+          const completed = afterRace.length === blocks.length;
+          if (completed) await completeSession(row);
+          return { responseId: duplicate.id, completed };
+        }
+      }
+      throw error;
     }
-    return { responseId: saved[0].id, completed: current.completedBlockIds.length + 1 === blocks.length };
+    if (!saved[0]) throw new MethodRunnerError("data_request_failed", 502);
+    if (current.length + 1 === blocks.length) {
+      await completeSession(row);
+    }
+    return { responseId: saved[0].id, completed: current.length + 1 === blocks.length };
   }
 
   return { snapshot, progress, submit };
