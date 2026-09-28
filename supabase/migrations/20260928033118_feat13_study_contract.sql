@@ -532,3 +532,66 @@ revoke all on function private.delete_method_evidence_with_session()
 create trigger sessions_delete_method_evidence_trg
 before delete on public.sessions
 for each row execute function private.delete_method_evidence_with_session();
+
+-- Create a Finding and its exact response citation in one transaction. The
+-- count is recomputed from stored rows rather than accepted from the client.
+create or replace function public.create_method_finding(
+  p_test_version_id uuid, p_study_response_id uuid,
+  p_title text, p_problem text, p_interpretation text,
+  p_recommendation text, p_severity text
+)
+returns uuid language plpgsql security invoker set search_path = '' as $$
+declare
+  v_workspace_id uuid;
+  v_project_id uuid;
+  v_session_id uuid;
+  v_block_id uuid;
+  v_kind text;
+  v_count integer;
+  v_finding_id uuid;
+begin
+  if nullif(trim(p_title), '') is null or nullif(trim(p_problem), '') is null
+    or p_severity not in ('critical', 'high', 'medium', 'low') then
+    raise exception 'invalid_method_finding' using errcode = '22023';
+  end if;
+  select sr.workspace_id, t.project_id, sr.session_id, sr.block_id, sb.kind
+    into v_workspace_id, v_project_id, v_session_id, v_block_id, v_kind
+  from public.study_responses sr
+  join public.study_blocks sb on sb.id = sr.block_id and sb.test_version_id = sr.test_version_id
+  join public.test_versions tv on tv.id = sr.test_version_id
+  join public.tests t on t.id = tv.test_id
+  where sr.id = p_study_response_id and sr.test_version_id = p_test_version_id
+    and tv.study_mode = 'methods';
+  if v_workspace_id is null or not private.is_research_editor(v_workspace_id) then
+    raise exception 'method_evidence_not_found_or_denied' using errcode = '42501';
+  end if;
+  select count(*) into v_count from public.study_responses
+    where test_version_id = p_test_version_id and block_id = v_block_id;
+  insert into public.findings (
+    workspace_id, project_id, test_version_id, title, problem,
+    researcher_interpretation, recommendation, severity, created_by, metric_snapshot
+  ) values (
+    v_workspace_id, v_project_id, p_test_version_id, trim(p_title), trim(p_problem),
+    nullif(trim(coalesce(p_interpretation, '')), ''),
+    nullif(trim(coalesce(p_recommendation, '')), ''), p_severity, auth.uid(),
+    jsonb_build_object(
+      'metricKey', 'method:' || v_kind || ':' || v_block_id || ':responseCount',
+      'value', v_count, 'sampleSize', v_count, 'technicalBlockedCount', 0,
+      'testVersionId', p_test_version_id, 'aggregationVersion', 'method-results-v1',
+      'ruleVersions', '[]'::jsonb, 'sourceEventIds', '[]'::jsonb
+    )
+  ) returning id into v_finding_id;
+  insert into public.finding_evidence (
+    workspace_id, finding_id, session_id, study_response_id,
+    evidence_type, evidence_payload
+  ) values (
+    v_workspace_id, v_finding_id, v_session_id, p_study_response_id,
+    'method_response', jsonb_build_object('blockId', v_block_id)
+  );
+  return v_finding_id;
+end;
+$$;
+revoke all on function public.create_method_finding(uuid,uuid,text,text,text,text,text)
+  from public, anon;
+grant execute on function public.create_method_finding(uuid,uuid,text,text,text,text,text)
+  to authenticated, service_role;

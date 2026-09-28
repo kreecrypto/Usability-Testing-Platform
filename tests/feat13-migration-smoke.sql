@@ -79,14 +79,28 @@ do $$ begin
   if (select count(*) from public.study_responses) <> 1 then raise exception 'researcher cannot read method evidence'; end if;
   if has_table_privilege('authenticated','public.study_responses','insert') then raise exception 'researcher can insert responses directly'; end if;
 end $$;
-insert into public.findings(id,workspace_id,project_id,test_version_id,title,problem,severity) values
-  ('99999999-9999-4999-8999-999999999999','22222222-2222-4222-8222-222222222222',
-   '33333333-3333-4333-8333-333333333333','55555555-5555-4555-8555-555555555555',
-   'Method observation','Participant was confused','medium');
-insert into public.finding_evidence(workspace_id,finding_id,session_id,study_response_id,evidence_type,evidence_payload)
-  select '22222222-2222-4222-8222-222222222222','99999999-9999-4999-8999-999999999999',
-    sr.session_id,sr.id,'method_response','{"blockId":"66666666-6666-4666-8666-666666666666"}'::jsonb
+do $$
+declare v_finding_id uuid;
+begin
+  select public.create_method_finding(
+    '55555555-5555-4555-8555-555555555555', sr.id,
+    'Method observation', 'Participant was confused', 'Observed hesitation',
+    'Clarify the label', 'medium') into v_finding_id
   from public.study_responses sr limit 1;
+  if v_finding_id is null or
+    (select count(*) from public.finding_evidence where finding_id = v_finding_id) <> 1 or
+    (select metric_snapshot->>'sampleSize' from public.findings where id = v_finding_id) <> '1' then
+    raise exception 'method finding was not created atomically with evidence and real count';
+  end if;
+  begin
+    perform public.create_method_finding(
+      '55555555-5555-4555-8555-555555555555', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      'Invalid evidence', 'Must reject', null, null, 'low');
+    raise exception 'finding accepted missing response';
+  exception when sqlstate '42501' then null;
+  end;
+  if (select count(*) from public.findings) <> 1 then raise exception 'invalid evidence left orphan finding'; end if;
+end $$;
 reset role;
 set local request.jwt.claim.sub = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 set local "request.jwt.claims" = '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"}';
