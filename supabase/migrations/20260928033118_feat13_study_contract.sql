@@ -515,3 +515,20 @@ revoke all on function private.guard_method_finding_evidence() from public, anon
 create trigger finding_evidence_method_context_trg
 before insert or update on public.finding_evidence
 for each row execute function private.guard_method_finding_evidence();
+
+-- The legacy session FK clears finding_evidence.session_id on deletion. A method
+-- citation must instead disappear with its response, before that SET NULL fires.
+create or replace function private.delete_method_evidence_with_session()
+returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  delete from public.finding_evidence
+  where workspace_id = old.workspace_id and session_id = old.id
+    and evidence_type = 'method_response';
+  return old;
+end;
+$$;
+revoke all on function private.delete_method_evidence_with_session()
+  from public, anon, authenticated, service_role;
+create trigger sessions_delete_method_evidence_trg
+before delete on public.sessions
+for each row execute function private.delete_method_evidence_with_session();
