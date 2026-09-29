@@ -14,7 +14,12 @@ type Stage = "loading" | "consent" | "running" | "complete" | "ineligible" | "er
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { ...init, cache: "no-store", headers: init?.body ? { "content-type": "application/json", ...(init.headers ?? {}) } : init?.headers });
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(typeof body.error === "string" ? body.error : "request_failed");
+  if (!response.ok) {
+    const code = String(body.error ?? "");
+    if (/invite|expired|closed|not_found/.test(code)) throw new Error("ลิงก์นี้ใช้งานไม่ได้หรือหมดอายุ ติดต่อผู้ที่ส่งลิงก์เพื่อขอลิงก์ที่ใช้งานได้");
+    if (response.status === 401 || response.status === 403) throw new Error("การเข้าใช้งานหมดอายุหรือไม่ได้รับอนุญาต ติดต่อผู้ที่ส่งลิงก์ให้คุณ");
+    throw new Error("ส่งข้อมูลไม่สำเร็จ ตรวจการเชื่อมต่อแล้วลองอีกครั้ง ข้อมูลในหน้านี้ยังอยู่");
+  }
   return body as T;
 }
 
@@ -153,7 +158,7 @@ export default function MethodRunnerClient({ testVersionId }: { testVersionId: s
   if (stage === "loading") return <main className={styles.shell}><p role="status">กำลังโหลดการทดสอบ…</p></main>;
   if (stage === "error" || !snapshot) return <main className={styles.shell}><h1>เปิดการทดสอบไม่ได้</h1><p role="alert">{error}</p><button onClick={() => void load()}>ลองอีกครั้ง</button></main>;
   return <main className={styles.shell}>
-    <header><p className={styles.kicker}>User Test · เวอร์ชัน {snapshot.versionNo}</p><h1>{snapshot.title}</h1>{snapshot.description ? <p>{snapshot.description}</p> : null}</header>
+    <header><p className={styles.kicker}>การทดสอบ · เวอร์ชัน {snapshot.versionNo}</p><h1>{snapshot.title}</h1>{snapshot.description ? <p>{snapshot.description}</p> : null}</header>
     {error ? <p className={styles.error} role="alert">{error}</p> : null}
     {stage === "consent" ? <section className={styles.panel}><h2>ก่อนเริ่มการทดสอบ</h2><p>เราจะบันทึกคำตอบและเส้นทางที่คุณเลือกเพื่อใช้วิเคราะห์ปัญหาการใช้งาน โดยไม่ต้องสร้างบัญชี</p><p>คุณสามารถหยุดได้ทุกเมื่อ คำตอบที่ส่งแล้วจะถูกเก็บตามนโยบายข้อมูลของการศึกษา</p>
       <form onSubmit={(event) => void consent(event)}>
@@ -165,7 +170,7 @@ export default function MethodRunnerClient({ testVersionId }: { testVersionId: s
     </section> : null}
     {stage === "ineligible" ? <section className={styles.panel}><h2>ขอบคุณที่สนใจ</h2><p>คำตอบคัดกรองของคุณไม่ตรงกับเงื่อนไขของการศึกษานี้ จึงไม่สามารถเข้าร่วมต่อได้</p></section> : null}
     {stage === "running" && current ? <section className={styles.panel} aria-labelledby="block-title">
-      <p className={styles.kicker}>กิจกรรม {completed.length + 1} จาก {snapshot.blocks.length}</p><h2 id="block-title">{current.title}</h2>
+      <p className={styles.kicker} role="status">กิจกรรม {completed.length + 1} จาก {snapshot.blocks.length}</p><p>{current.kind === "survey" ? "ตอบคำถามตามความคิดเห็นของคุณ แล้วกดส่งคำตอบเพื่อทำต่อ" : current.kind === "card_sort" ? "เลือกหมวดหมู่ให้แต่ละรายการตามความเข้าใจของคุณ แล้วส่งคำตอบ" : "อ่านโจทย์และเลือกตำแหน่งในเมนูที่คุณคาดว่าจะพบข้อมูลนั้น"}</p><h2 id="block-title">{current.title}</h2>
       {current.kind === "survey" ? <SurveyForm key={current.id} config={current.config as SurveyConfig} busy={busy} onSubmit={(value) => void submit(value)} /> : null}
       {current.kind === "card_sort" ? <CardForm key={current.id} config={current.config as CardConfig} busy={busy} onSubmit={(value) => void submit(value)} /> : null}
       {current.kind === "tree_test" ? <TreeForm key={current.id} config={current.config as TreeConfig} busy={busy} onSubmit={(value) => void submit(value)} /> : null}
