@@ -101,7 +101,7 @@ export default function SuccessCriteriaClient({ testId }: { testId: string }) {
     <main className={styles.shell}>
       <header className={styles.header}>
         <a href={`/builder/${encodeURIComponent(testId)}/tasks`} className={styles.backLink}>← งานทดสอบ</a>
-        <p className={styles.eyebrow}>สร้างการทดสอบ · เกณฑ์จบงาน</p>
+        <p className={styles.eyebrow}>ตั้งค่าแบบทดสอบ · เกณฑ์จบงาน</p>
         <h1>กำหนดจุดสำเร็จและไม่สำเร็จ</h1>
         <p>ใช้ Figma Node ID ที่ชัดเจนจากต้นแบบ จุดสำเร็จและจุดไม่สำเร็จต้องไม่ซ้ำกันเพื่อให้ผลลัพธ์ของงานตัดสินได้แน่นอน</p>
       </header>

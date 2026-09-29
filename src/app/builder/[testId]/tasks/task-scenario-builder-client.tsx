@@ -145,8 +145,8 @@ export default function TaskScenarioBuilderClient({ testId }: { testId: string }
   return (
     <main className={styles.shell}>
       <header className={styles.header}>
-        <a href={`/builder/${encodeURIComponent(testId)}/prototype`} className={styles.backLink}>← ต้นแบบ</a>
-        <p className={styles.eyebrow}>สร้างการทดสอบ · งานทดสอบ</p>
+        <a href={`/builder/${encodeURIComponent(testId)}/prototype`} className={styles.backLink}>← เป้าหมายทดสอบ</a>
+        <p className={styles.eyebrow}>ตั้งค่าแบบทดสอบ · งานทดสอบ</p>
         <h1>กำหนดงานที่ต้องการให้ผู้เข้าร่วมทำ</h1>
         <p>เขียนสถานการณ์และคำสั่งให้ชัด กระชับ และไม่เปิดเผยเส้นทางหรือเกณฑ์สำเร็จของงาน</p>
       </header>
