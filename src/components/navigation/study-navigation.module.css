@@ -1,0 +1,12 @@
+.context, .steps { background: var(--ah-canvas); padding: 16px 24px; border-bottom: 1px solid var(--ah-hairline); color: var(--ah-ink-deep); overflow-wrap: anywhere; }
+.context a, .steps a { color: var(--ah-primary); display: inline-flex; align-items: center; min-height: 44px; padding: 8px; }
+.context p, .steps p { margin: 8px 0; line-height: 1.6; }
+.identifier { font-size: 14px; }
+.steps ol { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0; padding: 0; list-style: none; }
+.steps li { min-width: 0; }
+.steps span { display: inline-block; padding: 8px; }
+.steps small { display: block; max-width: 24ch; line-height: 1.5; color: var(--ah-slate); }
+.steps [aria-current] { font-weight: 700; text-decoration-thickness: 3px; background: var(--ah-primary-soft); border-radius: var(--ah-radius-sm); }
+.context button { min-height: 44px; }
+.context a:focus-visible, .context button:focus-visible, .steps a:focus-visible { outline: 3px solid var(--ah-primary); outline-offset: 2px; }
+@media (max-width: 480px) { .context, .steps { padding: 12px 16px; } .steps ol { gap: 4px 8px; } }

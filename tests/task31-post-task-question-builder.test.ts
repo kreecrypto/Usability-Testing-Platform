@@ -110,7 +110,7 @@ test("question API uses current authenticated session boundary and no service ro
 test("S15 editor exposes Thai SEQ, open feedback, required/optional, validation, empty and responsive accessibility states", async () => {
   const client = await readFile(new URL("../src/app/builder/[testId]/questions/post-task-question-builder-client.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../src/app/builder/[testId]/questions/post-task-question-builder.module.css", import.meta.url), "utf8");
-  assert.match(client, /สร้างการทดสอบ · คำถามหลังงาน/);
+  assert.match(client, /ตั้งค่าแบบทดสอบ · คำถามหลังงาน/);
   assert.match(client, />SEQ</);
   assert.match(client, /ความคิดเห็นเพิ่มเติม/);
   assert.match(client, /บังคับตอบ/);

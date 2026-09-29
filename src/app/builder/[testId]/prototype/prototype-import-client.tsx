@@ -116,7 +116,7 @@ export default function PrototypeImportClient({ testId }: { testId: string }) {
   const embedUrl = target?.provider === "figma_prototype" ? String(target.providerConfig.embedUrl ?? "") : "";
 
   return <main className={styles.shell}>
-    <header className={styles.header}><a href="/projects" className={styles.backLink}>← โปรเจกต์</a><p className={styles.eyebrow}>สร้างการทดสอบ · เป้าหมายทดสอบ</p><h1>เชื่อมต่อเป้าหมายทดสอบ</h1><p>เพิ่มลิงก์ Figma Prototype หรือเว็บไซต์ที่ต้องการทดสอบ ระบบจะแจ้งว่าข้อมูลแบบใดเก็บได้ก่อนเผยแพร่</p></header>
+    <header className={styles.header}><a href="/projects" className={styles.backLink}>← โปรเจกต์</a><p className={styles.eyebrow}>ตั้งค่าแบบทดสอบ · เป้าหมายทดสอบ</p><h1>เชื่อมต่อเป้าหมายทดสอบ</h1><p>เพิ่มลิงก์ Figma Prototype หรือเว็บไซต์ที่ต้องการทดสอบ ระบบจะแจ้งว่าข้อมูลแบบใดเก็บได้ก่อนเผยแพร่</p></header>
     <section className={styles.card} aria-labelledby="import-title"><h2 id="import-title">1. เพิ่ม URL เป้าหมาย</h2><form onSubmit={validate} className={styles.form}>
       <label><span>URL เป้าหมายทดสอบ</span><textarea value={targetUrl} onChange={(event) => { setTargetUrl(event.target.value); setTarget(null); setState("idle"); setMessage(null); }} rows={3} placeholder="https://…" required disabled={busy} /></label>
       <label><span>ความเป็นเจ้าของเว็บไซต์</span><select value={ownership} onChange={(event) => { setOwnership(event.target.value as "external" | "owned"); setTarget(null); }} disabled={busy}><option value="external">เว็บไซต์ภายนอก / ไม่ได้ควบคุม</option><option value="owned">เว็บไซต์ที่ทีมควบคุม</option></select></label>

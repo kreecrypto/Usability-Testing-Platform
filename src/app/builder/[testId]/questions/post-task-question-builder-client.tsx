@@ -80,7 +80,7 @@ export default function PostTaskQuestionBuilderClient({ testId }: { testId: stri
     <main className={styles.shell}>
       <header className={styles.header}>
         <a href={`/builder/${encodeURIComponent(testId)}/criteria`} className={styles.backLink}>← เกณฑ์จบงาน</a>
-        <p className={styles.eyebrow}>สร้างการทดสอบ · คำถามหลังงาน</p>
+        <p className={styles.eyebrow}>ตั้งค่าแบบทดสอบ · คำถามหลังงาน</p>
         <h1>กำหนดคำถามหลังทำแต่ละงาน</h1>
         <p>เลือกว่าจะถามคะแนนความง่ายของงาน (SEQ) และความคิดเห็นเพิ่มเติมหรือไม่ พร้อมกำหนดว่าคำตอบใดเป็นข้อมูลที่ต้องตอบ</p>
       </header>
