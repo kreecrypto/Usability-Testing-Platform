@@ -10,6 +10,8 @@ import type {
   ReportFinding,
   UsabilityReport,
 } from "../../../lib/reports/model.ts";
+import ResultsNavigation from "../../../components/navigation/results-navigation";
+import NavigationContext from "../../../components/navigation/study-context";
 import styles from "./report.module.css";
 
 type LoadState =
@@ -122,14 +124,6 @@ function AvailabilityBadge({ value }: { value: ReportAvailability }) {
   return <span className={styles.availability} data-state={value}>{availabilityLabel(value)}</span>;
 }
 
-function StudyNav({ versionId }: { versionId: string }) {
-  return <nav className={styles.studyNav} aria-label="เมนูการวิเคราะห์ของเวอร์ชันนี้">
-    <a href={`/results/${versionId}`}>ผลการทดสอบ</a>
-    <a href={`/findings/${versionId}`}>ประเด็นที่พบ</a>
-    <a href={`/reports/${versionId}`} aria-current="page">รายงาน</a>
-    <a href="#retest">ทดสอบซ้ำ</a>
-  </nav>;
-}
 
 function MetricCard({ item, report }: { item: MetricObservation; report: UsabilityReport }) {
   return <article className={styles.metricCard}>
@@ -228,7 +222,7 @@ function ExecutiveSummary({ report }: { report: UsabilityReport }) {
       <span className={styles.noteBadge}>ประเด็นที่ผู้วิจัยยืนยัน</span>
     </div>
     <div className={styles.summaryStrip}>
-      <div><strong>{report.executiveSummary.totalFindings}</strong><span>ประเด็นที่พบทั้งหมด</span></div>
+      <div><strong>{report.executiveSummary.totalFindings}</strong><span>ข้อค้นพบทั้งหมด</span></div>
       <div><strong>{report.executiveSummary.criticalHighFindings}</strong><span>ระดับสูงขึ้นไป</span></div>
       <div><strong>{report.executiveSummary.openFindings}</strong><span>ยังต้องดำเนินการ</span></div>
     </div>
@@ -239,8 +233,8 @@ function ExecutiveSummary({ report }: { report: UsabilityReport }) {
     </div>
     {topFindings.length === 0 ? <div className={styles.empty}>
       <strong>ยังไม่มีประเด็นที่ผู้วิจัยยืนยัน</strong>
-      <p>ระบบไม่สรุปปัญหาจากตัวเลขอัตโนมัติ เมื่อมีหลักฐานเพียงพอให้บันทึกประเด็นที่พบ</p>
-      <a className={styles.primaryAction} href={`/findings/${report.study.context.testVersionId}`}>บันทึกประเด็นที่พบ</a>
+      <p>ระบบไม่สรุปปัญหาจากตัวเลขอัตโนมัติ เมื่อมีหลักฐานเพียงพอให้บันทึกข้อค้นพบ</p>
+      <a className={styles.primaryAction} href={`/findings/${report.study.context.testVersionId}`}>บันทึกข้อค้นพบ</a>
     </div> : <div className={styles.topFindings}>{topFindings.map((item) => <TopFinding key={item.finding.id} item={item} report={report} />)}</div>}
   </section>;
 }
@@ -264,7 +258,7 @@ function TaskOutcomes({ report }: { report: UsabilityReport }) {
               <span><b>{completion ? metricValue(completion) : "—"}</b> สำเร็จ</span>
               <span><b>{duration ? metricValue(duration) : "—"}</b> เวลา</span>
               <span><b>{seq ? metricValue(seq) : "—"}</b> SEQ</span>
-              <span><b>{relatedFindings.length}</b> ประเด็นที่พบ</span>
+              <span><b>{relatedFindings.length}</b> ข้อค้นพบ</span>
             </div>
           </summary>
           <div className={styles.taskDetails}>
@@ -282,12 +276,12 @@ function TaskOutcomes({ report }: { report: UsabilityReport }) {
 function Findings({ report }: { report: UsabilityReport }) {
   return <section className={styles.section} id="findings">
     <div className={styles.sectionHeader}>
-      <div><span className={styles.eyebrow}>ประเด็นที่พบ</span><h2>จากหลักฐานไปสู่สิ่งที่ควรแก้</h2></div>
-      <a className={styles.actionLink} href={`/findings/${report.study.context.testVersionId}`}>จัดการประเด็นที่พบ</a>
+      <div><span className={styles.eyebrow}>ข้อค้นพบ</span><h2>จากหลักฐานไปสู่สิ่งที่ควรแก้</h2></div>
+      <a className={styles.actionLink} href={`/findings/${report.study.context.testVersionId}`}>จัดการข้อค้นพบ</a>
     </div>
     <div className={styles.findingStack}>
       {report.findings.length === 0 ? <div className={styles.empty}>
-        <strong>ยังไม่มีประเด็นที่พบ</strong>
+        <strong>ยังไม่มีข้อค้นพบ</strong>
         <p>ระบบไม่สรุปสาเหตุหรือความรุนแรงจากตัวชี้วัดโดยอัตโนมัติ</p>
         <a className={styles.primaryAction} href={`/findings/${report.study.context.testVersionId}`}>บันทึกประเด็นจากหลักฐาน</a>
       </div> : report.findings.map((item) =>
@@ -415,7 +409,7 @@ function Methodology({ report }: { report: UsabilityReport }) {
     <div className={styles.methodGrid}>
       <div><strong>ไม่มีข้อมูลต่างจากค่า 0</strong><p>ระบบจะแสดงค่า 0 เมื่อมีหลักฐานและจำนวนตัวอย่างที่คำนวณได้เท่านั้น</p></div>
       <div><strong>แยกปัญหาทางเทคนิค</strong><p>ปัญหาการเข้าถึงเป้าหมายทดสอบไม่นับเป็นความล้มเหลวด้านการใช้งาน</p></div>
-      <div><strong>ผู้วิจัยยืนยันประเด็นที่พบ</strong><p>ระบบไม่สรุปสาเหตุหรือความรุนแรงจากตัวเลขเพียงอย่างเดียว</p></div>
+      <div><strong>ผู้วิจัยยืนยันข้อค้นพบ</strong><p>ระบบไม่สรุปสาเหตุหรือความรุนแรงจากตัวเลขเพียงอย่างเดียว</p></div>
       <div><strong>อ้างอิงเวอร์ชันเดียวกัน</strong><p>ข้อสรุปทุกข้อผูกกับแบบทดสอบที่เผยแพร่และเป้าหมายทดสอบเวอร์ชันเดียวกัน</p></div>
     </div>
     <details className={styles.advancedDetails}>
@@ -478,6 +472,7 @@ export default function ReportPage({ params }: { params: Promise<{ testVersionId
   const title = useMemo(() => testVersionId ? `รายงานการทดสอบ · ${testVersionId.slice(0, 8)}` : "รายงานการทดสอบ", [testVersionId]);
 
   return <main className={styles.page}>
+    <NavigationContext testId={state.status === "ready" ? state.report.study.context.testId : null} versionId={testVersionId} versionNo={state.status === "ready" ? state.report.study.context.versionNo : null} />
     <a className={styles.skipLink} href="#report-content">ข้ามไปเนื้อหารายงาน</a>
     <header className={styles.hero}>
       <div>
@@ -485,7 +480,7 @@ export default function ReportPage({ params }: { params: Promise<{ testVersionId
         <h1>{title}</h1>
         <p>สรุปสิ่งที่เกิดขึ้น สิ่งที่ควรแก้ และหลักฐานที่รองรับในเวอร์ชันนี้</p>
       </div>
-      {testVersionId ? <StudyNav versionId={testVersionId} /> : null}
+      {testVersionId ? <ResultsNavigation versionId={testVersionId} current="reports" /> : null}
     </header>
 
     <div className={styles.viewSwitch} role="group" aria-label="รูปแบบการดูรายงาน">

@@ -704,17 +704,17 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
             <span className={styles.eyebrow}>เป้าหมายทดสอบ</span>
             <h1>เปิดเว็บไซต์ที่ใช้ทำงานนี้</h1>
             <p>
-              ระบบจะใช้เฉพาะหลักฐานที่ Target รองรับและจะไปขั้นถัดไปเมื่อได้รับ outcome
-              ที่ตรวจสอบได้ หากทำต่อไม่ได้ให้กลับมาที่หน้านี้แล้วเลือก “ทำงานนี้ต่อไม่ได้”
+              ทำงานตามคำสั่งในเว็บไซต์ที่เปิดขึ้น เมื่อเสร็จให้กลับมาที่หน้านี้เพื่อทำขั้นตอนถัดไป
+              หากทำต่อไม่ได้ ให้เลือก “ทำงานนี้ต่อไม่ได้”
             </p>
             {snapshot.target.instrumentation === "first_party_bridge" ? (
               <>
                 <p role="status">
-                  {providerReady ? "Target เชื่อมต่อกับ UTP แล้ว" : "เปิด Target เพื่อเริ่มรับหลักฐานจาก approved bridge"}
+                  {providerReady ? "เชื่อมต่อเว็บไซต์แล้ว คุณเริ่มทำงานได้" : "เปิดเว็บไซต์เพื่อเริ่มทำงานตามคำสั่ง"}
                 </p>
                 <div className={styles.actions}>
                   <button className={styles.primaryButton} type="button" onClick={openFirstPartyTarget}>
-                    เปิด Test Target
+                    เปิดเว็บไซต์ทดสอบ
                   </button>
                 </div>
               </>
@@ -727,7 +727,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
                   rel={snapshot.target.launchMode === "new_tab" ? "noreferrer" : undefined}
                   onClick={() => setProviderReady(true)}
                 >
-                  เปิด Test Target
+                  เปิดเว็บไซต์ทดสอบ
                 </a>
               </div>
             )}

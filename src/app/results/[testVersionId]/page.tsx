@@ -5,6 +5,8 @@ import { authenticatedFetch } from "../../../lib/auth/client.ts";
 import { useEffect, useMemo, useState } from "react";
 import type { ResultsModel } from "../../../lib/analytics/results.ts";
 import { availabilityLabel, capabilityAvailability, observationFor, presentMetric } from "../../../lib/analytics/presentation.ts";
+import ResultsNavigation from "../../../components/navigation/results-navigation";
+import StudyContext from "../../../components/navigation/study-context";
 import styles from "./results.module.css";
 
 type View = "overview" | "tasks" | "paths" | "heatmap" | "funnel" | "sessions";
@@ -177,6 +179,7 @@ function Sessions({ results }: { results: ResultsModel }) {
 
 export default function ResultsPage({ params }: { params: Promise<{ testVersionId: string }> }) {
   const [versionId, setVersionId] = useState("");
+  const [retry, setRetry] = useState(0);
   const [view, setView] = useState<View>("overview");
   const [state, setState] = useState<LoadState>({ status: "loading" });
 
@@ -199,15 +202,17 @@ export default function ResultsPage({ params }: { params: Promise<{ testVersionI
         setState({ status: "error", message: error instanceof Error ? error.message : "โหลดผลการทดสอบไม่สำเร็จ" });
       });
     return () => controller.abort();
-  }, [versionId]);
+  }, [versionId, retry]);
 
+  const contextResult = state.status === "ready" ? state.results : null;
   const title = useMemo(() => versionId ? `เวอร์ชัน ${versionId.slice(0, 8)}` : "วิเคราะห์ผล", [versionId]);
   return <main className={styles.page}>
+    <StudyContext testId={contextResult?.testId} versionId={versionId} versionNo={contextResult?.context?.versionNo} />
     <header className={styles.header}><div><span className={styles.eyebrow}>วิเคราะห์ผล · หลักฐานจากเวอร์ชันที่เผยแพร่</span><h1>{title}</h1><p>ดูผลการทดสอบจากหลักฐานที่ระบบยอมรับ โดยแยกปัญหาทางเทคนิคออกจากผลด้านการใช้งาน และไม่ใช้ศูนย์แทนข้อมูลที่ไม่มี</p></div><a href="/projects" className={styles.backLink}>โปรเจกต์</a></header>
-    <nav className={styles.studyNav} aria-label="เมนูการวิเคราะห์ของเวอร์ชันนี้"><a href={`/results/${versionId}`} aria-current="page">ผลการทดสอบ</a><a href={`/findings/${versionId}`}>Findings</a><a href={`/reports/${versionId}`}>รายงาน</a><a href={`/reports/${versionId}#retest`}>Retest</a></nav>
+    <ResultsNavigation versionId={versionId} current="results" />
     <nav className={styles.tabs} aria-label="มุมมองการวิเคราะห์ผล">{(["overview", "tasks", "paths", "heatmap", "funnel", "sessions"] as const).map((item) => <button key={item} type="button" aria-current={view === item ? "page" : undefined} className={view === item ? styles.tabActive : styles.tab} onClick={() => setView(item)}>{viewLabels[item]}</button>)}</nav>
     {state.status === "loading" ? <div className={styles.loading} role="status">กำลังโหลดผลการทดสอบ…</div> : null}
-    {state.status === "error" ? <div className={styles.error} role="alert"><strong>ยังเปิดผลการทดสอบไม่ได้</strong><p>{state.message}</p></div> : null}
+    {state.status === "error" ? <div className={styles.error} role="alert"><strong>ยังเปิดผลการทดสอบไม่ได้</strong><p>{state.message}</p><button onClick={() => setRetry(value => value + 1)}>ลองโหลดผลอีกครั้ง</button></div> : null}
     {state.status === "ready" ? <section className={styles.content}>{view === "overview" ? <Overview results={state.results} /> : view === "tasks" ? <Tasks results={state.results} /> : view === "paths" ? <Paths results={state.results} /> : view === "heatmap" ? <Heatmap results={state.results} /> : view === "funnel" ? <Funnel results={state.results} /> : <Sessions results={state.results} />}</section> : null}
   </main>;
 }

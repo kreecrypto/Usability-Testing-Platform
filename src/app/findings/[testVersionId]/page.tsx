@@ -5,6 +5,8 @@ import { authenticatedFetch } from "../../../lib/auth/client.ts";
 import { useEffect, useMemo, useState } from "react";
 import type { ResultsModel, TaskDetailResult } from "../../../lib/analytics/results.ts";
 import type { FindingRecord } from "../../../lib/findings/model.ts";
+import ResultsNavigation from "../../../components/navigation/results-navigation";
+import StudyContext from "../../../components/navigation/study-context";
 import styles from "./findings.module.css";
 
 type LoadState = "loading" | "ready" | "error";
@@ -69,13 +71,13 @@ export default function FindingsPage({ params }: { params: Promise<{ testVersion
         authenticatedFetch(`/api/results/${encodeURIComponent(versionId)}`, { cache: "no-store" }),
         authenticatedFetch(`/api/findings?testVersionId=${encodeURIComponent(versionId)}`, { cache: "no-store" }),
       ]);
-      if (!resultsResponse.ok || !findingsResponse.ok) throw new Error(resultsResponse.status === 401 || findingsResponse.status === 401 ? "ต้องเข้าสู่ระบบก่อนใช้งาน" : "โหลดข้อมูลประเด็นที่พบไม่สำเร็จ");
+      if (!resultsResponse.ok || !findingsResponse.ok) throw new Error(resultsResponse.status === 401 || findingsResponse.status === 401 ? "ต้องเข้าสู่ระบบก่อนใช้งาน" : "โหลดข้อมูลข้อค้นพบไม่สำเร็จ");
       const resultsPayload = await resultsResponse.json() as { results: ResultsModel };
       const findingsPayload = await findingsResponse.json() as { findings: FindingRecord[] };
       setResults(resultsPayload.results); setFindings(findingsPayload.findings);
       setTaskId((current) => current || resultsPayload.results.taskDetails[0]?.taskId || "");
       setState("ready");
-    } catch (value) { setState("error"); setError(value instanceof Error ? value.message : "โหลดข้อมูลประเด็นที่พบไม่สำเร็จ"); }
+    } catch (value) { setState("error"); setError(value instanceof Error ? value.message : "โหลดข้อมูลข้อค้นพบไม่สำเร็จ"); }
   }
 
   useEffect(() => { if (testVersionId) void reload(testVersionId); }, [testVersionId]);
@@ -100,10 +102,10 @@ export default function FindingsPage({ params }: { params: Promise<{ testVersion
           metricSnapshot: snapshot(selectedTask, metricKey, testVersionId),
         }),
       });
-      if (!response.ok) throw new Error("สร้างประเด็นที่พบไม่สำเร็จ");
+      if (!response.ok) throw new Error("สร้างข้อค้นพบไม่สำเร็จ");
       setTitle(""); setProblem(""); setResearcherInterpretation(""); setRecommendation(""); setScreenId("");
       await reload();
-    } catch (value) { setError(value instanceof Error ? value.message : "สร้างประเด็นที่พบไม่สำเร็จ"); }
+    } catch (value) { setError(value instanceof Error ? value.message : "สร้างข้อค้นพบไม่สำเร็จ"); }
     finally { setSaving(false); }
   }
 
@@ -122,10 +124,11 @@ export default function FindingsPage({ params }: { params: Promise<{ testVersion
   }
 
   return <main className={styles.page}>
-    <header className={styles.header}><div><span>วิเคราะห์ผล · Findings จากเวอร์ชันที่เผยแพร่</span><h1>ประเด็น UX ที่พบ</h1><p>เปลี่ยนพฤติกรรมที่สังเกตได้เป็น Finding ที่นำไปแก้ไข โดยแยกสิ่งที่เห็น การตีความ และ recommendation ออกจากกัน</p></div><a href="/projects">โปรเจกต์</a></header>
-    <nav className={styles.studyNav} aria-label="เมนูการวิเคราะห์ของเวอร์ชันนี้"><a href={`/results/${testVersionId}`}>ผลการทดสอบ</a><a href={`/findings/${testVersionId}`} aria-current="page">Findings</a><a href={`/reports/${testVersionId}`}>รายงาน</a><a href={`/reports/${testVersionId}#retest`}>Retest</a></nav>
-    {state === "loading" ? <div className={styles.state}>กำลังโหลดประเด็นที่พบ…</div> : null}
-    {state === "error" ? <div className={styles.error} role="alert"><strong>ยังเปิด Findings ไม่ได้</strong><p>{error}</p><button type="button" onClick={() => void reload()}>ลองอีกครั้ง</button></div> : null}
+    <StudyContext testId={results?.testId} versionId={testVersionId} versionNo={results?.context?.versionNo} />
+    <header className={styles.header}><div><span>วิเคราะห์ผล · ข้อค้นพบ จากเวอร์ชันที่เผยแพร่</span><h1>ข้อค้นพบจากการทดสอบ</h1><p>เปลี่ยนพฤติกรรมที่สังเกตได้เป็นข้อค้นพบที่นำไปแก้ไข โดยแยกสิ่งที่เห็น การตีความ และข้อเสนอแนะ ออกจากกัน</p></div><a href="/projects">โปรเจกต์</a></header>
+    <ResultsNavigation versionId={testVersionId} current="findings" />
+    {state === "loading" ? <div className={styles.state}>กำลังโหลดข้อค้นพบ…</div> : null}
+    {state === "error" ? <div className={styles.error} role="alert"><strong>ยังเปิดข้อค้นพบไม่ได้</strong><p>{error}</p><button type="button" onClick={() => void reload()}>ลองอีกครั้ง</button></div> : null}
     {state === "ready" && results ? <div className={styles.layout}>
       <form className={styles.form} onSubmit={createFinding}>
         <div><span className={styles.eyebrow}>จากหลักฐานสู่สิ่งที่ต้องแก้</span><h2>สร้างประเด็นใหม่</h2></div>
@@ -142,7 +145,7 @@ export default function FindingsPage({ params }: { params: Promise<{ testVersion
 
       <section className={styles.list}>
         <div className={styles.listHeader}><div><span className={styles.eyebrow}>ประเด็นที่ตรวจพบ</span><h2>ประเด็นทั้งหมด</h2></div><strong>{findings.length}</strong></div>
-        {findings.length === 0 ? <div className={styles.empty}><strong>ยังไม่มีประเด็นที่พบ</strong><p>สร้างประเด็นจากตัวชี้วัดและหลักฐานเมื่อพบสิ่งที่ควรแก้ไข การไม่มีประเด็นยังไม่เท่ากับความรุนแรงเป็นศูนย์</p></div> : findings.map((finding) => <article key={finding.id} id={`finding-${finding.id}`} className={styles.card}>
+        {findings.length === 0 ? <div className={styles.empty}><strong>ยังไม่มีข้อค้นพบ</strong><p>สร้างประเด็นจากตัวชี้วัดและหลักฐานเมื่อพบสิ่งที่ควรแก้ไข การไม่มีประเด็นยังไม่เท่ากับความรุนแรงเป็นศูนย์</p></div> : findings.map((finding) => <article key={finding.id} id={`finding-${finding.id}`} className={styles.card}>
           <div className={styles.cardHeader}><div><span className={styles.severity} data-severity={finding.severity}>{severityLabels[finding.severity] ?? finding.severity}</span><h3>{finding.title}</h3></div><span className={styles.status}>{statusLabels[finding.status] ?? finding.status}</span></div>
           <p>{finding.problem}</p>
           <dl>

@@ -37,14 +37,14 @@ export default function RetestPage({ params }: { params: Promise<{ retestId: str
   }, [params]);
 
   return <main className={styles.page}>
-    <header className={styles.header}><div><span>ทดสอบซ้ำ</span><h1>ก่อนปรับเทียบกับการทดสอบซ้ำ</h1><p>เปรียบเทียบผลโดยคงรหัสเวอร์ชัน จำนวนตัวอย่าง และจำนวนเซสชันที่ติดปัญหาทางเทคนิคไว้ให้ตรวจสอบได้ ระบบจะไม่สรุปนัยสำคัญทางสถิติจนกว่าจะมีวิธีที่กำหนดไว้ใน Requirement</p></div></header>
+    <p><a href="/projects">กลับไปที่โปรเจกต์</a></p><header className={styles.header}><div><span>ทดสอบซ้ำ</span><h1>ก่อนปรับเทียบกับการทดสอบซ้ำ</h1><p>เปรียบเทียบผลโดยคงรหัสเวอร์ชัน จำนวนตัวอย่าง และจำนวนเซสชันที่ติดปัญหาทางเทคนิคไว้ให้ตรวจสอบได้ ระบบจะไม่สรุปนัยสำคัญทางสถิติจากข้อมูลชุดนี้</p></div></header>
     {state.loading ? <div className={styles.state}>กำลังโหลดผลเปรียบเทียบ…</div> : null}
     {state.error ? <div className={styles.error} role="alert">{state.error}</div> : null}
     {state.data ? <section className={styles.panel}>
       <div className={styles.panelHeader}><div><span>ตัวชี้วัด</span><h2>{state.data.comparison.metricKey}</h2></div><strong>{state.data.status}</strong></div>
       <div className={styles.compareGrid}>
-        <article><span>ก่อนปรับ</span><strong>{value(state.data.comparison.baseline.value)}</strong><small>n={state.data.comparison.baseline.sampleSize} · ติดปัญหาทางเทคนิค={state.data.comparison.baseline.technicalBlockedCount}</small><code>{state.data.comparison.baseline.testVersionId}</code></article>
-        <article><span>ทดสอบซ้ำ</span><strong>{value(state.data.comparison.retest.value)}</strong><small>n={state.data.comparison.retest.sampleSize} · ติดปัญหาทางเทคนิค={state.data.comparison.retest.technicalBlockedCount}</small><code>{state.data.comparison.retest.testVersionId}</code></article>
+        <article><span>ก่อนปรับ</span><strong>{value(state.data.comparison.baseline.value)}</strong><small>n={state.data.comparison.baseline.sampleSize} · ติดปัญหาทางเทคนิค={state.data.comparison.baseline.technicalBlockedCount}</small><code>{state.data.comparison.baseline.testVersionId}</code><a href={`/results/${encodeURIComponent(state.data.comparison.baseline.testVersionId)}`}>ดูหลักฐานก่อนปรับ</a></article>
+        <article><span>ทดสอบซ้ำ</span><strong>{value(state.data.comparison.retest.value)}</strong><small>n={state.data.comparison.retest.sampleSize} · ติดปัญหาทางเทคนิค={state.data.comparison.retest.technicalBlockedCount}</small><code>{state.data.comparison.retest.testVersionId}</code><a href={`/results/${encodeURIComponent(state.data.comparison.retest.testVersionId)}`}>ดูหลักฐานการทดสอบซ้ำ</a></article>
       </div>
       <div className={styles.deltaGrid}><div><span>ผลต่างแบบสัมบูรณ์</span><strong>{delta(state.data.comparison.absoluteDelta)}</strong></div><div><span>ผลต่างสัมพัทธ์</span><strong>{delta(state.data.comparison.relativeDeltaPercent, "%")}</strong></div><div><span>นัยสำคัญทางสถิติ</span><strong>ไม่ได้สรุป</strong></div></div>
       <p className={styles.note}>ผลต่างสัมพัทธ์จะแสดงเมื่อทั้งสองฝั่งมีข้อมูลและค่าก่อนปรับไม่เป็นศูนย์ ระบบไม่ติดป้ายว่า “ดีขึ้น” หรือ “แย่ลง” เพราะไม่ได้อนุมานว่าทิศทางใดดีกว่าสำหรับตัวชี้วัดแต่ละชนิด</p>
