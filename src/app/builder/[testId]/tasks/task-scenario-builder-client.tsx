@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch, SESSION_MESSAGE } from "../../../../lib/auth/client.ts";
+
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import styles from "./task-scenario-builder.module.css";
 
@@ -17,15 +19,14 @@ type NewTask = { title: string; scenario: string; instruction: string };
 type RequestState = "loading" | "ready" | "saving" | "error";
 
 async function jsonRequest<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
+  const response = await authenticatedFetch(url, {
     ...init,
     headers: init?.body ? { "content-type": "application/json", ...(init.headers ?? {}) } : init?.headers,
     cache: "no-store",
   });
   const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
   if (response.status === 401) {
-    window.location.assign("/login");
-    throw new Error("authentication_required");
+    throw new Error(SESSION_MESSAGE);
   }
   if (!response.ok) throw new Error(typeof body.message === "string" ? body.message : String(body.error ?? "request_failed"));
   return body as T;

@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch, SESSION_MESSAGE } from "../../../../lib/auth/client.ts";
+
 import { useCallback, useEffect, useState } from "react";
 import styles from "../../results/[testVersionId]/results.module.css";
 
@@ -9,9 +11,9 @@ type Results = { blocks: Block[]; evidence: Evidence[] };
 type Finding = { id: string; title: string; problem: string; severity: string; researcherInterpretation: string | null; recommendation: string | null; metricSnapshot: { sampleSize: number } };
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { ...init, cache: "no-store", headers: init?.body ? { "content-type": "application/json" } : undefined });
+  const response = await authenticatedFetch(url, { ...init, cache: "no-store", headers: init?.body ? { "content-type": "application/json" } : undefined });
   const body = await response.json().catch(() => ({}));
-  if (response.status === 401) { window.location.assign("/login"); throw new Error("authentication_required"); }
+  if (response.status === 401) { throw new Error(SESSION_MESSAGE); }
   if (!response.ok) throw new Error(body.error ?? "request_failed");
   return body as T;
 }

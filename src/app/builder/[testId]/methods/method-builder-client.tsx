@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch, SESSION_MESSAGE } from "../../../../lib/auth/client.ts";
+
 import { useCallback, useEffect, useState } from "react";
 import styles from "./method-builder.module.css";
 
@@ -14,9 +16,9 @@ type TreePrompt = { id: string; title: string; correctNodeId: string };
 const labels: Record<Kind, string> = { survey: "Survey", card_sort: "Card Sorting", tree_test: "Tree Testing" };
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { ...init, cache: "no-store", headers: init?.body ? { "content-type": "application/json" } : undefined });
+  const response = await authenticatedFetch(url, { ...init, cache: "no-store", headers: init?.body ? { "content-type": "application/json" } : undefined });
   const body = await response.json().catch(() => ({}));
-  if (response.status === 401) { window.location.assign("/login"); throw new Error("authentication_required"); }
+  if (response.status === 401) { throw new Error(SESSION_MESSAGE); }
   if (!response.ok) throw new Error(typeof body.error === "string" ? body.error : "request_failed");
   return body as T;
 }
