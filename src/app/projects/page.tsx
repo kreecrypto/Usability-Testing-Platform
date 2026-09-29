@@ -47,10 +47,7 @@ export default function ProjectsPage() {
   useEffect(() => {
     void (async () => {
       const session = await fetch("/api/auth/session", { cache: "no-store" });
-      if (!session.ok) {
-        const temporary = await fetch("/api/auth/guest", { method: "POST", cache: "no-store" });
-        if (!temporary.ok) { window.location.replace("/login"); return; }
-      }
+      if (!session.ok) { window.location.replace("/login"); return; }
       await loadWorkspaces();
       setReady(true);
     })().catch(() => setMessage("โหลด Researcher workspace ไม่สำเร็จ"));

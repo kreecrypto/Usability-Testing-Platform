@@ -22,8 +22,7 @@ const modules = [
 ];
 
 const reviewLinks = [
-  { label: "Researcher", href: "/projects" },
-  { label: "หน้าจอผลิตภัณฑ์", href: "/high-fi" },
+  { label: "ดู Demo", href: "/demo/projects" },
 ];
 
 export default function Home() {
@@ -45,7 +44,7 @@ export default function Home() {
             <p className="eyebrow">ทดสอบการใช้งานและ UX QA</p>
             <h1>เป้าหมายทดสอบ → หลักฐาน → การตัดสินใจ UX</h1>
           </div>
-          <a className="primaryButton" href="/login">เข้าสู่ Researcher Workspace</a>
+          <a className="primaryButton" href="/demo/projects">สำรวจ Demo แบบอ่านอย่างเดียว</a>
         </header>
 
         <section id="overview" className="heroCard">
