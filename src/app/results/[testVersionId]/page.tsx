@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "../../../lib/auth/client.ts";
+
 import { useEffect, useMemo, useState } from "react";
 import type { ResultsModel } from "../../../lib/analytics/results.ts";
 import { availabilityLabel, capabilityAvailability, observationFor, presentMetric } from "../../../lib/analytics/presentation.ts";
@@ -183,7 +185,7 @@ export default function ResultsPage({ params }: { params: Promise<{ testVersionI
     if (!versionId) return;
     const controller = new AbortController();
     setState({ status: "loading" });
-    void fetch(`/api/results/${encodeURIComponent(versionId)}`, { cache: "no-store", signal: controller.signal })
+    void authenticatedFetch(`/api/results/${encodeURIComponent(versionId)}`, { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
         if (response.status === 401) throw new Error("ต้องเข้าสู่ระบบเพื่อดูผลการทดสอบ");
         if (response.status === 403) throw new Error("คุณไม่มีสิทธิ์เข้าถึงเวิร์กสเปซนี้");

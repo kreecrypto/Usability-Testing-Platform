@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch, SESSION_MESSAGE } from "../../../../lib/auth/client.ts";
+
 import { FormEvent, useEffect, useState } from "react";
 import { availabilityLabel } from "../../../../lib/analytics/presentation.ts";
 import styles from "./prototype-import.module.css";
@@ -19,9 +21,9 @@ type RequestState = "idle" | "validating" | "valid" | "saving" | "preflighting" 
 const capabilityLabels = { access: "การเข้าถึง", embed: "การแสดงในหน้า", instrumentation: "การบันทึกพฤติกรรม", screen: "การเปลี่ยนหน้าจอ", path: "เส้นทาง", pointer: "การคลิกหรือแตะ", scroll: "การเลื่อน", coordinates: "ตำแหน่งคลิก" } as const;
 
 async function jsonRequest<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { ...init, headers: init?.body ? { "content-type": "application/json", ...(init.headers ?? {}) } : init?.headers, cache: "no-store" });
+  const response = await authenticatedFetch(url, { ...init, headers: init?.body ? { "content-type": "application/json", ...(init.headers ?? {}) } : init?.headers, cache: "no-store" });
   const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-  if (response.status === 401) { window.location.assign("/login"); throw new Error("authentication_required"); }
+  if (response.status === 401) { throw new Error(SESSION_MESSAGE); }
   if (!response.ok) throw new Error(typeof body.message === "string" ? body.message : String(body.error ?? "request_failed"));
   return body as T;
 }

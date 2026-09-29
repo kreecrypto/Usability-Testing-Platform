@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch, SESSION_MESSAGE } from "../../lib/auth/client.ts";
+
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import styles from "./projects.module.css";
 
@@ -11,8 +13,8 @@ type Overview = { project: Project; tests: StudyTest[]; findings: Finding[] };
 type View = "index" | "new-project" | "overview" | "tests" | "new-test";
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { ...init, cache: "no-store", headers: init?.body ? { "content-type": "application/json" } : undefined });
-  if (response.status === 401) { window.location.assign("/login"); throw new Error("authentication_required"); }
+  const response = await authenticatedFetch(url, { ...init, cache: "no-store", headers: init?.body ? { "content-type": "application/json" } : undefined });
+  if (response.status === 401) { throw new Error(SESSION_MESSAGE); }
   if (!response.ok) throw new Error("request_failed");
   return await response.json() as T;
 }
@@ -45,8 +47,8 @@ export default function ProjectsClient({ view, projectId }: { view: View; projec
   const load = useCallback(async () => {
     setState("loading"); setError("");
     try {
-      const session = await fetch("/api/auth/session", { cache: "no-store" });
-      if (session.status === 401) { window.location.assign("/login"); return; }
+      const session = await authenticatedFetch("/api/auth/session", { cache: "no-store" });
+      if (session.status === 401) { throw new Error(SESSION_MESSAGE); }
       if (!session.ok) throw new Error("session_unavailable");
       if (projectId) {
         const data = await request<Overview>(`/api/projects/${query(projectId)}/overview`);

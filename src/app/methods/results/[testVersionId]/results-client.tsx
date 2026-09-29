@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch, SESSION_MESSAGE } from "../../../../lib/auth/client.ts";
+
 import { useEffect, useState } from "react";
 import styles from "./results.module.css";
 
@@ -19,9 +21,9 @@ export default function MethodResultsClient({ testVersionId }: { testVersionId: 
   const [error, setError] = useState("");
   useEffect(() => {
     let active = true;
-    fetch(`/api/methods/results/${encodeURIComponent(testVersionId)}`, { cache: "no-store" })
+    authenticatedFetch(`/api/methods/results/${encodeURIComponent(testVersionId)}`, { cache: "no-store" })
       .then(async (response) => {
-        if (response.status === 401) { window.location.assign("/login"); return null; }
+        if (response.status === 401) { throw new Error(SESSION_MESSAGE); }
         const body = await response.json();
         if (!response.ok) throw new Error(body.error ?? "results_unavailable");
         return body.results as Model;

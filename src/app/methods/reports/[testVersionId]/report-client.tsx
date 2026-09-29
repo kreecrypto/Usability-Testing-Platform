@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch, SESSION_MESSAGE } from "../../../../lib/auth/client.ts";
+
 import { useEffect, useState } from "react";
 import styles from "../../results/[testVersionId]/results.module.css";
 
@@ -23,7 +25,7 @@ export default function MethodReportClient({ testVersionId }: { testVersionId: s
     event.preventDefault(); setCompareError(""); setBaseline(null);
     if (!data || baselineId === data.testVersionId) { setCompareError("เลือกเวอร์ชันก่อนหน้าที่ต่างจากเวอร์ชันปัจจุบัน"); return; }
     try {
-      const response = await fetch(`/api/methods/results/${encodeURIComponent(baselineId.trim())}`, { cache: "no-store" });
+      const response = await authenticatedFetch(`/api/methods/results/${encodeURIComponent(baselineId.trim())}`, { cache: "no-store" });
       if (!response.ok) throw new Error("โหลดเวอร์ชันเปรียบเทียบไม่สำเร็จ");
       const value = (await response.json() as { results: ReportData }).results;
       if (value.testId !== data.testId || value.versionNo >= data.versionNo) throw new Error("ต้องเป็นเวอร์ชันก่อนหน้าของแบบทดสอบเดียวกัน");
@@ -33,10 +35,10 @@ export default function MethodReportClient({ testVersionId }: { testVersionId: s
   useEffect(() => {
     let active = true;
     Promise.all([
-      fetch(`/api/methods/results/${encodeURIComponent(testVersionId)}`, { cache: "no-store" }),
-      fetch(`/api/findings?testVersionId=${encodeURIComponent(testVersionId)}`, { cache: "no-store" }),
+      authenticatedFetch(`/api/methods/results/${encodeURIComponent(testVersionId)}`, { cache: "no-store" }),
+      authenticatedFetch(`/api/findings?testVersionId=${encodeURIComponent(testVersionId)}`, { cache: "no-store" }),
     ]).then(async ([resultResponse, findingResponse]) => {
-      if (resultResponse.status === 401 || findingResponse.status === 401) { window.location.assign("/login"); return; }
+      if (resultResponse.status === 401 || findingResponse.status === 401) { throw new Error(SESSION_MESSAGE); }
       if (!resultResponse.ok || !findingResponse.ok) throw new Error("report_unavailable");
       const result = await resultResponse.json() as { results: ReportData };
       const found = await findingResponse.json() as { findings: Finding[] };

@@ -8,7 +8,7 @@ function read(path: string): string {
 
 test("researcher flow requires login and never creates a guest identity", () => {
   const home = read("src/app/page.tsx");
-  const login = read("src/app/login/page.tsx");
+  const login = read("src/app/login/page.tsx") + read("src/components/auth/auth-form.tsx");
   const projects = read("src/app/projects/projects-client.tsx");
   const projectRoutes = ["src/app/projects/page.tsx", "src/app/projects/new/page.tsx", "src/app/projects/[projectId]/page.tsx", "src/app/projects/[projectId]/tests/page.tsx", "src/app/projects/[projectId]/tests/new/page.tsx"].map(read).join("\n");
   const internalValidation = read("src/app/internal-validation/page.tsx");
@@ -16,11 +16,12 @@ test("researcher flow requires login and never creates a guest identity", () => 
 
   assert.match(home, /href=["']\/projects["']/);
   assert.match(login, /\/api\/auth\/session/);
-  assert.match(login, /\/api\/auth\/login/);
+  assert.match(login, /\/api\/auth\/\$\{/);
   assert.match(login, /type="email"/);
-  assert.match(login, /type="password"/);
+  assert.match(login, /"current-password"/);
   assert.match(login, /role="alert"/);
-  assert.match(projects, /session\.status === 401.*\/login/);
+  assert.match(projects, /session\.status === 401.*SESSION_MESSAGE/);
+  assert.doesNotMatch(projects, /window\.location\.assign\("\/login"\)/);
   assert.match(internalValidation, /session\.status === 401.*\/login/);
   assert.doesNotMatch(login + projects + internalValidation + session, /\/api\/auth\/guest|signInAnonymously|temporary_researcher/);
   assert.equal(existsSync(new URL("../src/app/api/auth/guest/route.ts", import.meta.url)), false);
@@ -44,7 +45,8 @@ test("researcher login keeps the JWT and RLS boundary", () => {
   const workspaceRoute = read("src/app/api/workspaces/route.ts");
 
   assert.match(loginRoute, /signInWithPassword/);
-  assert.match(loginRoute, /accessCookieHeader/);
+  assert.match(loginRoute, /setSessionCookies/);
+  assert.match(read("src/lib/auth/lifecycle.ts"), /accessCookieHeader/);
   assert.match(sessionRoute, /validateAccessToken/);
   assert.match(projectApi, /accessTokenFromRequest/);
   assert.match(projectApi, /authentication_required/);

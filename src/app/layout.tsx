@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import ResearcherSession from "../components/auth/researcher-session";
 
 export const metadata: Metadata = {
   title: "UT Platform — แพลตฟอร์มทดสอบการใช้งาน",
@@ -13,7 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="th">
-      <body>{children}</body>
+      <body><ResearcherSession>{children}</ResearcherSession></body>
     </html>
   );
 }
