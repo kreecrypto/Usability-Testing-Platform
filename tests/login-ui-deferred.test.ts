@@ -6,24 +6,25 @@ function read(path: string): string {
   return readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 }
 
-test("production surface skips account creation and boots a temporary researcher session", () => {
+test("public entry opens read-only demo while researcher workspace still requires a session", () => {
   const home = read("src/app/page.tsx");
   const login = read("src/app/login/page.tsx");
   const projects = read("src/app/projects/page.tsx");
   const highFi = read("src/app/high-fi/page.tsx");
 
-  assert.match(home, /href=["']\/login["']/);
-  assert.match(home, /href:\s*["']\/projects["']/);
+  assert.match(home, /href=["']\/demo\/projects["']/);
+  assert.doesNotMatch(home, /href=["']\/login["']|href:\s*["']\/projects["']/);
 
-  assert.match(login, /\/api\/auth\/guest/);
-  assert.match(login, /Temporary Researcher Session/);
+  assert.match(login, /\/demo\/projects/);
+  assert.match(login, /อ่านอย่างเดียว/);
+  assert.doesNotMatch(login, /\/api\/auth\/guest|\/api\/auth\/login/);
   assert.doesNotMatch(login, /\/api\/auth\/signup/);
   assert.doesNotMatch(login, /type="email"/);
   assert.doesNotMatch(login, /type="password"/);
   assert.doesNotMatch(login, /สร้างบัญชี Researcher/);
 
   assert.match(projects, /\/api\/auth\/session/);
-  assert.match(projects, /\/api\/auth\/guest/);
+  assert.doesNotMatch(projects, /\/api\/auth\/guest/);
   assert.match(projects, /\/api\/workspaces/);
   assert.match(projects, /\/api\/projects/);
   assert.match(projects, /\/api\/tests/);
@@ -36,23 +37,17 @@ test("production surface skips account creation and boots a temporary researcher
   assert.match(highFi, /design-only:no-production-data/);
 });
 
-test("temporary researcher auth preserves JWT + RLS boundary", () => {
+test("public demo does not create a guest account and protected APIs retain JWT + RLS boundary", () => {
   const session = read("src/lib/auth/session.ts");
   const authRoute = read("src/app/api/auth/session/route.ts");
-  const guestRoute = read("src/app/api/auth/guest/route.ts");
   const projectApi = read("src/lib/project-test-api.ts");
   const workspaceRoute = read("src/app/api/workspaces/route.ts");
 
   assert.match(session, /accessTokenFromRequest/);
   assert.match(session, /validateAccessToken/);
-  assert.match(session, /signInAnonymously/);
-  assert.match(session, /\/auth\/v1\/signup/);
-  assert.match(session, /temporary_researcher/);
   assert.match(authRoute, /validateAccessToken|session/i);
-  assert.match(guestRoute, /signInAnonymously/);
-  assert.match(guestRoute, /accessCookieHeader/);
   assert.match(projectApi, /accessTokenFromRequest/);
   assert.match(projectApi, /authentication_required/);
   assert.match(workspaceRoute, /create_owned_workspace/);
-  assert.doesNotMatch(guestRoute + workspaceRoute, /service_role|SUPABASE_SECRET_KEY/);
+  assert.doesNotMatch(workspaceRoute, /service_role|SUPABASE_SECRET_KEY/);
 });

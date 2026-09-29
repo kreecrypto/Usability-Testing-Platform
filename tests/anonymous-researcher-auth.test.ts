@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -80,14 +80,6 @@ test("anonymous auth disabled fails closed without falling back to service role"
   );
 });
 
-test("guest route stores only the anonymous user JWT in HttpOnly session cookie", () => {
-  const route = readFileSync(
-    new URL("../src/app/api/auth/guest/route.ts", import.meta.url),
-    "utf8",
-  );
-  assert.match(route, /signInAnonymously/);
-  assert.match(route, /accessCookieHeader/);
-  assert.match(route, /temporary_researcher/);
-  assert.match(route, /cache-control/);
-  assert.doesNotMatch(route, /service_role|SUPABASE_SECRET_KEY/);
+test("public demo cannot create anonymous researcher sessions", () => {
+  assert.equal(existsSync(new URL("../src/app/api/auth/guest/route.ts", import.meta.url)), false);
 });
