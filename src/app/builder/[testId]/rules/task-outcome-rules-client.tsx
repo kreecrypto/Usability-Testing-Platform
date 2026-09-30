@@ -115,8 +115,8 @@ export default function TaskOutcomeRulesClient({ testId }: { testId: string }) {
   }, [successList, failureList, successType, failureType]);
 
   const validation = useMemo(() => {
-    if (!ruleState) return "ยังไม่มี Target/Task ที่แก้ไขได้";
-    if (ruleState.availableRuleTypes.length === 0) return "Target ยังไม่มี capability ที่พิสูจน์แล้วสำหรับ deterministic rule";
+    if (!ruleState) return "ยังไม่มีสิ่งที่จะทดสอบหรืองานที่แก้ไขได้";
+    if (ruleState.availableRuleTypes.length === 0) return "สิ่งที่จะทดสอบยังไม่มีข้อมูลที่ใช้ตรวจผลอัตโนมัติได้";
     if (successList.length === 0) return "ต้องมีค่าที่ถือว่าสำเร็จอย่างน้อย 1 ค่า";
     if (failureList.length === 0) return "ต้องมีค่าที่ถือว่าไม่สำเร็จอย่างน้อย 1 ค่า";
     if (overlap.length > 0) return `ค่าซ้ำกันระหว่างสำเร็จ/ไม่สำเร็จ: ${overlap.join(", ")}`;
@@ -138,7 +138,7 @@ export default function TaskOutcomeRulesClient({ testId }: { testId: string }) {
         }),
       });
       setRuleState(result.rules);
-      setMessage("บันทึก deterministic outcome rules แล้ว");
+      setMessage("บันทึกเกณฑ์จบงานแล้ว");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "บันทึกเกณฑ์ไม่สำเร็จ");
     } finally {
@@ -165,15 +165,15 @@ export default function TaskOutcomeRulesClient({ testId }: { testId: string }) {
     <main className="shell">
       <aside className="sidebar">
         <div className="brand">UT Platform</div>
-        <nav className="nav" aria-label="Researcher menu">
-          <a className="navItem" href="/projects">Projects</a>
-          <a className="navItem active" href={`/builder/${testId}/rules`}>Outcome Rules</a>
+        <nav className="nav" aria-label="เมนูผู้วิจัย">
+          <a className="navItem" href="/projects">โปรเจกต์</a>
+          <a className="navItem active" href={`/builder/${testId}/rules`}>เกณฑ์จบงาน</a>
         </nav>
       </aside>
       <section className="content">
         <header className="topbar">
           <div>
-            <p className="eyebrow">MT-08 / Deterministic Outcomes</p>
+            <p className="eyebrow">ตั้งค่าแบบทดสอบ · เกณฑ์จบงาน</p>
             <h1>กำหนดเกณฑ์สำเร็จและไม่สำเร็จ</h1>
           </div>
         </header>
@@ -181,20 +181,20 @@ export default function TaskOutcomeRulesClient({ testId }: { testId: string }) {
         {message ? <p role="status" style={{ ...card, marginBottom: 16 }}>{message}</p> : null}
         {loading ? <p role="status">กำลังโหลดเกณฑ์…</p> : null}
 
-        {!loading && tasks.length === 0 ? <section style={card}>ยังไม่มี Task — กลับไปสร้าง Task ก่อน</section> : null}
+        {!loading && tasks.length === 0 ? <section style={card}>ยังไม่มีงานให้กำหนดเกณฑ์ กลับไปสร้างงานก่อน</section> : null}
 
         {tasks.length > 0 ? (
           <div style={{ display: "grid", gap: 16 }}>
             <section style={card}>
               <label style={{ display: "grid", gap: 6 }}>
-                <span>Task</span>
+                <span>เลือกงาน</span>
                 <select value={taskId} onChange={(event) => setTaskId(event.target.value)} style={input}>
                   {tasks.map((task) => <option key={task.id} value={task.id}>งาน {task.ordinal} — {task.title}</option>)}
                 </select>
               </label>
               {ruleState ? (
                 <p style={{ marginBottom: 0, color: "var(--ah-slate)" }}>
-                  Target: <strong>{ruleState.target.provider}</strong> · Rule ที่รองรับ: {ruleState.availableRuleTypes.map((type) => labels[type]).join(", ") || "ยังไม่มี"}
+                  สิ่งที่จะทดสอบ: <strong>{ruleState.target.provider}</strong> · เกณฑ์ที่ใช้ได้: {ruleState.availableRuleTypes.map((type) => labels[type]).join(", ") || "ยังไม่มี"}
                 </p>
               ) : null}
             </section>
@@ -202,7 +202,7 @@ export default function TaskOutcomeRulesClient({ testId }: { testId: string }) {
             {ruleState ? (
               <form onSubmit={save} style={{ ...card, display: "grid", gap: 16 }}>
                 <div>
-                  <h2 style={{ margin: "0 0 8px" }}>Success rule</h2>
+                  <h2 style={{ margin: "0 0 8px" }}>เมื่องานสำเร็จ</h2>
                   <select value={successType} onChange={(event) => setSuccessType(event.target.value as RuleType)} style={input}>
                     {ruleState.availableRuleTypes.map((type) => <option key={type} value={type}>{labels[type]}</option>)}
                   </select>
@@ -210,7 +210,7 @@ export default function TaskOutcomeRulesClient({ testId }: { testId: string }) {
                 </div>
 
                 <div>
-                  <h2 style={{ margin: "0 0 8px" }}>Failure rule</h2>
+                  <h2 style={{ margin: "0 0 8px" }}>เมื่องานไม่สำเร็จ</h2>
                   <select value={failureType} onChange={(event) => setFailureType(event.target.value as RuleType)} style={input}>
                     {ruleState.availableRuleTypes.map((type) => <option key={type} value={type}>{labels[type]}</option>)}
                   </select>
@@ -218,14 +218,14 @@ export default function TaskOutcomeRulesClient({ testId }: { testId: string }) {
                 </div>
 
                 <div>
-                  <h2 style={{ margin: "0 0 8px" }}>Expected path (ไม่บังคับ)</h2>
+                  <h2 style={{ margin: "0 0 8px" }}>เส้นทางที่คาดไว้ (ไม่บังคับ)</h2>
                   <textarea rows={4} value={expectedPath} onChange={(event) => setExpectedPath(event.target.value)} style={input} placeholder="Screen ID ตามลำดับ หนึ่งค่าต่อบรรทัด" />
-                  <small>ใช้แยก success_direct / success_indirect เท่านั้น ไม่ใช้เป็น success signal แทน rule</small>
+                  <small>ใช้แยกว่าผู้เข้าร่วมไปถึงเป้าหมายตรงเส้นทางหรืออ้อมทาง ไม่ใช้ตัดสินว่างานสำเร็จแทนเกณฑ์ด้านบน</small>
                 </div>
 
-                {validation ? <p role="alert" style={{ margin: 0 }}>{validation}</p> : <p role="status" style={{ margin: 0 }}>Rule พร้อมบันทึกและจะถูกตรวจซ้ำอีกครั้งที่ DB/Publish gate</p>}
+                {validation ? <p role="alert" style={{ margin: 0 }}>{validation}</p> : <p role="status" style={{ margin: 0 }}>เกณฑ์พร้อมบันทึก ระบบจะตรวจอีกครั้งก่อนเผยแพร่</p>}
                 <button className="primaryButton" type="submit" disabled={saving || Boolean(validation)}>
-                  {saving ? "กำลังบันทึก…" : "บันทึก Outcome Rules"}
+                  {saving ? "กำลังบันทึก…" : "บันทึกเกณฑ์จบงาน"}
                 </button>
               </form>
             ) : null}

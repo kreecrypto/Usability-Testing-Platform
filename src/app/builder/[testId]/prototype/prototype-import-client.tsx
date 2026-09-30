@@ -38,8 +38,8 @@ export default function PrototypeImportClient({ testId }: { testId: string }) {
     void jsonRequest<{ draft: Draft | null }>(`/api/tests/${encodeURIComponent(testId)}/prototype`).then(({ draft: loaded }) => {
       if (!active || !loaded) return;
       setDraft(loaded); setTarget(loaded.target); setTargetUrl(loaded.target.sourceUrl); setState("saved");
-      setMessage(`โหลด Test Target ของฉบับร่าง v${loaded.versionNo} แล้ว`);
-    }).catch((error) => { if (!active || String(error).includes("authentication_required")) return; setState("error"); setMessage("โหลด Test Target ของฉบับร่างไม่สำเร็จ"); });
+      setMessage(`โหลดสิ่งที่จะทดสอบในฉบับร่าง v${loaded.versionNo} แล้ว`);
+    }).catch((error) => { if (!active || String(error).includes("authentication_required")) return; setState("error"); setMessage("โหลดสิ่งที่จะทดสอบในฉบับร่างไม่สำเร็จ ลองโหลดหน้าใหม่อีกครั้ง"); });
     return () => { active = false; };
   }, [testId]);
 
@@ -50,36 +50,36 @@ export default function PrototypeImportClient({ testId }: { testId: string }) {
     try {
       const result = await jsonRequest<{ target: Target }>("/api/test-target/preflight", { method: "POST", body: JSON.stringify(requestBody()) });
       setTarget(result.target); setState("valid");
-      setMessage(result.target.capabilities.publishBlocked ? "ตรวจสอบเบื้องต้นแล้ว แต่ยังมี capability ที่ต้องยืนยันก่อน Publish" : "Test Target ผ่าน preflight เบื้องต้นและพร้อมบันทึกลงฉบับร่าง");
-    } catch (error) { setState("error"); setMessage(error instanceof Error ? error.message : "URL หรือการตั้งค่า Test Target ไม่ถูกต้อง"); }
+      setMessage(result.target.capabilities.publishBlocked ? "ตรวจสอบแล้ว แต่ยังต้องยืนยันข้อมูลบางอย่างก่อนเผยแพร่" : "ตรวจสอบลิงก์แล้ว บันทึกลงฉบับร่างได้");
+    } catch (error) { setState("error"); setMessage(error instanceof Error ? error.message : "ตรวจลิงก์และการตั้งค่าสิ่งที่จะทดสอบอีกครั้ง"); }
   }
 
   async function save() {
     if (!target) return; setState("saving"); setMessage(null);
     try {
       const result = await jsonRequest<{ draft: Draft }>(`/api/tests/${encodeURIComponent(testId)}/prototype`, { method: "PUT", body: JSON.stringify(requestBody()) });
-      setDraft(result.draft); setTarget(result.draft.target); setTargetUrl(result.draft.target.sourceUrl); setState("saved"); setMessage(`บันทึก Test Target ลงฉบับร่างเวอร์ชัน ${result.draft.versionNo} แล้ว`);
-    } catch (error) { setState("error"); setMessage(error instanceof Error ? error.message : "บันทึก Test Target ไม่สำเร็จ"); }
+      setDraft(result.draft); setTarget(result.draft.target); setTargetUrl(result.draft.target.sourceUrl); setState("saved"); setMessage(`บันทึกสิ่งที่จะทดสอบลงฉบับร่างเวอร์ชัน ${result.draft.versionNo} แล้ว`);
+    } catch (error) { setState("error"); setMessage(error instanceof Error ? error.message : "บันทึกสิ่งที่จะทดสอบไม่สำเร็จ ลองอีกครั้ง"); }
   }
 
   const busy = state === "validating" || state === "saving";
-  const providerLabel = target?.provider === "figma_prototype" ? "Figma Prototype" : target?.provider === "first_party_web" ? "Owned Website" : target ? "External Website" : "—";
+  const providerLabel = target?.provider === "figma_prototype" ? "ต้นแบบ Figma" : target?.provider === "first_party_web" ? "เว็บไซต์ของทีม" : target ? "เว็บไซต์ภายนอก" : "—";
   const embedUrl = target?.provider === "figma_prototype" ? String(target.providerConfig.embedUrl ?? "") : "";
 
   return <main className={styles.shell}>
-    <header className={styles.header}><a href="/projects" className={styles.backLink}>← โปรเจกต์</a><p className={styles.eyebrow}>สร้างการทดสอบ · Test Target</p><h1>เชื่อมต่อ Test Target</h1><p>รองรับ Figma Prototype, เว็บไซต์ UAT/Production ที่ทีมควบคุม และเว็บไซต์ภายนอกที่รองรับ โดย capability ที่ตรวจไม่ได้จะถูกแสดงเป็น Partial/Unsupported แทนการสร้าง evidence ขึ้นเอง</p></header>
-    <section className={styles.card} aria-labelledby="import-title"><h2 id="import-title">1. เพิ่ม URL เป้าหมาย</h2><form onSubmit={validate} className={styles.form}>
-      <label><span>Test Target URL</span><textarea value={targetUrl} onChange={(event) => { setTargetUrl(event.target.value); setTarget(null); setState("idle"); setMessage(null); }} rows={3} placeholder="https://…" required disabled={busy} /></label>
+    <header className={styles.header}><a href="/projects" className={styles.backLink}>← โปรเจกต์</a><p className={styles.eyebrow}>ตั้งค่าแบบทดสอบ · สิ่งที่จะทดสอบ</p><h1>ระบุสิ่งที่จะทดสอบ</h1><p>วางลิงก์ต้นแบบหรือเว็บไซต์ที่ผู้เข้าร่วมจะใช้งาน ระบบจะตรวจว่าบันทึกพฤติกรรมประเภทใดได้ก่อนเผยแพร่</p></header>
+    <section className={styles.card} aria-labelledby="import-title"><h2 id="import-title">1. เพิ่มลิงก์</h2><form onSubmit={validate} className={styles.form}>
+      <label><span>ลิงก์ต้นแบบหรือเว็บไซต์</span><textarea value={targetUrl} onChange={(event) => { setTargetUrl(event.target.value); setTarget(null); setState("idle"); setMessage(null); }} rows={3} placeholder="https://…" required disabled={busy} /></label>
       <label><span>ความเป็นเจ้าของเว็บไซต์</span><select value={ownership} onChange={(event) => { setOwnership(event.target.value as "external" | "owned"); setTarget(null); }} disabled={busy}><option value="external">เว็บไซต์ภายนอก / ไม่ได้ควบคุม</option><option value="owned">เว็บไซต์ที่ทีมควบคุม</option></select></label>
-      {ownership === "owned" ? <label><span>Environment</span><select value={environment} onChange={(event) => setEnvironment(event.target.value as "uat" | "production")} disabled={busy}><option value="uat">UAT</option><option value="production">Production</option></select></label> : null}
-      <button type="submit" disabled={busy || targetUrl.trim() === ""}>{state === "validating" ? "กำลังตรวจสอบ…" : "ตรวจสอบ Test Target"}</button>
+      {ownership === "owned" ? <label><span>สภาพแวดล้อมของเว็บไซต์</span><select value={environment} onChange={(event) => setEnvironment(event.target.value as "uat" | "production")} disabled={busy}><option value="uat">UAT</option><option value="production">Production</option></select></label> : null}
+      <button type="submit" disabled={busy || targetUrl.trim() === ""}>{state === "validating" ? "กำลังตรวจสอบ…" : "ตรวจสอบลิงก์"}</button>
     </form>{message ? <div className={state === "error" ? styles.error : styles.notice} role={state === "error" ? "alert" : "status"}>{message}</div> : null}</section>
-    <section className={styles.card} aria-labelledby="preview-title"><div className={styles.sectionHeading}><div><h2 id="preview-title">2. Preflight & Preview</h2><p>ตรวจ provider, launch mode และ capability ก่อน Publish</p></div><span className={styles.status}>{target ? "ตรวจแล้ว" : "ยังไม่พร้อม"}</span></div>
-      {target ? <><dl className={styles.meta}><div><dt>Provider</dt><dd>{providerLabel}</dd></div><div><dt>Environment</dt><dd>{target.environment ?? "N/A"}</dd></div><div><dt>Launch</dt><dd>{target.launchMode}</dd></div><div><dt>Publish gate</dt><dd>{target.capabilities.publishBlocked ? "ต้องยืนยันเพิ่ม" : "ไม่ถูก block จาก preflight นี้"}</dd></div></dl>
+    <section className={styles.card} aria-labelledby="preview-title"><div className={styles.sectionHeading}><div><h2 id="preview-title">2. ตรวจความพร้อม</h2><p>ดูวิธีเปิดลิงก์และข้อมูลพฤติกรรมที่เก็บได้ก่อนเผยแพร่</p></div><span className={styles.status}>{target ? "ตรวจแล้ว" : "ยังไม่พร้อม"}</span></div>
+      {target ? <><dl className={styles.meta}><div><dt>ประเภท</dt><dd>{providerLabel}</dd></div><div><dt>สภาพแวดล้อม</dt><dd>{target.environment ?? "ไม่ระบุ"}</dd></div><div><dt>วิธีเปิด</dt><dd>{target.launchMode}</dd></div><div><dt>การเผยแพร่</dt><dd>{target.capabilities.publishBlocked ? "ต้องยืนยันเพิ่ม" : "ผ่านการตรวจขั้นนี้"}</dd></div></dl>
       <dl className={styles.meta}>{(["access","embed","instrumentation","screen","path","pointer","scroll","coordinates"] as const).map((key) => <div key={key}><dt>{key}</dt><dd>{target.capabilities[key]}</dd></div>)}</dl>
       {target.capabilities.reasons.length ? <div className={styles.notice} role="status">{target.capabilities.reasons.join(" ")}</div> : null}
-      {embedUrl ? <div className={styles.previewFrame}><iframe title="พรีวิว Test Target" src={embedUrl} allowFullScreen loading="lazy" referrerPolicy="strict-origin-when-cross-origin" /></div> : <div className={styles.empty}>Target นี้ใช้ {target.launchMode}; ไม่มีการอ้างว่าอ่าน DOM/click/path ข้าม origin ได้</div>}</> : <div className={styles.empty}>ตรวจสอบ URL เพื่อดู provider และ capability</div>}
+      {embedUrl ? <div className={styles.previewFrame}><iframe title="ตัวอย่างสิ่งที่จะทดสอบ" src={embedUrl} allowFullScreen loading="lazy" referrerPolicy="strict-origin-when-cross-origin" /></div> : <div className={styles.empty}>ลิงก์นี้เปิดแบบ {target.launchMode} ระบบอาจอ่านการคลิกและเส้นทางบนเว็บไซต์ภายนอกไม่ได้</div>}</> : <div className={styles.empty}>ตรวจสอบลิงก์เพื่อดูว่ารองรับข้อมูลพฤติกรรมใดบ้าง</div>}
     </section>
-    <section className={styles.card} aria-labelledby="save-title"><div className={styles.sectionHeading}><div><h2 id="save-title">3. บันทึกลงฉบับร่าง</h2><p>บันทึก provider-neutral target snapshot; Publish จะตรวจ capability gate อีกครั้ง</p></div>{draft ? <span className={styles.status}>ฉบับร่าง v{draft.versionNo}</span> : null}</div><button className={styles.primaryButton} type="button" onClick={save} disabled={!target || busy}>{state === "saving" ? "กำลังบันทึก…" : "บันทึก Test Target"}</button></section>
+    <section className={styles.card} aria-labelledby="save-title"><div className={styles.sectionHeading}><div><h2 id="save-title">3. บันทึกลงฉบับร่าง</h2><p>ระบบจะตรวจความพร้อมอีกครั้งเมื่อเผยแพร่เวอร์ชันนี้</p></div>{draft ? <span className={styles.status}>ฉบับร่าง v{draft.versionNo}</span> : null}</div><button className={styles.primaryButton} type="button" onClick={save} disabled={!target || busy}>{state === "saving" ? "กำลังบันทึก…" : "บันทึกสิ่งที่จะทดสอบ"}</button></section>
   </main>;
 }

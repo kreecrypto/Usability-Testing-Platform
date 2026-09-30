@@ -50,7 +50,7 @@ export default function ProjectsPage() {
       if (!session.ok) { window.location.replace("/login"); return; }
       await loadWorkspaces();
       setReady(true);
-    })().catch(() => setMessage("โหลด Researcher workspace ไม่สำเร็จ"));
+    })().catch(() => setMessage("โหลดพื้นที่ทำงานไม่สำเร็จ ตรวจการเชื่อมต่อแล้วลองใหม่"));
   }, [loadWorkspaces]);
 
   useEffect(() => {
@@ -61,7 +61,7 @@ export default function ProjectsPage() {
         setProjects(body.projects);
         setProjectId((current) => body.projects.some((p) => p.id === current) ? current : body.projects[0]?.id || "");
       })
-      .catch(() => setMessage("โหลด Project ไม่สำเร็จ"));
+      .catch(() => setMessage("โหลดโปรเจกต์ไม่สำเร็จ ลองเลือกพื้นที่ทำงานอีกครั้ง"));
   }, [workspaceId]);
 
   useEffect(() => {
@@ -72,7 +72,7 @@ export default function ProjectsPage() {
         setTests(body.tests);
         setTestId((current) => body.tests.some((t) => t.id === current) ? current : body.tests[0]?.id || "");
       })
-      .catch(() => setMessage("โหลด Test ไม่สำเร็จ"));
+      .catch(() => setMessage("โหลดแบบทดสอบไม่สำเร็จ ลองเลือกโปรเจกต์อีกครั้ง"));
   }, [workspaceId, projectId]);
 
   const loadTasks = useCallback(async (selectedTestId: string) => {
@@ -94,7 +94,7 @@ export default function ProjectsPage() {
 
   function createWorkspace(event: FormEvent) {
     event.preventDefault();
-    void run("สร้าง Workspace", async () => {
+    void run("สร้างพื้นที่ทำงาน", async () => {
       await json(await fetch("/api/workspaces", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: workspaceName }) }));
       await loadWorkspaces();
     });
@@ -102,7 +102,7 @@ export default function ProjectsPage() {
 
   function createProject(event: FormEvent) {
     event.preventDefault();
-    void run("สร้าง Project", async () => {
+    void run("สร้างโปรเจกต์", async () => {
       const body = await json<{ project: Project }>(await fetch("/api/projects", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ workspaceId, name: projectName, description: "Internal real-flow validation for MAJOR-A" }) }));
       setProjects((items) => [body.project, ...items]);
       setProjectId(body.project.id);
@@ -111,7 +111,7 @@ export default function ProjectsPage() {
 
   function createTest(event: FormEvent) {
     event.preventDefault();
-    void run("สร้าง Test", async () => {
+    void run("สร้างแบบทดสอบ", async () => {
       const body = await json<{ test: StudyTest }>(await fetch("/api/tests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ workspaceId, projectId, title: testTitle, description: "Flow Proven real study" }) }));
       setTests((items) => [body.test, ...items]);
       setTestId(body.test.id);
@@ -130,7 +130,7 @@ export default function ProjectsPage() {
 
   function preflightTarget() {
     if (!testId) return;
-    void run("ตรวจ Target", async () => {
+    void run("ตรวจความพร้อมของเว็บไซต์", async () => {
       await json(await fetch(`/api/tests/${encodeURIComponent(testId)}/prototype`, {
         method: "POST",
         cache: "no-store",
@@ -140,7 +140,7 @@ export default function ProjectsPage() {
 
   function createTask(event: FormEvent) {
     event.preventDefault();
-    void run("เพิ่ม Task", async () => {
+    void run("เพิ่มงาน", async () => {
       await json(await fetch(`/api/tests/${encodeURIComponent(testId)}/tasks`, {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ title: taskTitle, scenario, instruction }),
@@ -151,7 +151,7 @@ export default function ProjectsPage() {
   }
 
   function publish() {
-    void run("Publish", async () => {
+    void run("เผยแพร่แบบทดสอบ", async () => {
       const body = await json<{ preview: { testVersionId: string } }>(await fetch(`/api/tests/${encodeURIComponent(testId)}/publish`, {
         method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "publish" }),
       }));
@@ -164,7 +164,7 @@ export default function ProjectsPage() {
     window.location.replace("/login");
   }
 
-  if (!ready) return <main style={{ padding: 32 }}>กำลังโหลด Researcher workspace…</main>;
+  if (!ready) return <main style={{ padding: 32 }}>กำลังโหลดพื้นที่ทำงาน…</main>;
 
   const block = { background: "var(--ah-canvas)", border: "1px solid var(--ah-hairline)", borderRadius: 12, padding: 20 } as const;
   const input = { minHeight: 42, border: "1px solid var(--ah-hairline)", borderRadius: 8, padding: "0 10px", background: "white", width: "100%" } as const;
@@ -173,91 +173,91 @@ export default function ProjectsPage() {
     <main className="shell">
       <aside className="sidebar">
         <div className="brand">UT Platform</div>
-        <nav className="nav" aria-label="Researcher menu">
-          <a className="navItem active" href="/projects">Projects</a>
-          <a className="navItem" href="/high-fi">Design QA</a>
-          <button className="navItem" type="button" onClick={() => void signOut()} style={{ border: 0, textAlign: "left", background: "transparent" }}>เริ่ม Session ใหม่</button>
+        <nav className="nav" aria-label="เมนูผู้วิจัย">
+          <a className="navItem active" href="/projects">โปรเจกต์</a>
+          <button className="navItem" type="button" onClick={() => void signOut()} style={{ border: 0, textAlign: "left", background: "transparent" }}>ออกจากระบบ</button>
         </nav>
       </aside>
 
       <section className="content">
         <header className="topbar">
-          <div><p className="eyebrow">MAJOR-A / Flow Proven</p><h1>สร้าง Study จริงบน Production</h1></div>
+          <div><p className="eyebrow">พื้นที่ทำงานผู้วิจัย</p><h1>เตรียมแบบทดสอบของคุณ</h1><p>เลือกพื้นที่ทำงานและโปรเจกต์ แล้วสร้างแบบทดสอบ กำหนดงาน และตรวจความพร้อมก่อนเผยแพร่</p></div>
         </header>
 
         {message ? <p role="status" style={{ ...block, marginBottom: 16 }}>{message}</p> : null}
 
         <div style={{ display: "grid", gap: 16 }}>
           <section style={block}>
-            <h2 style={{ marginTop: 0 }}>1. Workspace</h2>
+            <h2 style={{ marginTop: 0 }}>1. เลือกพื้นที่ทำงาน</h2>
             {workspaces.length ? (
-              <select value={workspaceId} onChange={(e) => setWorkspaceId(e.target.value)} style={input}>
+              <select aria-label="พื้นที่ทำงาน" value={workspaceId} onChange={(e) => setWorkspaceId(e.target.value)} style={input}>
                 {workspaces.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
               </select>
             ) : (
               <form onSubmit={createWorkspace} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <input required value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} style={{ ...input, flex: "1 1 260px" }} />
-                <button className="primaryButton" disabled={working}>สร้าง Workspace</button>
+                <input aria-label="ชื่อพื้นที่ทำงานใหม่" placeholder="ชื่อพื้นที่ทำงาน" required value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} style={{ ...input, flex: "1 1 260px" }} />
+                <button className="primaryButton" disabled={working}>สร้างพื้นที่ทำงาน</button>
               </form>
             )}
           </section>
 
           <section style={block}>
-            <h2 style={{ marginTop: 0 }}>2. Project</h2>
+            <h2 style={{ marginTop: 0 }}>2. เลือกโปรเจกต์</h2>
             {workspaceId ? <form onSubmit={createProject} style={{ display: "grid", gap: 10 }}>
-              <select value={projectId} onChange={(e) => setProjectId(e.target.value)} style={input}>
-                <option value="">เลือก Project</option>
+              <select aria-label="โปรเจกต์" value={projectId} onChange={(e) => setProjectId(e.target.value)} style={input}>
+                <option value="">เลือกโปรเจกต์</option>
                 {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <input required value={projectName} onChange={(e) => setProjectName(e.target.value)} style={{ ...input, flex: "1 1 260px" }} />
-                <button className="primaryButton" disabled={working}>สร้าง Project</button>
+                <input aria-label="ชื่อโปรเจกต์ใหม่" placeholder="ชื่อโปรเจกต์" required value={projectName} onChange={(e) => setProjectName(e.target.value)} style={{ ...input, flex: "1 1 260px" }} />
+                <button className="primaryButton" disabled={working}>สร้างโปรเจกต์</button>
               </div>
-            </form> : <p>สร้าง Workspace ก่อน</p>}
+            </form> : <p>สร้างพื้นที่ทำงานในขั้นที่ 1 ก่อน</p>}
           </section>
 
           <section style={block}>
-            <h2 style={{ marginTop: 0 }}>3. Test</h2>
+            <h2 style={{ marginTop: 0 }}>3. เลือกแบบทดสอบ</h2>
             {projectId ? <form onSubmit={createTest} style={{ display: "grid", gap: 10 }}>
-              <select value={testId} onChange={(e) => setTestId(e.target.value)} style={input}>
-                <option value="">เลือก Test</option>
+              <select aria-label="แบบทดสอบ" value={testId} onChange={(e) => setTestId(e.target.value)} style={input}>
+                <option value="">เลือกแบบทดสอบ</option>
                 {tests.map((t) => <option key={t.id} value={t.id}>{t.title} — {t.status}</option>)}
               </select>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <input required value={testTitle} onChange={(e) => setTestTitle(e.target.value)} style={{ ...input, flex: "1 1 260px" }} />
-                <button className="primaryButton" disabled={working}>สร้าง Test</button>
+                <input aria-label="ชื่อแบบทดสอบใหม่" placeholder="ชื่อแบบทดสอบ" required value={testTitle} onChange={(e) => setTestTitle(e.target.value)} style={{ ...input, flex: "1 1 260px" }} />
+                <button className="primaryButton" disabled={working}>สร้างแบบทดสอบ</button>
               </div>
-            </form> : <p>เลือก Project ก่อน</p>}
+            </form> : <p>เลือกหรือสร้างโปรเจกต์ในขั้นที่ 2 ก่อน</p>}
           </section>
 
           <section style={block}>
-            <h2 style={{ marginTop: 0 }}>4. First-party Production Target</h2>
+            <h2 style={{ marginTop: 0 }}>4. ระบุเว็บไซต์ที่จะทดสอบ</h2>
             {testId ? <form onSubmit={configureTarget} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <input required type="url" value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)} style={{ ...input, flex: "1 1 420px" }} />
-              <button className="primaryButton" disabled={working}>บันทึก Target</button>
-              <button className="primaryButton" type="button" disabled={working} onClick={preflightTarget}>ตรวจ Target</button>
-            </form> : <p>เลือก Test ก่อน</p>}
+              <input aria-label="URL เว็บไซต์ที่จะทดสอบ" placeholder="https://example.com" required type="url" value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)} style={{ ...input, flex: "1 1 420px" }} />
+              <button className="primaryButton" disabled={working}>บันทึกเว็บไซต์</button>
+              <button className="primaryButton" type="button" disabled={working} onClick={preflightTarget}>ตรวจความพร้อมของเว็บไซต์</button>
+            </form> : <p>เลือกหรือสร้างแบบทดสอบในขั้นที่ 3 ก่อน</p>}
           </section>
 
           <section style={block}>
-            <h2 style={{ marginTop: 0 }}>5. Scenario / Tasks</h2>
+            <h2 style={{ marginTop: 0 }}>5. เขียนงานให้ผู้เข้าร่วมทำ</h2>
             {testId ? <>
               <form onSubmit={createTask} style={{ display: "grid", gap: 8 }}>
-                <input required placeholder="ชื่อ Task" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} style={input} />
-                <input placeholder="Scenario" value={scenario} onChange={(e) => setScenario(e.target.value)} style={input} />
-                <textarea placeholder="คำสั่งสำหรับผู้เข้าร่วม" value={instruction} onChange={(e) => setInstruction(e.target.value)} rows={3} style={{ ...input, padding: 10 }} />
-                <button className="primaryButton" disabled={working}>เพิ่ม Task</button>
+                <input aria-label="ชื่องาน" required placeholder="ชื่องาน เช่น สมัครสมาชิก" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} style={input} />
+                <input aria-label="สถานการณ์ของงาน" placeholder="สถานการณ์ เช่น คุณเพิ่งเริ่มใช้บริการ" value={scenario} onChange={(e) => setScenario(e.target.value)} style={input} />
+                <textarea aria-label="คำสั่งที่ผู้เข้าร่วมจะเห็น" placeholder="คำสั่งที่ผู้เข้าร่วมจะเห็น" value={instruction} onChange={(e) => setInstruction(e.target.value)} rows={3} style={{ ...input, padding: 10 }} />
+                <button className="primaryButton" disabled={working}>เพิ่มงาน</button>
               </form>
               <ol>{tasks.map((task) => <li key={task.id}>{task.ordinal}. {task.title}</li>)}</ol>
-              {tasks.length > 0 ? <p><a className="primaryButton" href={`/builder/${testId}/rules`}>กำหนด Success / Failure Rules</a></p> : null}
-              <p style={{ color: "var(--ah-slate)" }}>Flow Gate ใช้ข้อมูลจริงเท่านั้น; Publish จะผ่านเมื่อทุก Task มี deterministic rule ที่ Target capability รองรับและไม่ขัดแย้งกัน</p>
-            </> : <p>เลือก Test ก่อน</p>}
+              {tasks.length > 0 ? <p><a className="primaryButton" href={`/builder/${testId}/rules`}>กำหนดเกณฑ์จบงาน</a></p> : null}
+              <p style={{ color: "var(--ah-slate)" }}>ก่อนเผยแพร่ ให้กำหนดว่าแต่ละงานถือว่าสำเร็จหรือไม่สำเร็จเมื่อใด ระบบจะตรวจความครบถ้วนอีกครั้ง</p>
+            </> : <p>เลือกหรือสร้างแบบทดสอบในขั้นที่ 3 ก่อน</p>}
           </section>
 
           <section style={block}>
-            <h2 style={{ marginTop: 0 }}>6. Publish</h2>
-            <button className="primaryButton" type="button" disabled={working || !testId || tasks.length === 0} onClick={publish}>Publish immutable version</button>
-            {publishedVersionId ? <p>Participant link: <a href={`/t/${publishedVersionId}`} target="_blank" rel="noreferrer">{`/t/${publishedVersionId}`}</a></p> : null}
+            <h2 style={{ marginTop: 0 }}>6. ตรวจและเผยแพร่</h2>
+            <button className="primaryButton" type="button" disabled={working || !testId || tasks.length === 0} onClick={publish}>เผยแพร่เวอร์ชันนี้</button>
+            {!testId || tasks.length === 0 ? <p>เลือกแบบทดสอบและเพิ่มงานอย่างน้อย 1 งานก่อนเผยแพร่</p> : null}
+            {publishedVersionId ? <p>ลิงก์สำหรับผู้เข้าร่วม: <a href={`/t/${publishedVersionId}`} target="_blank" rel="noreferrer">{`/t/${publishedVersionId}`}</a></p> : null}
           </section>
         </div>
       </section>

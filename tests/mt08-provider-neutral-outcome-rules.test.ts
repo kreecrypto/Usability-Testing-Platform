@@ -117,6 +117,6 @@ test("MT-08 authenticated API and researcher editor expose no service role short
 
   assert.match(editor, /กำหนดเกณฑ์สำเร็จและไม่สำเร็จ/);
   assert.match(editor, /Completion signal/);
-  assert.match(editor, /Target:/);
-  assert.match(editor, /deterministic rule/);
+  assert.match(editor, /สิ่งที่จะทดสอบ:/);
+  assert.match(editor, /ข้อมูลที่ใช้ตรวจผลอัตโนมัติได้/);
 });
