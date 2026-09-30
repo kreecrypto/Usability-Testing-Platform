@@ -72,18 +72,18 @@ export default function ReviewPublishClient({ testId }: { testId: string }) {
       {error ? <p className={styles.error} role="alert">{error}</p> : null}
 
       <section className={styles.card} aria-labelledby="prototype-heading">
-        <h2 id="prototype-heading">ต้นแบบที่จะเผยแพร่</h2>
+        <h2 id="prototype-heading">สิ่งที่จะทดสอบ</h2>
         <dl className={styles.definition}>
           <div><dt>ต้นแบบสาธารณะ</dt><dd><a href={preview.sourceUrl} target="_blank" rel="noreferrer">{preview.sourceUrl}</a></dd></div>
           <div><dt>Node เริ่มต้น</dt><dd><code>{preview.startNodeId}</code></dd></div>
           <div><dt>รหัสเวอร์ชันภายใน</dt><dd><code>{preview.testVersionId}</code></dd></div>
         </dl>
-        <p className={styles.note}>เมื่อเผยแพร่ ระบบจะล็อก snapshot และงานของเวอร์ชันนี้ เพื่อให้ผลการทดสอบอ้างอิงการตั้งค่าชุดเดิมได้</p>
+        <p className={styles.note}>หลังเผยแพร่ จะเปลี่ยนลิงก์และงานของเวอร์ชันนี้ไม่ได้ ผลการทดสอบจึงอ้างอิงการตั้งค่าเดิมเสมอ</p>
       </section>
 
       <section className={styles.card} aria-labelledby="funnel-heading">
-        <h2 id="funnel-heading">Funnel ของผลการทดสอบ</h2>
-        <p className={styles.note}>กำหนด Screen ID ตามลำดับที่ต้องการวัด conversion และ drop-off ค่านี้จะถูกเก็บกับเวอร์ชันที่เผยแพร่ และไม่เดาจากเส้นทางจริงของผู้เข้าร่วม</p>
+        <h2 id="funnel-heading">ลำดับขั้นที่จะวัดผล</h2>
+        <p className={styles.note}>เรียงรหัสหน้าจอที่ต้องการวัดว่าผู้เข้าร่วมไปถึงหรือหยุดที่ขั้นใด ระบบจะเก็บลำดับนี้กับเวอร์ชันที่เผยแพร่</p>
         {preview.lifecycleStatus === "draft" ? (
           <div className={styles.funnelEditor}>
             <label htmlFor="funnel-screen-ids">Screen ID ตามลำดับ — 1 บรรทัดต่อ 1 จุด หรือคั่นด้วยจุลภาค</label>
@@ -92,7 +92,7 @@ export default function ReviewPublishClient({ testId }: { testId: string }) {
           </div>
         ) : preview.funnelConfig ? (
           <ol className={styles.funnelSteps}>{preview.funnelConfig.screenIds.map((screenId) => <li key={screenId}><code>{screenId}</code></li>)}</ol>
-        ) : <p>เวอร์ชันนี้ยังไม่มี Funnel จึงยังไม่มีข้อมูล Funnel ให้แสดง</p>}
+        ) : <p>เวอร์ชันนี้ยังไม่ได้กำหนดลำดับหน้าจอ จึงยังวิเคราะห์การไปต่อในแต่ละขั้นไม่ได้</p>}
       </section>
 
       <section aria-labelledby="task-heading">

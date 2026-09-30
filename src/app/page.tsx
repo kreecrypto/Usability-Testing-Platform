@@ -1,23 +1,23 @@
 const modules = [
   {
     title: "สร้างการทดสอบ",
-    description: "เลือกเป้าหมายทดสอบ กำหนดงาน กฎ และคำถามหลังงานในโฟลว์เดียว",
+    description: "เลือกต้นแบบหรือเว็บไซต์ เขียนงานให้ผู้เข้าร่วมทำ แล้วตรวจแบบทดสอบก่อนเผยแพร่",
   },
   {
     title: "ผู้เข้าร่วมทดสอบ",
-    description: "ให้ผู้เข้าร่วมทำงานกับเป้าหมายทดสอบโดยลดสิ่งรบกวนและไม่เปิดเผยเกณฑ์สำเร็จ",
+    description: "ส่งลิงก์ให้ผู้เข้าร่วมทำงานทีละขั้น โดยไม่บอกคำตอบที่คาดหวัง",
   },
   {
     title: "บันทึกพฤติกรรม",
-    description: "เก็บเฉพาะเหตุการณ์ที่เป้าหมายรองรับ พร้อมสถานะความสามารถและหลักฐานที่ตรวจสอบย้อนกลับได้",
+    description: "บันทึกสิ่งที่เกิดขึ้นระหว่างทดสอบ และแยกปัญหาทางเทคนิคออกจากปัญหาการใช้งาน",
   },
   {
     title: "วิเคราะห์ผล",
-    description: "ดูความสำเร็จ เวลา เส้นทาง และการโต้ตอบตามความสามารถของเป้าหมาย โดยไม่ตีความ Unsupported เป็นศูนย์",
+    description: "ดูผลพร้อมจำนวนผู้เข้าร่วมและหลักฐานของแต่ละรอบ ข้อมูลที่เก็บไม่ได้จะแสดงเหตุผล",
   },
   {
     title: "ประเด็นที่พบและทดสอบซ้ำ",
-    description: "เปลี่ยนหลักฐานเป็นประเด็น UX แล้วเปรียบเทียบผลหลังปรับแบบบนเวอร์ชันที่ตรวจสอบย้อนกลับได้",
+    description: "บันทึกสิ่งที่ควรแก้ อ้างอิงหลักฐาน และเทียบผลเมื่อทดสอบเวอร์ชันใหม่",
   },
 ];
 
@@ -41,34 +41,33 @@ export default function Home() {
       <section className="content">
         <header className="topbar">
           <div>
-            <p className="eyebrow">ทดสอบการใช้งานและ UX QA</p>
-            <h1>เป้าหมายทดสอบ → หลักฐาน → การตัดสินใจ UX</h1>
+            <p className="eyebrow">UT Platform</p>
+            <h1>ทดสอบการใช้งานกับผู้ใช้จริง</h1>
           </div>
-          <a className="primaryButton" href="/demo/projects">สำรวจ Demo แบบอ่านอย่างเดียว</a>
+          <a className="primaryButton" href="/demo/projects">ดูตัวอย่างการทำงาน</a>
         </header>
 
         <section id="overview" className="heroCard">
           <div>
-            <span className="status">โฟลว์หลัก</span>
-            <h2>เลือกเป้าหมาย สร้างงาน เก็บพฤติกรรม แล้วเปลี่ยนหลักฐานเป็นสิ่งที่ต้องแก้</h2>
+            <span className="status">ตัวอย่างแบบอ่านอย่างเดียว</span>
+            <h2>จากแบบทดสอบถึงสิ่งที่ควรแก้</h2>
             <p>
-              รุ่นปัจจุบันรองรับเป้าหมายทดสอบแบบ Figma Prototype, เว็บไซต์ UAT/Production ที่ทีมควบคุม
-              และเว็บไซต์ภายนอกตามความสามารถที่ตรวจสอบได้ พร้อมเซสชันผู้เข้าร่วม การวิเคราะห์ผล
-              ประเด็นที่พบ และการเปรียบเทียบการทดสอบซ้ำ
+              สำรวจตัวอย่างโปรเจกต์ ดูงานที่ให้ผู้เข้าร่วมทำ แล้วตามผลกลับไปถึงหลักฐาน ข้อค้นพบ และการทดสอบซ้ำ
+              ข้อมูลใน Demo เป็นเรื่องสมมติ ไม่ใช่ผลจากผู้เข้าร่วมจริง
             </p>
           </div>
-          <div className="metricGrid" aria-label="สรุปขอบเขตหน้าจอและสถานะ QA">
-            <div className="metric"><strong>5</strong><span>โมดูลหลัก</span></div>
-            <div className="metric"><strong>48</strong><span>หน้าจอหลัก</span></div>
-            <div className="metric"><strong>170</strong><span>สถานะ QA</span></div>
+          <div className="metricGrid" aria-label="ลำดับการทำงาน">
+            <div className="metric"><strong>1</strong><span>เตรียมแบบทดสอบ</span></div>
+            <div className="metric"><strong>2</strong><span>ดูผลและหลักฐาน</span></div>
+            <div className="metric"><strong>3</strong><span>แก้ไขและทดสอบซ้ำ</span></div>
           </div>
         </section>
 
         <section id="modules" className="section">
           <div className="sectionHeading">
             <div>
-              <p className="eyebrow">โฟลว์ผลิตภัณฑ์</p>
-              <h2>จากเป้าหมายทดสอบสู่การปรับ UX</h2>
+              <p className="eyebrow">วิธีทำงาน</p>
+              <h2>แต่ละขั้นช่วยให้ตัดสินใจจากหลักฐาน</h2>
             </div>
           </div>
 

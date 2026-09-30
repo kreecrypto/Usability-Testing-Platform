@@ -35,7 +35,7 @@ export default function RetestPage({ params }: { params: Promise<{ retestId: str
   }, [params]);
 
   return <main className={styles.page}>
-    <header className={styles.header}><div><span>ทดสอบซ้ำ</span><h1>ก่อนปรับเทียบกับการทดสอบซ้ำ</h1><p>เปรียบเทียบผลโดยคงรหัสเวอร์ชัน จำนวนตัวอย่าง และจำนวนเซสชันที่ติดปัญหาทางเทคนิคไว้ให้ตรวจสอบได้ ระบบจะไม่สรุปนัยสำคัญทางสถิติจนกว่าจะมีวิธีที่กำหนดไว้ใน Requirement</p></div></header>
+    <header className={styles.header}><div><span>ทดสอบซ้ำ</span><h1>ก่อนปรับเทียบกับการทดสอบซ้ำ</h1><p>เปรียบเทียบผลโดยคงรหัสเวอร์ชัน จำนวนตัวอย่าง และจำนวนรอบที่ติดปัญหาทางเทคนิคไว้ให้ตรวจสอบได้ ระบบจะไม่สรุปนัยสำคัญทางสถิติเพราะยังไม่มีวิธีคำนวณที่รองรับ</p></div></header>
     {state.loading ? <div className={styles.state}>กำลังโหลดผลเปรียบเทียบ…</div> : null}
     {state.error ? <div className={styles.error} role="alert">{state.error}</div> : null}
     {state.data ? <section className={styles.panel}>

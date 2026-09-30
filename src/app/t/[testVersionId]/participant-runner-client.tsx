@@ -540,7 +540,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     if (!snapshot || snapshot.target.instrumentation !== "first_party_bridge") return;
     const opened = window.open(snapshot.target.sourceUrl, "utp-first-party-target");
     if (!opened) {
-      setTechnicalReason("เบราว์เซอร์บล็อกหน้าต่าง Test Target กรุณาอนุญาต pop-up แล้วลองอีกครั้ง");
+      setTechnicalReason("เบราว์เซอร์บล็อกหน้าต่างเว็บไซต์ที่จะทดสอบ โปรดอนุญาตหน้าต่างใหม่แล้วลองอีกครั้ง");
       setProviderReady(false);
       return;
     }
@@ -689,7 +689,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
               ref={iframeRef}
               className={styles.prototypeFrame}
               src={snapshot.target.liveEmbedUrl ?? snapshot.target.embedUrl ?? snapshot.target.sourceUrl}
-              title={`${snapshot.title} เป้าหมายทดสอบสำหรับงาน ${taskIndex + 1}`}
+              title={`${snapshot.title} สิ่งที่จะทดสอบสำหรับงาน ${taskIndex + 1}`}
               allow="fullscreen"
             />
           </>
@@ -697,24 +697,23 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
           <iframe
             className={styles.prototypeFrame}
             src={snapshot.target.embedUrl ?? snapshot.target.sourceUrl}
-            title={`${snapshot.title} เป้าหมายทดสอบสำหรับงาน ${taskIndex + 1}`}
+            title={`${snapshot.title} สิ่งที่จะทดสอบสำหรับงาน ${taskIndex + 1}`}
           />
         ) : (
           <section className={styles.card} style={{ margin: "24px auto", maxWidth: 720 }}>
             <span className={styles.eyebrow}>เป้าหมายทดสอบ</span>
             <h1>เปิดเว็บไซต์ที่ใช้ทำงานนี้</h1>
             <p>
-              ระบบจะใช้เฉพาะหลักฐานที่ Target รองรับและจะไปขั้นถัดไปเมื่อได้รับ outcome
-              ที่ตรวจสอบได้ หากทำต่อไม่ได้ให้กลับมาที่หน้านี้แล้วเลือก “ทำงานนี้ต่อไม่ได้”
+              เปิดเว็บไซต์และทำงานตามคำสั่ง ระบบจะบันทึกเฉพาะพฤติกรรมที่เว็บไซต์นี้รองรับ เมื่อทำต่อไม่ได้ ให้กลับมาที่หน้านี้แล้วเลือก “ทำงานนี้ต่อไม่ได้”
             </p>
             {snapshot.target.instrumentation === "first_party_bridge" ? (
               <>
                 <p role="status">
-                  {providerReady ? "Target เชื่อมต่อกับ UTP แล้ว" : "เปิด Target เพื่อเริ่มรับหลักฐานจาก approved bridge"}
+                  {providerReady ? "เว็บไซต์เชื่อมต่อกับแบบทดสอบแล้ว" : "เปิดเว็บไซต์เพื่อเริ่มทำงาน หากเว็บไซต์ยังไม่เชื่อมต่อ โปรดกลับมาที่หน้านี้แล้วลองอีกครั้ง"}
                 </p>
                 <div className={styles.actions}>
                   <button className={styles.primaryButton} type="button" onClick={openFirstPartyTarget}>
-                    เปิด Test Target
+                    เปิดเว็บไซต์ที่จะทดสอบ
                   </button>
                 </div>
               </>
@@ -727,7 +726,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
                   rel={snapshot.target.launchMode === "new_tab" ? "noreferrer" : undefined}
                   onClick={() => setProviderReady(true)}
                 >
-                  เปิด Test Target
+                  เปิดเว็บไซต์ที่จะทดสอบ
                 </a>
               </div>
             )}
