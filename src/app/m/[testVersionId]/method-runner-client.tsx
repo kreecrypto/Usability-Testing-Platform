@@ -155,26 +155,26 @@ export default function MethodRunnerClient({ testVersionId }: { testVersionId: s
     finally { setBusy(false); }
   }
 
-  if (stage === "loading") return <main className={styles.shell}><p role="status">กำลังโหลดการทดสอบ…</p></main>;
-  if (stage === "error" || !snapshot) return <main className={styles.shell}><h1>เปิดการทดสอบไม่ได้</h1><p role="alert">{error}</p><button onClick={() => void load()}>ลองอีกครั้ง</button></main>;
+  if (stage === "loading") return <main className={styles.shell}><p role="status">กำลังเปิดแบบทดสอบ…</p></main>;
+  if (stage === "error" || !snapshot) return <main className={styles.shell}><h1>เปิดแบบทดสอบไม่ได้</h1><p role="alert">{error}</p><button onClick={() => void load()}>ลองอีกครั้ง</button></main>;
   return <main className={styles.shell}>
-    <header><p className={styles.kicker}>การทดสอบ · เวอร์ชัน {snapshot.versionNo}</p><h1>{snapshot.title}</h1>{snapshot.description ? <p>{snapshot.description}</p> : null}</header>
+    <header><p className={styles.kicker}>แบบทดสอบ · เวอร์ชัน {snapshot.versionNo}</p><h1>{snapshot.title}</h1>{snapshot.description ? <p>{snapshot.description}</p> : null}</header>
     {error ? <p className={styles.error} role="alert">{error}</p> : null}
-    {stage === "consent" ? <section className={styles.panel}><h2>ก่อนเริ่มการทดสอบ</h2><p>เราจะบันทึกคำตอบและเส้นทางที่คุณเลือกเพื่อใช้วิเคราะห์ปัญหาการใช้งาน โดยไม่ต้องสร้างบัญชี</p><p>คุณสามารถหยุดได้ทุกเมื่อ คำตอบที่ส่งแล้วจะถูกเก็บตามนโยบายข้อมูลของการศึกษา</p>
+    {stage === "consent" ? <section className={styles.panel}><h2>ก่อนเริ่มแบบทดสอบ</h2><p>เราจะบันทึกคำตอบและเส้นทางที่คุณเลือกเพื่อใช้วิเคราะห์ปัญหาการใช้งาน โดยไม่ต้องสร้างบัญชี</p><p>คุณสามารถหยุดได้ทุกเมื่อ คำตอบที่ส่งแล้วจะถูกเก็บตามนโยบายข้อมูลของการศึกษา</p>
       <form onSubmit={(event) => void consent(event)}>
-        {snapshot.inviteOnly && !inviteToken ? <p role="alert">การศึกษานี้ต้องใช้ลิงก์เชิญเฉพาะราย กรุณาเปิดลิงก์ที่ผู้วิจัยส่งให้</p> : null}
+        {snapshot.inviteOnly && !inviteToken ? <p role="alert">แบบทดสอบนี้ต้องใช้ลิงก์เชิญเฉพาะราย โปรดเปิดลิงก์ที่ผู้วิจัยส่งให้</p> : null}
         {snapshot.screener.questions.map((question) => <fieldset className={styles.question} key={question.id}><legend>{question.prompt} *</legend>{question.options.map((option) => <label className={styles.choice} key={option.id}><input type="radio" name={`screener_${question.id}`} value={option.id} required checked={screenerAnswers[question.id] === option.id} onChange={() => setScreenerAnswers((answers) => ({ ...answers, [question.id]: option.id }))} />{option.label}</label>)}</fieldset>)}
         <label className={styles.choice}><input type="checkbox" required checked={accepted} onChange={(event) => setAccepted(event.target.checked)} />ฉันยินยอมให้บันทึกคำตอบเพื่อการวิจัยนี้</label>
         <button className={styles.primary} type="submit" disabled={busy || (snapshot.inviteOnly && !inviteToken)}>ยินยอมและเริ่ม</button>
       </form>
     </section> : null}
-    {stage === "ineligible" ? <section className={styles.panel}><h2>ขอบคุณที่สนใจ</h2><p>คำตอบคัดกรองของคุณไม่ตรงกับเงื่อนไขของการศึกษานี้ จึงไม่สามารถเข้าร่วมต่อได้</p></section> : null}
+    {stage === "ineligible" ? <section className={styles.panel}><h2>ขอบคุณที่สนใจ</h2><p>คำตอบคัดกรองไม่ตรงกับเงื่อนไขของแบบทดสอบนี้ จึงไม่สามารถทำขั้นต่อไปได้</p></section> : null}
     {stage === "running" && current ? <section className={styles.panel} aria-labelledby="block-title">
       <p className={styles.kicker} role="status">กิจกรรม {completed.length + 1} จาก {snapshot.blocks.length}</p><p>{current.kind === "survey" ? "ตอบคำถามตามความคิดเห็นของคุณ แล้วกดส่งคำตอบเพื่อทำต่อ" : current.kind === "card_sort" ? "เลือกหมวดหมู่ให้แต่ละรายการตามความเข้าใจของคุณ แล้วส่งคำตอบ" : "อ่านโจทย์และเลือกตำแหน่งในเมนูที่คุณคาดว่าจะพบข้อมูลนั้น"}</p><h2 id="block-title">{current.title}</h2>
       {current.kind === "survey" ? <SurveyForm key={current.id} config={current.config as SurveyConfig} busy={busy} onSubmit={(value) => void submit(value)} /> : null}
       {current.kind === "card_sort" ? <CardForm key={current.id} config={current.config as CardConfig} busy={busy} onSubmit={(value) => void submit(value)} /> : null}
       {current.kind === "tree_test" ? <TreeForm key={current.id} config={current.config as TreeConfig} busy={busy} onSubmit={(value) => void submit(value)} /> : null}
     </section> : null}
-    {stage === "complete" ? <section className={styles.panel}><h2>ขอบคุณที่ร่วมทดสอบ</h2><p>คำตอบของคุณถูกบันทึกแล้ว</p></section> : null}
+    {stage === "complete" ? <section className={styles.panel}><h2>ขอบคุณที่ร่วมทดสอบ</h2><p>คำตอบที่ส่งสำเร็จถูกบันทึกแล้ว คุณปิดหน้านี้ได้</p></section> : null}
   </main>;
 }
