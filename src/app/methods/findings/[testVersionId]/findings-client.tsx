@@ -5,7 +5,7 @@ import { authenticatedFetch, SESSION_MESSAGE } from "../../../../lib/auth/client
 import { useCallback, useEffect, useState } from "react";
 import ResultsNavigation from "../../../../components/navigation/results-navigation";
 import StudyContext from "../../../../components/navigation/study-context";
-import { methodLabels, friendlyError } from "../../../../components/navigation/labels";
+import { severityLabels, friendlyError } from "../../../../components/navigation/labels";
 import styles from "../../results/[testVersionId]/results.module.css";
 
 type Block = { blockId: string; kind: string; title: string; sampleSize: number };
@@ -62,16 +62,16 @@ export default function MethodFindingsClient({ testVersionId }: { testVersionId:
   return <main className={styles.shell}><StudyContext testId={results?.testId} versionId={testVersionId} versionNo={results?.versionNo} /><ResultsNavigation versionId={testVersionId} methods current="findings" /><header><p className={styles.kicker}>จากหลักฐานสู่ข้อค้นพบ</p><h1>ข้อค้นพบจากการทดสอบ</h1><p><a href={`/methods/results/${encodeURIComponent(testVersionId)}`}>← ผลการทดสอบ</a> · <a href={`/methods/reports/${encodeURIComponent(testVersionId)}`}>รายงาน →</a></p></header>
     {error ? <p role="alert">{error}</p> : null}
     {!results ? <p role="status">กำลังโหลด…</p> : <section className={styles.panel}><h2>บันทึกข้อค้นพบ</h2><form onSubmit={(event) => void create(event)}>
-      <p>ใช้คำตอบจริงเป็นหลักฐาน และแยกสิ่งที่สังเกตได้ออกจากการตีความ</p>
+      <p>ใช้คำตอบที่ส่งสำเร็จเป็นหลักฐาน และแยกสิ่งที่สังเกตได้ออกจากการตีความ</p>
       <label>กิจกรรม<select value={blockId} onChange={(event) => { setBlockId(event.target.value); setResponseId(""); }}>{results.blocks.map((item) => <option key={item.blockId} value={item.blockId}>{item.title}</option>)}</select></label>
-      <label>หลักฐานระดับคำตอบ<select required value={responseId} onChange={(event) => setResponseId(event.target.value)}><option value="">เลือกคำตอบที่เป็นหลักฐาน</option>{evidence.map((item) => <option key={item.id} value={item.id}>Response {item.id.slice(0, 8)} · session {item.sessionId.slice(0, 8)}</option>)}</select></label>
-      <label>ชื่อประเด็น<input required value={title} onChange={(event) => setTitle(event.target.value)} /></label>
+      <label>หลักฐานระดับคำตอบ<select required value={responseId} onChange={(event) => setResponseId(event.target.value)}><option value="">เลือกคำตอบที่เป็นหลักฐาน</option>{evidence.map((item) => <option key={item.id} value={item.id}>คำตอบ {item.id.slice(0, 8)} · รอบ {item.sessionId.slice(0, 8)}</option>)}</select></label>
+      <label>ชื่อข้อค้นพบ<input required value={title} onChange={(event) => setTitle(event.target.value)} /></label>
       <label>ปัญหาที่สังเกตได้<textarea required value={problem} onChange={(event) => setProblem(event.target.value)} /></label>
       <label>การตีความ<textarea required value={interpretation} onChange={(event) => setInterpretation(event.target.value)} /></label>
       <label>ข้อเสนอแนะ<textarea required value={recommendation} onChange={(event) => setRecommendation(event.target.value)} /></label>
       <label>ความรุนแรง<select value={severity} onChange={(event) => setSeverity(event.target.value)}><option value="critical">วิกฤต</option><option value="high">สูง</option><option value="medium">กลาง</option><option value="low">ต่ำ</option></select></label>
       <button disabled={busy || !block || !responseId}>บันทึกข้อค้นพบ</button>
     </form></section>}
-    <section className={styles.panel}><h2>ข้อค้นพบ ({findings.length})</h2>{findings.length ? <ul>{findings.map((finding) => <li key={finding.id}><strong>{finding.title}</strong> · {finding.severity}<p>{finding.problem}</p><small>n={finding.metricSnapshot.sampleSize || "ยังไม่มีข้อมูล"}</small></li>)}</ul> : <p>ยังไม่มีข้อค้นพบ จากหลักฐานในเวอร์ชันนี้</p>}</section>
+    <section className={styles.panel}><h2>ข้อค้นพบ ({findings.length})</h2>{findings.length ? <ul>{findings.map((finding) => <li key={finding.id}><strong>{finding.title}</strong> · {severityLabels[finding.severity] ?? finding.severity}<p>{finding.problem}</p><small>{finding.metricSnapshot.sampleSize ? `ตัวอย่าง ${finding.metricSnapshot.sampleSize} รายการ` : "ยังไม่มีข้อมูลที่นับได้"}</small></li>)}</ul> : <p>ยังไม่มีข้อค้นพบสำหรับเวอร์ชันนี้ ตรวจผลและเลือกคำตอบที่เป็นหลักฐานก่อนบันทึก</p>}</section>
   </main>;
 }
