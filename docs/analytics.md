@@ -144,6 +144,8 @@ test version IDs
 
 Do not imply statistical significance unless a defined statistical method is actually implemented.
 
+Retest comparison `retest-v2` derives both snapshots from the authorized Results observations when a retest is created. A delta is shown only when the metric definition, aggregation and rule versions, task scope, required capabilities, and eligible sample context are compatible and both observations have available evidence. Older stored snapshots remain readable but show no delta when this context is missing. Rate differences are labeled in percentage points; the relative difference is omitted when the baseline is zero.
+
 ## Quality rule
 
 Every metric displayed in the Results UI must have:
