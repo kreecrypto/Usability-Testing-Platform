@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { ResultsModel, TaskDetailResult } from "../../../lib/analytics/results.ts";
+import type { ResultsModel } from "../../../lib/analytics/results.ts";
 import type { FindingRecord } from "../../../lib/findings/model.ts";
+import { metricSnapshotFromObservation } from "../../../lib/findings/snapshot.ts";
 import styles from "./findings.module.css";
 
 type LoadState = "loading" | "ready" | "error";
@@ -16,27 +17,6 @@ const metricLabels: Record<MetricKey, string> = {
 };
 const severityLabels: Record<string, string> = { critical: "วิกฤต", high: "สูง", medium: "กลาง", low: "ต่ำ" };
 const statusLabels: Record<string, string> = { open: "เปิดอยู่", resolved: "แก้ไขแล้ว", closed: "ปิดแล้ว" };
-
-function metricValue(task: TaskDetailResult, key: MetricKey): number | null {
-  if (key === "completionRate") return task.completionRate;
-  if (key === "misclickRate") return task.misclickRate;
-  if (key === "giveUpRate") return task.giveUpRate;
-  return task.successfulDuration.medianMs;
-}
-
-function snapshot(task: TaskDetailResult, key: MetricKey, testVersionId: string) {
-  const trace = key === "misclickRate" ? task.trace.misclick : key === "medianSuccessfulDurationMs" ? task.trace.timeOnTask : task.trace.completion;
-  return {
-    metricKey: key,
-    value: metricValue(task, key),
-    sampleSize: key === "medianSuccessfulDurationMs" ? task.successfulDuration.sampleSize : task.eligible,
-    technicalBlockedCount: task.technicalBlockedCount,
-    testVersionId,
-    aggregationVersion: trace.aggregationVersion,
-    ruleVersions: trace.ruleVersions,
-    sourceEventIds: trace.eventIds,
-  };
-}
 
 function formatMetric(value: number | null): string { return value === null ? "ยังไม่มีข้อมูล" : String(Math.round(value * 10) / 10); }
 
@@ -78,10 +58,13 @@ export default function FindingsPage({ params }: { params: Promise<{ testVersion
 
   useEffect(() => { if (testVersionId) void reload(testVersionId); }, [testVersionId]);
   const selectedTask = useMemo(() => results?.taskDetails.find((task) => task.taskId === taskId) ?? null, [results, taskId]);
+  const selectedObservation = results?.metrics.find((item) => item.taskId === taskId && item.metricKey === metricKey) ?? null;
 
   async function createFinding(event: React.FormEvent) {
     event.preventDefault();
     if (!selectedTask || !title.trim() || !problem.trim()) return;
+    const observation = selectedObservation;
+    if (!observation) { setError("ไม่พบข้อมูลตัวชี้วัดของงานนี้"); return; }
     setSaving(true); setError("");
     try {
       const response = await fetch("/api/findings", {
@@ -95,7 +78,7 @@ export default function FindingsPage({ params }: { params: Promise<{ testVersion
           researcherInterpretation,
           recommendation,
           severity,
-          metricSnapshot: snapshot(selectedTask, metricKey, testVersionId),
+          metricSnapshot: metricSnapshotFromObservation(observation),
         }),
       });
       if (!response.ok) throw new Error("สร้างประเด็นที่พบไม่สำเร็จ");
@@ -129,7 +112,7 @@ export default function FindingsPage({ params }: { params: Promise<{ testVersion
         <div><span className={styles.eyebrow}>จากหลักฐานสู่สิ่งที่ต้องแก้</span><h2>สร้างประเด็นใหม่</h2></div>
         <label>งาน<select value={taskId} onChange={(event) => setTaskId(event.target.value)}>{results.taskDetails.map((task) => <option key={task.taskId} value={task.taskId}>{task.ordinal}. {task.title}</option>)}</select></label>
         <label>ตัวชี้วัดหลัก<select value={metricKey} onChange={(event) => setMetricKey(event.target.value as MetricKey)}>{Object.entries(metricLabels).map(([key, label]) => <option value={key} key={key}>{label}</option>)}</select></label>
-        {selectedTask ? <div className={styles.snapshot}><strong>{formatMetric(metricValue(selectedTask, metricKey))}</strong><span>n={metricKey === "medianSuccessfulDurationMs" ? selectedTask.successfulDuration.sampleSize : selectedTask.eligible} · ติดปัญหาทางเทคนิค={selectedTask.technicalBlockedCount}</span></div> : null}
+        {selectedTask ? <div className={styles.snapshot}><strong>{formatMetric(selectedObservation?.value ?? null)}</strong><span>n={selectedObservation?.sampleSize ?? "—"} · ติดปัญหาทางเทคนิค={selectedTask.technicalBlockedCount}</span></div> : null}
         <label>ชื่อประเด็น<input required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="สรุปปัญหาที่สังเกตได้แบบสั้น ๆ" /></label>
         <label>ปัญหา<textarea required value={problem} onChange={(event) => setProblem(event.target.value)} placeholder="ผู้เข้าร่วมติดขัดตรงไหน โดยอธิบายเฉพาะสิ่งที่สังเกตได้" /></label>
         <label>การตีความของผู้วิจัย<textarea required value={researcherInterpretation} onChange={(event) => setResearcherInterpretation(event.target.value)} placeholder="อธิบายความหมายของหลักฐาน โดยไม่สรุปเหตุเชิงสาเหตุเกินข้อมูล" /></label>

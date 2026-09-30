@@ -7,6 +7,7 @@ import type {
   ReportFinding,
   UsabilityReport,
 } from "../../../lib/reports/model.ts";
+import { retestReasonLabel } from "../../../lib/findings/retest-labels.ts";
 import styles from "./report.module.css";
 
 type LoadState =
@@ -434,7 +435,8 @@ function Retest({ report }: { report: UsabilityReport }) {
           <div><span>ก่อนปรับ</span><strong>{item.comparison.baseline.value ?? "ยังไม่มีข้อมูล"}</strong><small>n={item.comparison.baseline.sampleSize} · ติดปัญหาทางเทคนิค={item.comparison.baseline.technicalBlockedCount}</small></div>
           <div><span>ทดสอบซ้ำ</span><strong>{item.comparison.retest.value ?? "ยังไม่มีข้อมูล"}</strong><small>n={item.comparison.retest.sampleSize} · ติดปัญหาทางเทคนิค={item.comparison.retest.technicalBlockedCount}</small></div>
         </div>
-        <p>ผลต่าง: <b>{item.comparison.absoluteDelta ?? "ใช้ไม่ได้กับข้อมูลนี้"}</b> · ผลต่างเทียบฐาน: <b>{item.comparison.relativeDeltaPercent === null ? "N/A" : `${Math.round(item.comparison.relativeDeltaPercent * 10) / 10}%`}</b></p>
+        <p>ผลต่าง{item.comparison.absoluteDeltaUnit === "percentage_points" ? " (จุดเปอร์เซ็นต์)" : ""}: <b>{item.comparison.absoluteDelta ?? "ยังเปรียบเทียบไม่ได้"}</b> · ผลต่างเทียบฐาน: <b>{item.comparison.relativeDeltaPercent === null ? "N/A" : `${Math.round(item.comparison.relativeDeltaPercent * 10) / 10}%`}</b></p>
+        {!item.comparison.comparable ? <p>เหตุผล: {item.comparison.incomparableReasons.map(retestReasonLabel).join(" · ")}</p> : null}
       </article>)}
     </div>}
   </section>;

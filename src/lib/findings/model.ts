@@ -1,5 +1,5 @@
 export const FINDING_MODEL_VERSION = "finding-v1" as const;
-export const RETEST_COMPARISON_VERSION = "retest-v1" as const;
+export const RETEST_COMPARISON_VERSION = "retest-v2" as const;
 
 export const findingSeverities = ["critical", "high", "medium", "low"] as const;
 export const findingStatuses = ["open", "fixed", "retest_needed", "verified", "dismissed"] as const;
@@ -18,6 +18,15 @@ export type MetricSnapshot = Readonly<{
   aggregationVersion: string | null;
   ruleVersions: readonly string[];
   sourceEventIds: readonly string[];
+  metricDefinitionVersion?: string | null;
+  targetProvider?: string | null;
+  targetSnapshotVersion?: number | null;
+  requiredCapabilities?: readonly string[];
+  availability?: string | null;
+  scope?: string | null;
+  taskId?: string | null;
+  numerator?: number | null;
+  denominator?: number | null;
 }>;
 
 export type FindingRecord = Readonly<{
@@ -59,14 +68,27 @@ export type RetestMetricComparison = Readonly<{
     value: number | null;
     sampleSize: number;
     technicalBlockedCount: number;
+    metricDefinitionVersion: string | null;
+    targetProvider: string | null;
+    targetSnapshotVersion: number | null;
+    numerator: number | null;
+    denominator: number | null;
   }>;
   retest: Readonly<{
     testVersionId: string;
     value: number | null;
     sampleSize: number;
     technicalBlockedCount: number;
+    metricDefinitionVersion: string | null;
+    targetProvider: string | null;
+    targetSnapshotVersion: number | null;
+    numerator: number | null;
+    denominator: number | null;
   }>;
+  comparable: boolean;
+  incomparableReasons: readonly string[];
   absoluteDelta: number | null;
+  absoluteDeltaUnit: "percentage_points" | "metric_units";
   relativeDeltaPercent: number | null;
   statisticalSignificance: null;
 }>;
@@ -92,6 +114,14 @@ function stringArray(value: unknown): string[] {
   return [...new Set(value.filter((item): item is string => typeof item === "string" && item.trim() !== "").map((item) => item.trim()))].sort();
 }
 
+function optionalText(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function optionalCount(value: unknown, field: string): number | null {
+  return value === undefined || value === null ? null : nonNegativeInteger(value, field);
+}
+
 export function normalizeMetricSnapshot(value: unknown, expectedVersionId?: string): MetricSnapshot {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("metric_snapshot_invalid");
   const testVersionId = nonEmptyText(Reflect.get(value, "testVersionId"), "testVersionId");
@@ -106,6 +136,29 @@ export function normalizeMetricSnapshot(value: unknown, expectedVersionId?: stri
     aggregationVersion: typeof aggregationVersion === "string" && aggregationVersion.trim() ? aggregationVersion.trim() : null,
     ruleVersions: Object.freeze(stringArray(Reflect.get(value, "ruleVersions"))),
     sourceEventIds: Object.freeze(stringArray(Reflect.get(value, "sourceEventIds"))),
+    metricDefinitionVersion: optionalText(Reflect.get(value, "metricDefinitionVersion")),
+    targetProvider: optionalText(Reflect.get(value, "targetProvider")),
+    targetSnapshotVersion: optionalCount(Reflect.get(value, "targetSnapshotVersion"), "targetSnapshotVersion"),
+    requiredCapabilities: Object.freeze(stringArray(Reflect.get(value, "requiredCapabilities"))),
+    availability: optionalText(Reflect.get(value, "availability")),
+    scope: optionalText(Reflect.get(value, "scope")),
+    taskId: optionalText(Reflect.get(value, "taskId")),
+    numerator: optionalCount(Reflect.get(value, "numerator"), "numerator"),
+    denominator: optionalCount(Reflect.get(value, "denominator"), "denominator"),
+  });
+}
+
+function context(snapshot: MetricSnapshot) {
+  return Object.freeze({
+    testVersionId: snapshot.testVersionId,
+    value: snapshot.value,
+    sampleSize: snapshot.sampleSize,
+    technicalBlockedCount: snapshot.technicalBlockedCount,
+    metricDefinitionVersion: snapshot.metricDefinitionVersion ?? null,
+    targetProvider: snapshot.targetProvider ?? null,
+    targetSnapshotVersion: snapshot.targetSnapshotVersion ?? null,
+    numerator: snapshot.numerator ?? null,
+    denominator: snapshot.denominator ?? null,
   });
 }
 
@@ -118,26 +171,34 @@ export function compareRetestMetric(input: Readonly<{
   const baseline = normalizeMetricSnapshot(input.before, input.baselineVersionId);
   const retest = normalizeMetricSnapshot(input.after, input.retestVersionId);
   if (baseline.metricKey !== retest.metricKey) throw new Error("retest_metric_key_mismatch");
-  const absoluteDelta = baseline.value === null || retest.value === null ? null : retest.value - baseline.value;
+  const reasons: string[] = [];
+  if (!baseline.metricDefinitionVersion || baseline.metricDefinitionVersion !== retest.metricDefinitionVersion) reasons.push("metric_definition_mismatch");
+  if (!baseline.aggregationVersion || baseline.aggregationVersion !== retest.aggregationVersion) reasons.push("aggregation_version_mismatch");
+  if (!baseline.targetProvider || !retest.targetProvider || !baseline.targetSnapshotVersion || !retest.targetSnapshotVersion) reasons.push("target_context_missing");
+  if (baseline.availability !== "Available" || retest.availability !== "Available") reasons.push("evidence_unavailable");
+  if (!baseline.scope || baseline.scope !== retest.scope || baseline.taskId !== retest.taskId) reasons.push("scope_mismatch");
+  if (JSON.stringify(baseline.ruleVersions) !== JSON.stringify(retest.ruleVersions)) reasons.push("rule_version_mismatch");
+  if (JSON.stringify(baseline.requiredCapabilities) !== JSON.stringify(retest.requiredCapabilities)) reasons.push("capability_mismatch");
+  if (baseline.sampleSize === 0 || retest.sampleSize === 0 || baseline.value === null || retest.value === null) reasons.push("no_eligible_data");
+  const rate = baseline.metricKey.endsWith("Rate");
+  if (rate && (!baseline.denominator || !retest.denominator || baseline.numerator == null || retest.numerator == null)) reasons.push("eligibility_context_missing");
+  if (rate && baseline.denominator !== null && retest.denominator !== null && (
+    baseline.denominator !== baseline.sampleSize || retest.denominator !== retest.sampleSize
+    || (baseline.numerator ?? 0) > baseline.denominator || (retest.numerator ?? 0) > retest.denominator
+  )) reasons.push("eligibility_context_mismatch");
+  const absoluteDelta = reasons.length ? null : retest.value! - baseline.value!;
   const relativeDeltaPercent = absoluteDelta === null || baseline.value === null || baseline.value === 0
     ? null
     : (absoluteDelta / Math.abs(baseline.value)) * 100;
   return Object.freeze({
     comparisonVersion: RETEST_COMPARISON_VERSION,
     metricKey: baseline.metricKey,
-    baseline: Object.freeze({
-      testVersionId: baseline.testVersionId,
-      value: baseline.value,
-      sampleSize: baseline.sampleSize,
-      technicalBlockedCount: baseline.technicalBlockedCount,
-    }),
-    retest: Object.freeze({
-      testVersionId: retest.testVersionId,
-      value: retest.value,
-      sampleSize: retest.sampleSize,
-      technicalBlockedCount: retest.technicalBlockedCount,
-    }),
+    baseline: context(baseline),
+    retest: context(retest),
+    comparable: reasons.length === 0,
+    incomparableReasons: Object.freeze(reasons),
     absoluteDelta,
+    absoluteDeltaUnit: rate ? "percentage_points" : "metric_units",
     relativeDeltaPercent,
     statisticalSignificance: null,
   });
