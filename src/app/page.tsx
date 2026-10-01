@@ -22,6 +22,7 @@ const modules = [
 ];
 
 const reviewLinks = [
+  { label: "พื้นที่ทำงานผู้วิจัย", href: "/login" },
   { label: "ดู Demo", href: "/demo/projects" },
 ];
 
@@ -44,16 +45,19 @@ export default function Home() {
             <p className="eyebrow">UT Platform</p>
             <h1>ทดสอบการใช้งานกับผู้ใช้จริง</h1>
           </div>
-          <a className="primaryButton" href="/demo/projects">ดูตัวอย่างการทำงาน</a>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <a className="primaryButton" href="/login">เข้าสู่พื้นที่ทำงานผู้วิจัย</a>
+            <a className="primaryButton" href="/demo/projects">ดู Demo</a>
+          </div>
         </header>
 
         <section id="overview" className="heroCard">
           <div>
-            <span className="status">ตัวอย่างแบบอ่านอย่างเดียว</span>
-            <h2>จากแบบทดสอบถึงสิ่งที่ควรแก้</h2>
+            <span className="status">Researcher workspace พร้อมใช้งาน</span>
+            <h2>สร้างแบบทดสอบจริง หรือสำรวจ Demo ก่อนเริ่ม</h2>
             <p>
-              สำรวจตัวอย่างโปรเจกต์ ดูงานที่ให้ผู้เข้าร่วมทำ แล้วตามผลกลับไปถึงหลักฐาน ข้อค้นพบ และการทดสอบซ้ำ
-              ข้อมูลใน Demo เป็นเรื่องสมมติ ไม่ใช่ผลจากผู้เข้าร่วมจริง
+              เข้าสู่ระบบเพื่อสร้างโปรเจกต์ แบบทดสอบ และลิงก์สำหรับผู้เข้าร่วม หากยังไม่พร้อมสร้างงาน
+              คุณสามารถดู Demo แบบอ่านอย่างเดียวได้ ข้อมูลใน Demo เป็นเรื่องสมมติและแยกจากข้อมูลจริง
             </p>
           </div>
           <div className="metricGrid" aria-label="ลำดับการทำงาน">

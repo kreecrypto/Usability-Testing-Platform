@@ -6,22 +6,18 @@ function read(path: string): string {
   return readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 }
 
-test("public entry opens read-only demo while researcher workspace still requires a session", () => {
+test("public entry offers Demo and authenticated researcher workspace", () => {
   const home = read("src/app/page.tsx");
   const login = read("src/app/login/page.tsx");
   const projects = read("src/app/projects/page.tsx");
   const highFi = read("src/app/high-fi/page.tsx");
 
   assert.match(home, /href=["']\/demo\/projects["']/);
-  assert.doesNotMatch(home, /href=["']\/login["']|href:\s*["']\/projects["']/);
+  assert.match(home, /href=["']\/login["']/);
 
-  assert.match(login, /\/demo\/projects/);
-  assert.match(login, /อ่านอย่างเดียว/);
-  assert.doesNotMatch(login, /\/api\/auth\/guest|\/api\/auth\/login/);
-  assert.doesNotMatch(login, /\/api\/auth\/signup/);
-  assert.doesNotMatch(login, /type="email"/);
-  assert.doesNotMatch(login, /type="password"/);
-  assert.doesNotMatch(login, /สร้างบัญชี Researcher/);
+  assert.match(login, /AuthForm/);
+  assert.match(login, /เข้าสู่ระบบ UTP/);
+  assert.doesNotMatch(login, /\/api\/auth\/guest/);
 
   assert.match(projects, /\/api\/auth\/session/);
   assert.doesNotMatch(projects, /\/api\/auth\/guest/);

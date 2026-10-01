@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch, SESSION_MESSAGE } from "../../../../lib/auth/client.ts";
+
 import { useEffect, useMemo, useState } from "react";
 import styles from "./post-task-question-builder.module.css";
 
@@ -10,9 +12,9 @@ type State = "loading" | "ready" | "saving" | "error";
 type Kind = "seq" | "openFeedback";
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { ...init, headers: init?.body ? { "content-type": "application/json", ...(init.headers ?? {}) } : init?.headers, cache: "no-store" });
+  const response = await authenticatedFetch(url, { ...init, headers: init?.body ? { "content-type": "application/json", ...(init.headers ?? {}) } : init?.headers, cache: "no-store" });
   const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-  if (response.status === 401) { window.location.assign("/login"); throw new Error("authentication_required"); }
+  if (response.status === 401) { throw new Error(SESSION_MESSAGE); }
   if (!response.ok) throw new Error(typeof body.message === "string" ? body.message : String(body.error ?? "request_failed"));
   return body as T;
 }

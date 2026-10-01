@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "../../../lib/auth/client.ts";
+
 import { useEffect, useMemo, useState } from "react";
 import type {
   MetricObservation,
@@ -450,7 +452,7 @@ export default function ReportPage({ params }: { params: Promise<{ testVersionId
     if (!testVersionId) return;
     const controller = new AbortController();
     setState({ status: "loading" });
-    void fetch(`/api/reports/${encodeURIComponent(testVersionId)}`, { cache: "no-store", signal: controller.signal })
+    void authenticatedFetch(`/api/reports/${encodeURIComponent(testVersionId)}`, { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
         if (response.status === 401) throw new Error("ต้องเข้าสู่ระบบเพื่อดูรายงาน");
         if (response.status === 403) throw new Error("คุณไม่มีสิทธิ์เข้าถึงเวิร์กสเปซนี้");

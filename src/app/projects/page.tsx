@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { authenticatedFetch } from "../../lib/auth/client";
 
 type Workspace = { id: string; name: string; slug: string };
 type Project = { id: string; workspace_id: string; name: string; description: string | null; status: string };
@@ -25,10 +26,10 @@ export default function ProjectsPage() {
   const [tests, setTests] = useState<StudyTest[]>([]);
   const [testId, setTestId] = useState("");
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [workspaceName, setWorkspaceName] = useState("UTP Internal Validation");
-  const [projectName, setProjectName] = useState("Golden Path");
-  const [testTitle, setTestTitle] = useState("MAJOR-A Flow Proven");
-  const [targetUrl, setTargetUrl] = useState("https://usability-testing-platform.vercel.app/internal-validation-target");
+  const [workspaceName, setWorkspaceName] = useState("");
+  const [projectName, setProjectName] = useState("");
+  const [testTitle, setTestTitle] = useState("");
+  const [targetUrl, setTargetUrl] = useState("");
   const [taskTitle, setTaskTitle] = useState("");
   const [scenario, setScenario] = useState("");
   const [instruction, setInstruction] = useState("");
@@ -37,7 +38,7 @@ export default function ProjectsPage() {
   const [working, setWorking] = useState(false);
 
   const loadWorkspaces = useCallback(async () => {
-    const response = await fetch("/api/workspaces", { cache: "no-store" });
+    const response = await authenticatedFetch("/api/workspaces", { cache: "no-store" });
     if (response.status === 401) { window.location.replace("/login"); return; }
     const body = await json<{ workspaces: Workspace[] }>(response);
     setWorkspaces(body.workspaces);
@@ -46,7 +47,7 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     void (async () => {
-      const session = await fetch("/api/auth/session", { cache: "no-store" });
+      const session = await authenticatedFetch("/api/auth/session", { cache: "no-store" }, false);
       if (!session.ok) { window.location.replace("/login"); return; }
       await loadWorkspaces();
       setReady(true);
@@ -55,7 +56,7 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     if (!workspaceId) { setProjects([]); setProjectId(""); return; }
-    void fetch(`/api/projects?workspaceId=${encodeURIComponent(workspaceId)}`, { cache: "no-store" })
+    void authenticatedFetch(`/api/projects?workspaceId=${encodeURIComponent(workspaceId)}`, { cache: "no-store" })
       .then((r) => json<{ projects: Project[] }>(r))
       .then((body) => {
         setProjects(body.projects);
@@ -66,7 +67,7 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     if (!workspaceId || !projectId) { setTests([]); setTestId(""); return; }
-    void fetch(`/api/tests?workspaceId=${encodeURIComponent(workspaceId)}&projectId=${encodeURIComponent(projectId)}`, { cache: "no-store" })
+    void authenticatedFetch(`/api/tests?workspaceId=${encodeURIComponent(workspaceId)}&projectId=${encodeURIComponent(projectId)}`, { cache: "no-store" })
       .then((r) => json<{ tests: StudyTest[] }>(r))
       .then((body) => {
         setTests(body.tests);
@@ -77,7 +78,7 @@ export default function ProjectsPage() {
 
   const loadTasks = useCallback(async (selectedTestId: string) => {
     if (!selectedTestId) { setTasks([]); return; }
-    const body = await json<{ tasks: Task[] }>(await fetch(`/api/tests/${encodeURIComponent(selectedTestId)}/tasks`, { cache: "no-store" }));
+    const body = await json<{ tasks: Task[] }>(await authenticatedFetch(`/api/tests/${encodeURIComponent(selectedTestId)}/tasks`, { cache: "no-store" }));
     setTasks(body.tasks);
   }, []);
 
@@ -95,7 +96,7 @@ export default function ProjectsPage() {
   function createWorkspace(event: FormEvent) {
     event.preventDefault();
     void run("สร้างพื้นที่ทำงาน", async () => {
-      await json(await fetch("/api/workspaces", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: workspaceName }) }));
+      await json(await authenticatedFetch("/api/workspaces", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: workspaceName }) }));
       await loadWorkspaces();
     });
   }
@@ -103,25 +104,27 @@ export default function ProjectsPage() {
   function createProject(event: FormEvent) {
     event.preventDefault();
     void run("สร้างโปรเจกต์", async () => {
-      const body = await json<{ project: Project }>(await fetch("/api/projects", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ workspaceId, name: projectName, description: "Internal real-flow validation for MAJOR-A" }) }));
+      const body = await json<{ project: Project }>(await authenticatedFetch("/api/projects", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ workspaceId, name: projectName, description: "โปรเจกต์สำหรับจัดกลุ่มแบบทดสอบและผลการวิจัย" }) }));
       setProjects((items) => [body.project, ...items]);
       setProjectId(body.project.id);
+      setProjectName("");
     });
   }
 
   function createTest(event: FormEvent) {
     event.preventDefault();
     void run("สร้างแบบทดสอบ", async () => {
-      const body = await json<{ test: StudyTest }>(await fetch("/api/tests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ workspaceId, projectId, title: testTitle, description: "Flow Proven real study" }) }));
+      const body = await json<{ test: StudyTest }>(await authenticatedFetch("/api/tests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ workspaceId, projectId, title: testTitle, description: "แบบทดสอบการใช้งานกับผู้เข้าร่วมจริง" }) }));
       setTests((items) => [body.test, ...items]);
       setTestId(body.test.id);
+      setTestTitle("");
     });
   }
 
   function configureTarget(event: FormEvent) {
     event.preventDefault();
     void run("ตั้งค่า Test Target", async () => {
-      await json(await fetch(`/api/tests/${encodeURIComponent(testId)}/prototype`, {
+      await json(await authenticatedFetch(`/api/tests/${encodeURIComponent(testId)}/prototype`, {
         method: "PUT", headers: { "content-type": "application/json" },
         body: JSON.stringify({ targetUrl, ownership: "owned", environment: "production" }),
       }));
@@ -131,7 +134,7 @@ export default function ProjectsPage() {
   function preflightTarget() {
     if (!testId) return;
     void run("ตรวจความพร้อมของเว็บไซต์", async () => {
-      await json(await fetch(`/api/tests/${encodeURIComponent(testId)}/prototype`, {
+      await json(await authenticatedFetch(`/api/tests/${encodeURIComponent(testId)}/prototype`, {
         method: "POST",
         cache: "no-store",
       }));
@@ -141,7 +144,7 @@ export default function ProjectsPage() {
   function createTask(event: FormEvent) {
     event.preventDefault();
     void run("เพิ่มงาน", async () => {
-      await json(await fetch(`/api/tests/${encodeURIComponent(testId)}/tasks`, {
+      await json(await authenticatedFetch(`/api/tests/${encodeURIComponent(testId)}/tasks`, {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ title: taskTitle, scenario, instruction }),
       }));
@@ -152,16 +155,11 @@ export default function ProjectsPage() {
 
   function publish() {
     void run("เผยแพร่แบบทดสอบ", async () => {
-      const body = await json<{ preview: { testVersionId: string } }>(await fetch(`/api/tests/${encodeURIComponent(testId)}/publish`, {
+      const body = await json<{ preview: { testVersionId: string } }>(await authenticatedFetch(`/api/tests/${encodeURIComponent(testId)}/publish`, {
         method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "publish" }),
       }));
       setPublishedVersionId(body.preview.testVersionId);
     });
-  }
-
-  async function signOut() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    window.location.replace("/login");
   }
 
   if (!ready) return <main style={{ padding: 32 }}>กำลังโหลดพื้นที่ทำงาน…</main>;
@@ -175,7 +173,6 @@ export default function ProjectsPage() {
         <div className="brand">UT Platform</div>
         <nav className="nav" aria-label="เมนูผู้วิจัย">
           <a className="navItem active" href="/projects">โปรเจกต์</a>
-          <button className="navItem" type="button" onClick={() => void signOut()} style={{ border: 0, textAlign: "left", background: "transparent" }}>ออกจากระบบ</button>
         </nav>
       </aside>
 
@@ -189,6 +186,7 @@ export default function ProjectsPage() {
         <div style={{ display: "grid", gap: 16 }}>
           <section style={block}>
             <h2 style={{ marginTop: 0 }}>1. เลือกพื้นที่ทำงาน</h2>
+            <p>พื้นที่ทำงานใช้กำหนดเจ้าของข้อมูลและสิทธิ์ของทีม สร้างครั้งแรกแล้วใช้ร่วมกับหลายโปรเจกต์ได้</p>
             {workspaces.length ? (
               <select aria-label="พื้นที่ทำงาน" value={workspaceId} onChange={(e) => setWorkspaceId(e.target.value)} style={input}>
                 {workspaces.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
@@ -203,6 +201,7 @@ export default function ProjectsPage() {
 
           <section style={block}>
             <h2 style={{ marginTop: 0 }}>2. เลือกโปรเจกต์</h2>
+            <p>โปรเจกต์ใช้รวมแบบทดสอบที่ตอบโจทย์เดียวกัน เพื่อให้ผล ข้อค้นพบ และรายงานอยู่ในบริบทเดียวกัน</p>
             {workspaceId ? <form onSubmit={createProject} style={{ display: "grid", gap: 10 }}>
               <select aria-label="โปรเจกต์" value={projectId} onChange={(e) => setProjectId(e.target.value)} style={input}>
                 <option value="">เลือกโปรเจกต์</option>
@@ -217,6 +216,7 @@ export default function ProjectsPage() {
 
           <section style={block}>
             <h2 style={{ marginTop: 0 }}>3. เลือกแบบทดสอบ</h2>
+            <p>แบบทดสอบคือชุดงานที่ผู้เข้าร่วมจะทำกับเว็บไซต์หรือต้นแบบ เมื่อเผยแพร่แล้วระบบจะสร้างเวอร์ชันที่อ้างอิงผลย้อนหลังได้</p>
             {projectId ? <form onSubmit={createTest} style={{ display: "grid", gap: 10 }}>
               <select aria-label="แบบทดสอบ" value={testId} onChange={(e) => setTestId(e.target.value)} style={input}>
                 <option value="">เลือกแบบทดสอบ</option>

@@ -1,8 +1,9 @@
 import {
-  accessCookieHeader,
   AuthSessionError,
   signInWithPassword,
 } from "../../../../lib/auth/session.ts";
+
+import { authRequest, sameOrigin, setSessionCookies } from "../../../../lib/auth/lifecycle.ts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,6 +20,7 @@ function json(body: unknown, status: number, headers: HeadersInit = {}): Respons
 }
 
 export async function POST(request: Request): Promise<Response> {
+  if (!sameOrigin(request)) return json({ error: "invalid_origin" }, 403);
   let body: unknown;
   try {
     body = await request.json();
@@ -32,12 +34,13 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const input = body as Record<string, unknown>;
     const session = await signInWithPassword({ email: input.email, password: input.password });
-    const secure = new URL(request.url).protocol === "https:";
-    return json(
-      { user: session.user },
-      200,
-      { "set-cookie": accessCookieHeader(session.accessToken, session.expiresIn, secure) },
-    );
+    if (typeof input.expectedUserId === "string" && input.expectedUserId !== session.user.id) {
+      await authRequest("logout?scope=local", { method: "POST", headers: { authorization: `Bearer ${session.accessToken}` } }).catch(() => undefined);
+      return json({ error: "account_mismatch" }, 409);
+    }
+    const response = json({ user: session.user }, 200);
+    setSessionCookies(response, session, new URL(request.url).protocol === "https:");
+    return response;
   } catch (error) {
     if (error instanceof AuthSessionError) {
       return json({ error: error.code }, error.status);
