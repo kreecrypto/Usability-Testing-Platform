@@ -25,7 +25,7 @@ test('pagination, literal search and exact count stay inside caller workspace/pr
 });
 test('invalid paging/status rejects before DB; absent exact total cannot become zero',async()=>{
  let calls=0;const crud=createProjectTestCrud({supabaseUrl:'https://db.example',anonKey:'public',accessToken:token,fetchImpl:async()=>{calls++;return Response.json([]);}});
- for(const options of [{page:0},{page:1.2},{pageSize:101},{status:'invalid'}]) await assert.rejects(()=>crud.pageProjects(workspaceId,options),CrudValidationError);
+ for(const options of [{page:0},{page:1e20},{page:1.2},{pageSize:101},{status:'invalid'}]) await assert.rejects(()=>crud.pageProjects(workspaceId,options),CrudValidationError);
  assert.equal(calls,0);await assert.rejects(()=>crud.pageProjects(workspaceId),CrudProviderError);
 });
 test('version history continues beyond server cap and scopes every page to the test',async()=>{

@@ -21,3 +21,7 @@ Outstanding gates:
 - Pending: authenticated Preview desktop/320/390, keyboard/focus, permission/session/network cases, live method journeys, RLS, deletion, immutability, legacy sessions, exact-version evidence/report/retest and production rollback/runtime checks.
 
 Demo remains synthetic and read-only and is not release-gate evidence.
+
+Preview evidence (first head 10e6798d6201d22536c7ffaf06fb30f8accba70a): Vercel READY at https://usability-testing-platform-rlieuqgly.vercel.app; all six CI workflows passed. Browser verified Login at actual viewport widths 320 and 390, with matching document scroll widths (no horizontal overflow), buttons 44px high, and a visible keyboard focus outline. Signed-out /tests was blocked by researcher Auth; its return-path allowlist initially defaulted to /projects. A follow-up fix adds /tests to the internal allowlist while retaining external URL rejection tests. Authenticated workspace mobile/keyboard checks remain pending.
+
+User confirmed there is no researcher account yet and Supabase Pro/development branch is not ready (2 October 2026). Both real-account and isolated database gates remain BLOCKED_EXTERNAL. PR #139 signup is open for the user to enter their own new credential; no account was created by the agent.

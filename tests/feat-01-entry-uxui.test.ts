@@ -39,7 +39,7 @@ test("project overview scopes every read to the project and links results to its
     const body = await response.json() as { tests: Array<{ latestPublishedVersionId: string }>; findings: unknown[] };
     assert.equal(body.tests[0]?.latestPublishedVersionId, versionId);
     assert.equal(body.findings.length, 1);
-    assert.equal(calls.length, 4);
+    assert.equal(calls.length, 5);
     for (const call of calls) {
       assert.equal(call.headers.get("authorization"), "Bearer researcher-jwt");
       assert.equal(call.headers.get("apikey"), "public-key");

@@ -53,13 +53,20 @@ export async function GET(request: Request, context: Context): Promise<Response>
       if (!latestVersionByTest.has(version.test_id)) latestVersionByTest.set(version.test_id, version);
       if (version.lifecycle_status === "published" && !latestPublishedByTest.has(version.test_id)) latestPublishedByTest.set(version.test_id, version);
     }
+    const findingModes = new Map<string,string>();
+    if (findings.length) {
+      const modeQuery = new URLSearchParams({workspace_id:`eq.${project.workspace_id}`,id:`in.(${findings.map(item=>item.test_version_id).join(",")})`,select:"id,study_mode"});
+      const modeResponse = await fetch(`${config.url}/rest/v1/test_versions?${modeQuery}`,{headers,cache:"no-store",signal:AbortSignal.timeout(15000)});
+      if (!modeResponse.ok) return providerError(modeResponse.status);
+      for (const version of await modeResponse.json() as Array<{id:string;study_mode:string}>) findingModes.set(version.id,version.study_mode);
+    }
     return jsonResponse({
       project,
       tests: tests.map((test) => ({ ...test,
         latestPublishedVersionId: latestPublishedByTest.get(test.id)?.id ?? null,
         latestStudyMode: latestVersionByTest.get(test.id)?.study_mode ?? "usability",
       })),
-      findings,
+      findings: findings.map(item=>({...item,studyMode:findingModes.get(item.test_version_id) ?? null})),
       pagination: page.pagination,
     });
   } catch (error) {

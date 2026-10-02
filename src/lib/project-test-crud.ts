@@ -119,7 +119,7 @@ export function createProjectTestCrud(options: {
 
   async function pageRows<T>(table: "projects" | "tests", workspaceId: string, options: { page?: number; pageSize?: number; search?: string; status?: string; projectId?: string } = {}) {
     const page = options.page ?? 1, pageSize = options.pageSize ?? 20;
-    if (!Number.isInteger(page) || page < 1 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) throw new CrudValidationError("page", "invalid pagination");
+    if (!Number.isSafeInteger(page) || page < 1 || !Number.isSafeInteger((page - 1) * pageSize) || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) throw new CrudValidationError("page", "invalid pagination");
     const allowed = table === "projects" ? ["active", "archived"] : ["draft", "published", "closed", "archived"];
     if (options.status && options.status !== "all" && !allowed.includes(options.status)) throw new CrudValidationError("status", "invalid status");
     const search = options.search?.trim() ?? "";
