@@ -117,6 +117,31 @@ export function createProjectTestCrud(options: {
     return body.trim() ? JSON.parse(body) as T[] : [];
   }
 
+  async function pageRows<T>(table: "projects" | "tests", workspaceId: string, options: { page?: number; pageSize?: number; search?: string; status?: string; projectId?: string } = {}) {
+    const page = options.page ?? 1, pageSize = options.pageSize ?? 20;
+    if (!Number.isSafeInteger(page) || page < 1 || !Number.isSafeInteger((page - 1) * pageSize) || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) throw new CrudValidationError("page", "invalid pagination");
+    const allowed = table === "projects" ? ["active", "archived"] : ["draft", "published", "closed", "archived"];
+    if (options.status && options.status !== "all" && !allowed.includes(options.status)) throw new CrudValidationError("status", "invalid status");
+    const search = options.search?.trim() ?? "";
+    if (search.length > 160) throw new CrudValidationError("search", "search too long");
+    const query = new URLSearchParams({ workspace_id: `eq.${requiredUuid(workspaceId, "workspaceId")}`, select: table === "projects" ? "id,workspace_id,name,description,status,created_at,updated_at" : "id,workspace_id,project_id,title,description,status,created_at,updated_at", order: "created_at.desc,id.desc", offset: String((page - 1) * pageSize), limit: String(pageSize) });
+    if (options.projectId) query.set("project_id", `eq.${requiredUuid(options.projectId, "projectId")}`);
+    if (options.status && options.status !== "all") query.set("status", `eq.${options.status}`);
+    // A quoted PostgREST operand keeps punctuation inside the literal; wildcard
+    // characters are escaped so a user's query cannot broaden access or matching.
+    if (search) {
+      const literal = search.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/[%_*]/g, (value) => `\\${value}`);
+      query.set(table === "projects" ? "name" : "title", `ilike."%${literal}%"`);
+    }
+    const response = await fetchImpl(`${supabaseUrl}/rest/v1/${table}?${query}`, { headers: { ...baseHeaders, prefer: "count=exact" }, cache: "no-store", signal: AbortSignal.timeout(15000) });
+    if (!response.ok) throw new CrudProviderError(response.status);
+    const total = response.headers.get("content-range")?.split("/")[1];
+    if (!total || !/^\d+$/.test(total)) throw new CrudProviderError(502, "count_unavailable");
+    return { items: await response.json() as T[], pagination: { page, pageSize, total: Number(total), totalPages: Math.ceil(Number(total) / pageSize) } };
+  }
+  async function pageProjects(workspaceId: string, options?: Parameters<typeof pageRows>[2]) { return pageRows<ProjectRow>("projects", workspaceId, options); }
+  async function pageTests(workspaceId: string, options?: Parameters<typeof pageRows>[2]) { return pageRows<TestRow>("tests", workspaceId, options); }
+
   async function listProjects(workspaceId: string): Promise<ProjectRow[]> {
     requiredUuid(workspaceId, "workspaceId");
     return requestRows<ProjectRow>("projects", new URLSearchParams({
@@ -234,5 +259,5 @@ export function createProjectTestCrud(options: {
     return rows[0] ?? null;
   }
 
-  return { listProjects, getProject, createProject, updateProject, archiveProject, listTests, getTest, createTest, updateTest, archiveTest };
+  return { pageProjects, pageTests, listProjects, getProject, createProject, updateProject, archiveProject, listTests, getTest, createTest, updateTest, archiveTest };
 }

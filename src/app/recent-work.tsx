@@ -54,7 +54,7 @@ export default function RecentWork() {
       work.projects.length === 0 && work.tests.length === 0
         ? <div className={styles.state}><p>ยังไม่มีงานล่าสุด สร้างโปรเจกต์เพื่อเริ่มการทดสอบครั้งแรก</p><a href="/projects/new">สร้างโปรเจกต์</a></div>
         : <div className={styles.grid}>
-          <div className={styles.card}><h3>แบบทดสอบล่าสุด (ไม่เกิน 5 รายการ)</h3>{work.tests.length ? <ul>{work.tests.map((item) => <li key={item.id}><a href={`/projects/${encodeURIComponent(item.project_id)}/tests`}>{item.title}</a><span>{statusLabel(item.status)}</span></li>)}</ul> : <p>ยังไม่มีแบบทดสอบ</p>}</div>
+          <div className={styles.card}><h3>แบบทดสอบล่าสุด (ไม่เกิน 5 รายการ)</h3>{work.tests.length ? <ul>{work.tests.map((item) => <li key={item.id}><a href={`/tests/${encodeURIComponent(item.id)}`}>{item.title}</a><span>{statusLabel(item.status)}</span></li>)}</ul> : <p>ยังไม่มีแบบทดสอบ</p>}</div>
           <div className={styles.card}><h3>โปรเจกต์ล่าสุด (ไม่เกิน 5 รายการ)</h3>{work.projects.length ? <ul>{work.projects.map((item) => <li key={item.id}><a href={`/projects/${encodeURIComponent(item.id)}`}>{item.name}</a></li>)}</ul> : <p>ยังไม่มีโปรเจกต์</p>}</div>
         </div>
     ) : null}

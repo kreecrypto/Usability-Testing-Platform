@@ -31,7 +31,7 @@ test("project overview scopes every read to the project and links results to its
         : url.pathname.endsWith("/test_versions")
           ? [{ id: versionId, test_id: testId, version_no: 2, lifecycle_status: "published", study_mode: "usability" }]
           : [{ id: "finding-1", title: "Navigation", severity: "high", status: "open", test_version_id: versionId }];
-    return Response.json(rows);
+    return Response.json(rows, {headers:{"content-range":`0-${rows.length - 1}/${rows.length}`}});
   };
   try {
     const response = await GET(new Request(`https://utp.example.com/api/projects/${projectId}/overview`, { headers: { cookie: "utp_access_token=researcher-jwt" } }), { params: Promise.resolve({ projectId }) });
@@ -39,7 +39,7 @@ test("project overview scopes every read to the project and links results to its
     const body = await response.json() as { tests: Array<{ latestPublishedVersionId: string }>; findings: unknown[] };
     assert.equal(body.tests[0]?.latestPublishedVersionId, versionId);
     assert.equal(body.findings.length, 1);
-    assert.equal(calls.length, 4);
+    assert.equal(calls.length, 5);
     for (const call of calls) {
       assert.equal(call.headers.get("authorization"), "Bearer researcher-jwt");
       assert.equal(call.headers.get("apikey"), "public-key");
@@ -48,7 +48,7 @@ test("project overview scopes every read to the project and links results to its
     const findings = calls.find((call) => call.url.pathname.endsWith("/findings"))?.url;
     assert.equal(findings?.searchParams.get("workspace_id"), `eq.${workspaceId}`);
     assert.equal(findings?.searchParams.get("project_id"), `eq.${projectId}`);
-    assert.equal(calls.find((call) => call.url.pathname.endsWith("/test_versions"))?.url.searchParams.get("test_id"), `in.(${testId})`);
+    assert.equal(calls.find((call) => call.url.pathname.endsWith("/test_versions"))?.url.searchParams.get("test_id"), `eq.${testId}`);
   } finally {
     globalThis.fetch = originalFetch;
     if (originalUrl === undefined) delete process.env.NEXT_PUBLIC_SUPABASE_URL; else process.env.NEXT_PUBLIC_SUPABASE_URL = originalUrl;

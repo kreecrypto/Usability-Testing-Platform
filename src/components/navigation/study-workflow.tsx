@@ -1,7 +1,7 @@
 import { workflowLabels } from "./labels";
 import styles from "./study-navigation.module.css";
-export default function StudyWorkflow({ testId, versionId, methods = false, published = false, current }: { testId?: string | null; versionId?: string; methods?: boolean; published?: boolean; current: number }) {
-  const builder = testId ? `/builder/${encodeURIComponent(testId)}` : null;
+export default function StudyWorkflow({ testId, versionId, methods = false, published = false, editable = true, current }: { testId?: string | null; versionId?: string; methods?: boolean; published?: boolean; editable?: boolean; current: number }) {
+  const builder = testId && editable ? `/builder/${encodeURIComponent(testId)}` : null;
   const root = methods ? "/methods" : "";
   const version = versionId ? encodeURIComponent(versionId) : null;
   const links = [builder ? `${builder}/${methods ? "methods" : "prototype"}` : null, builder ? `${builder}/review` : null,

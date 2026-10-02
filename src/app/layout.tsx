@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+
 import "./globals.css";
 import ResearcherSession from "../components/auth/researcher-session";
 

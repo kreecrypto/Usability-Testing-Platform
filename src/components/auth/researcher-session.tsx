@@ -7,7 +7,7 @@ import styles from "./auth.module.css";
 
 export default function ResearcherSession({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const protectedPage = /^\/(projects|builder|methods|findings|reports|results|retests)(\/|$)/.test(pathname);
+  const protectedPage = /^\/(projects|tests|builder|methods|findings|reports|results|retests)(\/|$)/.test(pathname);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [error, setError] = useState("");
   const [expired, setExpired] = useState(false);

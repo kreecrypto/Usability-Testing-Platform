@@ -10,9 +10,10 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request): Promise<Response> {
   try {
-    const workspaceId = new URL(request.url).searchParams.get("workspaceId") ?? "";
-    const projects = await crudForRequest(request).listProjects(workspaceId);
-    return jsonResponse({ projects });
+    const url = new URL(request.url);
+    const workspaceId = url.searchParams.get("workspaceId") ?? "";
+    const result = await crudForRequest(request).pageProjects(workspaceId, { page: Number(url.searchParams.get("page") ?? 1), pageSize: Number(url.searchParams.get("pageSize") ?? 20), search: url.searchParams.get("search") ?? "", status: url.searchParams.get("status") ?? "all" });
+    return jsonResponse({ projects: result.items, pagination: result.pagination });
   } catch (error) {
     return crudErrorResponse(error);
   }

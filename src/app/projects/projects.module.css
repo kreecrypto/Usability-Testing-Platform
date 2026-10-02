@@ -35,3 +35,6 @@
 .error{padding:var(--ah-space-12) var(--ah-space-16);border:1px solid var(--ah-critical);border-radius:var(--ah-radius-sm);background:var(--ah-canvas)}
 .sidebar a:focus-visible,.backLink:focus-visible,.card a:focus-visible,.field input:focus-visible,.field select:focus-visible,.field textarea:focus-visible,.primaryButton:focus-visible,.secondaryButton:focus-visible{outline:var(--ah-focus-ring-width) solid var(--ah-focus-ring);outline-offset:var(--ah-focus-ring-offset)}
 @media(max-width:700px){.shell{display:block}.sidebar{padding:var(--ah-space-12) var(--ah-space-16);border-right:0;border-bottom:1px solid var(--ah-hairline)}.brand{margin:0 0 var(--ah-space-8)}.sidebar nav{display:flex;overflow-x:auto}.sidebar nav a{white-space:nowrap}.content{padding:var(--ah-space-16)}.header{align-items:start;flex-direction:column}.card{padding:var(--ah-space-16)}.list>li:not(.card){align-items:start;flex-direction:column}.sectionHead{align-items:start;flex-direction:column}.actions{width:100%}.actions a,.actions button{flex:1}}
+
+.content h1,.card h2,.testRow a{overflow-wrap:anywhere}
+.actions .field{min-width:0;flex:1}

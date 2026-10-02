@@ -12,7 +12,7 @@ import styles from "./results.module.css";
 type View = "overview" | "tasks" | "paths" | "heatmap" | "funnel" | "sessions";
 type LoadState = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; results: ResultsModel };
 
-const viewLabels: Record<View, string> = { overview: "ภาพรวม", tasks: "งานทดสอบ", paths: "เส้นทาง", heatmap: "ฮีตแมป", funnel: "ลำดับขั้น", sessions: "เซสชัน" };
+const viewLabels: Record<View, string> = { overview: "ภาพรวม", tasks: "งานทดสอบ", paths: "เส้นทาง", heatmap: "ฮีตแมป", funnel: "ลำดับขั้น", sessions: "รอบการทดสอบ" };
 const outcomeLabels: Record<string, string> = {
   success_direct: "สำเร็จตามเส้นทาง", success_indirect: "สำเร็จด้วยเส้นทางอื่น", failed: "ไม่สำเร็จ", give_up: "ยุติงาน", timeout: "หมดเวลา", abandoned: "ออกจากแบบทดสอบ", technical_blocked: "ติดปัญหาทางเทคนิค", active: "กำลังทำ",
 };
@@ -34,7 +34,7 @@ function Overview({ results }: { results: ResultsModel }) {
   const value = results.overview;
   return <div className={styles.stack}>
     <section className={styles.metricsGrid} aria-label="ตัวชี้วัดภาพรวม">
-      <MetricCard label="ผู้เข้าร่วม" value={value.sessionCount ? String(value.participantCount) : "ยังไม่มีข้อมูล"} detail={`${value.sessionCount} เซสชัน`} />
+      <MetricCard label="ผู้เข้าร่วม" value={value.sessionCount ? String(value.participantCount) : "ยังไม่มีข้อมูล"} detail={`${value.sessionCount} รอบการทดสอบ`} />
       <ObservationCard results={results} label="งานที่สำเร็จ" metricKey="completionRate" format={(n) => metric(n, "%")} />
       <ObservationCard results={results} label="เวลามัธยฐานของงานที่สำเร็จ" metricKey="medianSuccessfulDurationMs" format={duration} />
       <ObservationCard results={results} label="อัตราคลิกพลาด" metricKey="misclickRate" format={(n) => metric(n, "%")} />
@@ -58,7 +58,7 @@ function Overview({ results }: { results: ResultsModel }) {
 }
 
 function Tasks({ results }: { results: ResultsModel }) {
-  if (results.taskDetails.length === 0) return <EmptyState title="ยังไม่มีผลงานทดสอบ">ยังไม่มีหลักฐานของงานที่นำมาคำนวณได้ในเวอร์ชันนี้</EmptyState>;
+  if (results.taskDetails.length === 0) return <EmptyState title="ยังไม่มีผลของงาน">ยังไม่มีหลักฐานของงานที่นำมาคำนวณได้ในเวอร์ชันนี้</EmptyState>;
   return <div className={styles.taskList}>{results.taskDetails.map((task) => <article key={task.taskId} className={styles.panel}>
     <div className={styles.panelHeader}><div><span className={styles.eyebrow}>งาน {task.ordinal}</span><h2>{task.title}</h2></div><span className={styles.badge}>n={task.eligible}</span></div>
     <div className={styles.metricsGrid}>
@@ -83,7 +83,7 @@ function Paths({ results }: { results: ResultsModel }) {
   const paths = results.paths.filter((path) => path.actualPath.length > 0 || path.expectedPath.length > 0);
   if (paths.length === 0) return <EmptyState title="ยังไม่มีข้อมูลเส้นทาง">ยังไม่มีหลักฐานเส้นทางหน้าจอที่ใช้วิเคราะห์ได้ในเวอร์ชันนี้</EmptyState>;
   return <div className={styles.taskList}>{paths.map((path) => <article key={`${path.sessionId}:${path.taskId}`} className={styles.panel}>
-    <div className={styles.panelHeader}><div><span className={styles.eyebrow}>เซสชัน {path.sessionId.slice(0, 8)}</span><h2>เส้นทางที่คาดไว้เทียบกับที่เกิดขึ้นจริง</h2></div><span className={path.expectedPathMatch ? styles.badgeSuccess : styles.badge}>{outcomeLabel(path.terminalOutcome)}</span></div>
+    <div className={styles.panelHeader}><div><span className={styles.eyebrow}>รอบ {path.sessionId.slice(0, 8)}</span><h2>เส้นทางที่คาดไว้เทียบกับที่เกิดขึ้นจริง</h2></div><span className={path.expectedPathMatch ? styles.badgeSuccess : styles.badge}>{outcomeLabel(path.terminalOutcome)}</span></div>
     <div className={styles.pathCompare}>
       <div><strong>เส้นทางที่คาดไว้</strong><div className={styles.pathRow}>{path.expectedPath.length ? path.expectedPath.map((screen, index) => <span key={`${screen}:${index}`}>{screen}</span>) : <em>เวอร์ชันนี้ไม่ได้เก็บเส้นทางที่คาดไว้</em>}</div></div>
       <div><strong>เส้นทางที่เกิดขึ้นจริง</strong><div className={styles.pathRow}>{path.actualPath.length ? path.actualPath.map((screen, index) => <span key={`${screen}:${index}`}>{screen}</span>) : <em>ยังไม่มีหลักฐานเส้นทาง</em>}</div></div>
@@ -152,12 +152,12 @@ function Funnel({ results }: { results: ResultsModel }) {
   if (!funnel.eligibleSessionCount) return <EmptyState title="ยังไม่มีข้อมูล Funnel">ยังไม่มีเซสชันที่มีหลักฐานการเข้าหน้าจอสำหรับคำนวณแต่ละขั้น</EmptyState>;
   return <div className={styles.stack}>
     <section className={styles.metricsGrid} aria-label="สรุป Funnel">
-      <MetricCard label="เซสชันที่นำมาคำนวณ" value={String(funnel.eligibleSessionCount)} detail="ไม่รวมเซสชันที่ติดปัญหาทางเทคนิค" />
+      <MetricCard label="รอบที่นำมาคำนวณ" value={String(funnel.eligibleSessionCount)} detail="ไม่รวมรอบที่ติดปัญหาทางเทคนิค" />
       <MetricCard label="ติดปัญหาทางเทคนิค" value={String(funnel.technicalBlockedSessionCount)} detail="รายงานแยกต่างหาก" />
       <MetricCard label="จุดที่หลุดมากที่สุด" value={funnel.largestDrop ? metric(funnel.largestDrop.dropOffRate, "%") : "ยังไม่มีข้อมูล"} detail={funnel.largestDrop ? `${funnel.largestDrop.fromScreenId} → ${funnel.largestDrop.toScreenId}` : "ยังไม่มีการเปลี่ยนขั้นที่คำนวณได้"} />
     </section>
     <section className={styles.panel}>
-      <div className={styles.panelHeader}><div><span className={styles.eyebrow}>{funnel.version}</span><h2>Conversion และ Drop-off รายขั้น</h2></div></div>
+      <div className={styles.panelHeader}><div><span className={styles.eyebrow}>{funnel.version}</span><h2>การไปต่อและการหยุดในแต่ละขั้น</h2></div></div>
       <ol className={styles.funnelList}>{funnel.transitions.map((transition) => <li key={`${transition.index}:${transition.fromScreenId}:${transition.toScreenId}`} className={styles.funnelTransition}>
         <div><strong>{transition.fromScreenId} → {transition.toScreenId}</strong><small>เข้า {transition.entered} · ถึง {transition.reached} · หลุด {transition.dropped}</small></div>
         <div className={styles.funnelRates}><span>Conversion <strong>{metric(transition.conversionRate, "%")}</strong></span><span>Drop-off <strong>{metric(transition.dropOffRate, "%")}</strong></span></div>
@@ -167,7 +167,7 @@ function Funnel({ results }: { results: ResultsModel }) {
 }
 
 function Sessions({ results }: { results: ResultsModel }) {
-  if (results.sessions.length === 0) return <EmptyState title="ยังไม่มีเซสชัน">ยังไม่มีหลักฐานเซสชันในเวอร์ชันที่เผยแพร่นี้</EmptyState>;
+  if (results.sessions.length === 0) return <EmptyState title="ยังไม่มีรอบการทดสอบ">ยังไม่มีหลักฐานจากรอบการทดสอบในเวอร์ชันที่เผยแพร่นี้</EmptyState>;
   return <div className={styles.taskList}>{results.sessions.map((session) => <details key={session.sessionId} className={styles.panel}>
     <summary className={styles.sessionSummary}><span><strong>{session.sessionId}</strong><small>ผู้เข้าร่วม {session.participantId}</small></span><span className={styles.badge}>{outcomeLabel(session.terminal)}</span></summary>
     <div className={styles.timeline}>{session.timeline.map((item) => <div key={`${item.kind}:${item.id}`} className={styles.timelineItem}>

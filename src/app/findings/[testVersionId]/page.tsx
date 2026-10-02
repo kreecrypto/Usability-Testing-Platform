@@ -115,7 +115,7 @@ export default function FindingsPage({ params }: { params: Promise<{ testVersion
     const body: Record<string, unknown> = { type, sessionId };
     if (type === "path") {
       const path = results.paths.find((item) => item.sessionId === sessionId && (!finding.taskId || item.taskId === finding.taskId));
-      if (!path) { setError("ไม่พบหลักฐานเส้นทางของเซสชันและงานนี้"); return; }
+      if (!path) { setError("ไม่พบหลักฐานเส้นทางของรอบการทดสอบและงานนี้"); return; }
       body.payload = { taskId: path.taskId, expectedPath: path.expectedPath, actualPath: path.actualPath, detourCount: path.detourCount, backtrackCount: path.backtrackCount, terminalOutcome: path.terminalOutcome };
     }
     const response = await authenticatedFetch(`/api/findings/${finding.id}/evidence`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
@@ -137,7 +137,7 @@ export default function FindingsPage({ params }: { params: Promise<{ testVersion
         {selectedTask ? <div className={styles.snapshot}><strong>{formatMetric(metricValue(selectedTask, metricKey))}</strong><span>n={metricKey === "medianSuccessfulDurationMs" ? selectedTask.successfulDuration.sampleSize : selectedTask.eligible} · ติดปัญหาทางเทคนิค={selectedTask.technicalBlockedCount}</span></div> : null}
         <label>ชื่อประเด็น<input required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="สรุปปัญหาที่สังเกตได้แบบสั้น ๆ" /></label>
         <label>ปัญหา<textarea required value={problem} onChange={(event) => setProblem(event.target.value)} placeholder="ผู้เข้าร่วมติดขัดตรงไหน โดยอธิบายเฉพาะสิ่งที่สังเกตได้" /></label>
-        <label>การตีความของ Researcher<textarea required value={researcherInterpretation} onChange={(event) => setResearcherInterpretation(event.target.value)} placeholder="อธิบายความหมายของหลักฐาน โดยไม่สรุปเหตุเชิงสาเหตุเกินข้อมูล" /></label>
+        <label>การตีความของผู้วิจัย<textarea required value={researcherInterpretation} onChange={(event) => setResearcherInterpretation(event.target.value)} placeholder="อธิบายความหมายของหลักฐาน โดยไม่สรุปเหตุเชิงสาเหตุเกินข้อมูล" /></label>
         <label>ข้อเสนอแนะ<textarea required value={recommendation} onChange={(event) => setRecommendation(event.target.value)} placeholder="สิ่งที่ควรแก้หรือทดลองในรอบถัดไป" /></label>
         <div className={styles.twoCol}><label>ความรุนแรง<select value={severity} onChange={(event) => setSeverity(event.target.value)}><option value="critical">วิกฤต</option><option value="high">สูง</option><option value="medium">กลาง</option><option value="low">ต่ำ</option></select></label><label>Screen ID<input value={screenId} onChange={(event) => setScreenId(event.target.value)} placeholder="ไม่บังคับ · Screen ID มาตรฐาน" /></label></div>
         <button disabled={saving || !selectedTask}>{saving ? "กำลังสร้าง…" : "สร้างประเด็น"}</button>
@@ -151,7 +151,7 @@ export default function FindingsPage({ params }: { params: Promise<{ testVersion
           <dl>
             <div><dt>การตีความ</dt><dd>{finding.researcherInterpretation ?? "ยังไม่ได้ระบุ"}</dd></div>
             <div><dt>ข้อเสนอแนะ</dt><dd>{finding.recommendation ?? "ยังไม่ได้ระบุ"}</dd></div><div><dt>ตัวชี้วัด</dt><dd>{metricLabels[finding.metricSnapshot.metricKey as MetricKey] ?? finding.metricSnapshot.metricKey}: {formatMetric(finding.metricSnapshot.value)}</dd></div><div><dt>ตัวอย่าง</dt><dd>n={finding.metricSnapshot.sampleSize}, ติดปัญหาทางเทคนิค={finding.metricSnapshot.technicalBlockedCount}</dd></div><div><dt>เวอร์ชัน</dt><dd>{finding.testVersionId}</dd></div>{finding.screenId ? <div><dt>หน้าจอ</dt><dd>{finding.screenId}</dd></div> : null}</dl>
-          <div className={styles.evidenceBox}><strong>เชื่อมหลักฐาน</strong><input value={evidenceSession[finding.id] ?? ""} onChange={(event) => setEvidenceSession((value) => ({ ...value, [finding.id]: event.target.value }))} placeholder="Session UUID" /><div><button type="button" onClick={() => void linkEvidence(finding, "session")}>เชื่อมเซสชัน</button><button type="button" onClick={() => void linkEvidence(finding, "path")}>เชื่อมเส้นทาง</button><button type="button" disabled title="ฮีตแมปยังติด capability gate">ฮีตแมปยังใช้ไม่ได้</button></div></div>
+          <div className={styles.evidenceBox}><strong>เชื่อมหลักฐาน</strong><input value={evidenceSession[finding.id] ?? ""} onChange={(event) => setEvidenceSession((value) => ({ ...value, [finding.id]: event.target.value }))} placeholder="รหัสรอบการทดสอบ" aria-label="รหัสรอบการทดสอบที่จะเชื่อมเป็นหลักฐาน" /><div><button type="button" onClick={() => void linkEvidence(finding, "session")}>เชื่อมรอบการทดสอบ</button><button type="button" onClick={() => void linkEvidence(finding, "path")}>เชื่อมเส้นทาง</button><button type="button" disabled title="ยังไม่มีข้อมูลฮีตแมปที่ใช้เป็นหลักฐานได้">ฮีตแมปยังใช้ไม่ได้</button></div></div>
         </article>)}
       </section>
     </div> : null}

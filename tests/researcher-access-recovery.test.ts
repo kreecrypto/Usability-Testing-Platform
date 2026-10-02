@@ -10,6 +10,7 @@ const config = { url: "https://example.supabase.co", key: "sb_publishable_test" 
 const tokens = { access_token: "access", refresh_token: "refresh", expires_in: 3600, user: { id: "researcher", email: "researcher@example.test" } };
 
 test("return destinations keep study context and reject external, auth and malformed URLs", () => {
+  assert.equal(safeReturnPath("/tests/study?versionId=v1"), "/tests/study?versionId=v1");
   assert.equal(safeReturnPath("/builder/test/methods?tab=survey#q1"), "/builder/test/methods?tab=survey#q1");
   for (const input of ["https://evil.test", "//evil.test", "/\\evil.test", "/login?next=/login", "/api/auth/logout", "/projects/../../auth/callback", "javascript:alert(1)", "/projects\nfoo", null]) assert.equal(safeReturnPath(input), "/projects");
 });
