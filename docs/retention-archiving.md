@@ -13,7 +13,7 @@ The V1 privacy baseline requires raw session, event, and answer data to be retai
 
 ## Implementation
 
-Migration `20260909033000_task24_retention_archiving.sql` adds:
+Migration `20260909031311_task24_retention_archiving.sql` adds:
 
 1. `events_session_task_occurred_idx` for ordered event retrieval inside one session/task.
 2. `answers_session_task_created_idx` for task-scoped answer retrieval.

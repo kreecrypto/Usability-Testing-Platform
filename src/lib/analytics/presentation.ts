@@ -16,6 +16,10 @@ const labels = {
   "No Data": "ยังไม่มีข้อมูล",
 } as const;
 
+export function availabilityLabel(value: MetricDisplay["availability"]): string {
+  return labels[value];
+}
+
 export function capabilityAvailability(results: ResultsModel, ...capabilities: string[]): MetricDisplay["availability"] {
   const target = results.context?.target;
   if (!target?.provider || target.snapshotVersion === null) return "Partial";
@@ -30,25 +34,26 @@ export function presentMetric(
   observation: MetricObservation | undefined,
   formatter: (value: number) => string,
 ): MetricDisplay {
-  if (!observation) return Object.freeze({ availability: "No Data", value: labels["No Data"], detail: "ไม่มี metric observation", provenance: "ไม่มี trace", evidenceRefs: [] });
+  if (!observation) return Object.freeze({ availability: "No Data", value: labels["No Data"], detail: "ยังไม่มีหลักฐานสำหรับตัวชี้วัดนี้", provenance: "ไม่พบข้อมูลที่มา", evidenceRefs: [] });
   const hasEvidence = observation.evidenceRefs.length > 0
     && (observation.denominator === null ? observation.sampleSize > 0 : observation.denominator > 0);
   const availability = observation.availability === "Available" && !hasEvidence ? "Partial" : observation.availability;
   const canShowNumber = availability === "Available" && observation.value !== null;
   const sample = `n=${observation.sampleSize}`;
   const fraction = observation.denominator === null ? "" : ` · ${observation.numerator ?? "–"}/${observation.denominator}`;
-  const version = observation.targetProvider && observation.targetSnapshotVersion !== null
-    ? ` · ${observation.targetProvider} v${observation.targetSnapshotVersion}` : " · target context ไม่ครบ";
+  const targetContext = observation.targetProvider && observation.targetSnapshotVersion !== null
+    ? `${observation.targetProvider} v${observation.targetSnapshotVersion}` : "บริบทเป้าหมายทดสอบไม่ครบ";
   const provenance = [
     `testVersionId ${observation.testVersionId}`,
     `metric ${observation.metricDefinitionVersion}`,
     `aggregation ${observation.aggregationVersion ?? "ไม่ทราบ"}`,
     `rules ${observation.ruleVersions.join(", ") || "ไม่มี"}`,
+    targetContext,
   ].join(" · ");
   return Object.freeze({
     availability,
     value: canShowNumber ? formatter(observation.value!) : labels[availability],
-    detail: `${sample}${fraction} · technical ${observation.technicalBlockedCount}${version}`,
+    detail: `${sample}${fraction}${observation.technicalBlockedCount > 0 ? ` · ติดปัญหาทางเทคนิค ${observation.technicalBlockedCount}` : ""}`,
     provenance,
     evidenceRefs: observation.evidenceRefs,
   });

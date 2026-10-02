@@ -1,87 +1,20 @@
-const modules = [
-  {
-    title: "สร้างการทดสอบ",
-    description: "เลือกต้นแบบหรือเว็บไซต์ เขียนงานให้ผู้เข้าร่วมทำ แล้วตรวจแบบทดสอบก่อนเผยแพร่",
-  },
-  {
-    title: "ผู้เข้าร่วมทดสอบ",
-    description: "ส่งลิงก์ให้ผู้เข้าร่วมทำงานทีละขั้น โดยไม่บอกคำตอบที่คาดหวัง",
-  },
-  {
-    title: "บันทึกพฤติกรรม",
-    description: "บันทึกสิ่งที่เกิดขึ้นระหว่างทดสอบ และแยกปัญหาทางเทคนิคออกจากปัญหาการใช้งาน",
-  },
-  {
-    title: "วิเคราะห์ผล",
-    description: "ดูผลพร้อมจำนวนผู้เข้าร่วมและหลักฐานของแต่ละรอบ ข้อมูลที่เก็บไม่ได้จะแสดงเหตุผล",
-  },
-  {
-    title: "ประเด็นที่พบและทดสอบซ้ำ",
-    description: "บันทึกสิ่งที่ควรแก้ อ้างอิงหลักฐาน และเทียบผลเมื่อทดสอบเวอร์ชันใหม่",
-  },
-];
-
-const reviewLinks = [
-  { label: "ดู Demo", href: "/demo/projects" },
-];
+import RecentWork from "./recent-work";
+import MainNavigation from "../components/navigation/main-navigation";
 
 export default function Home() {
-  return (
-    <main className="shell">
-      <aside className="sidebar">
-        <div className="brand">UT Platform</div>
-        <nav className="nav" aria-label="เมนูหลัก">
-          <a className="navItem active" href="#overview" aria-current="page">ภาพรวม</a>
-          {reviewLinks.map((item) => (
-            <a className="navItem" href={item.href} key={item.href}>{item.label}</a>
-          ))}
-        </nav>
-      </aside>
-
-      <section className="content">
-        <header className="topbar">
-          <div>
-            <p className="eyebrow">UT Platform</p>
-            <h1>ทดสอบการใช้งานกับผู้ใช้จริง</h1>
-          </div>
-          <a className="primaryButton" href="/demo/projects">ดูตัวอย่างการทำงาน</a>
-        </header>
-
-        <section id="overview" className="heroCard">
-          <div>
-            <span className="status">ตัวอย่างแบบอ่านอย่างเดียว</span>
-            <h2>จากแบบทดสอบถึงสิ่งที่ควรแก้</h2>
-            <p>
-              สำรวจตัวอย่างโปรเจกต์ ดูงานที่ให้ผู้เข้าร่วมทำ แล้วตามผลกลับไปถึงหลักฐาน ข้อค้นพบ และการทดสอบซ้ำ
-              ข้อมูลใน Demo เป็นเรื่องสมมติ ไม่ใช่ผลจากผู้เข้าร่วมจริง
-            </p>
-          </div>
-          <div className="metricGrid" aria-label="ลำดับการทำงาน">
-            <div className="metric"><strong>1</strong><span>เตรียมแบบทดสอบ</span></div>
-            <div className="metric"><strong>2</strong><span>ดูผลและหลักฐาน</span></div>
-            <div className="metric"><strong>3</strong><span>แก้ไขและทดสอบซ้ำ</span></div>
-          </div>
-        </section>
-
-        <section id="modules" className="section">
-          <div className="sectionHeading">
-            <div>
-              <p className="eyebrow">วิธีทำงาน</p>
-              <h2>แต่ละขั้นช่วยให้ตัดสินใจจากหลักฐาน</h2>
-            </div>
-          </div>
-
-          <div className="cardGrid">
-            {modules.map((module, index) => (
-              <article className="moduleCard" key={module.title}>
-                <span className="moduleIndex">0{index + 1}</span>
-                <h3>{module.title}</h3>
-                <p>{module.description}</p>
-              </article>
-            ))}
-          </div>
-        </section>
+  return <main className="shell">
+    <aside className="sidebar"><div className="brand">UT Platform</div><MainNavigation current="/" /></aside>
+    <section className="content">
+      <header className="topbar"><div><h1>ทดสอบการใช้งานกับผู้ใช้จริง</h1><p>สร้างแบบทดสอบ เชิญผู้เข้าร่วม แล้วใช้หลักฐานสรุปสิ่งที่ควรปรับปรุง</p></div><a className="primaryButton" href="/projects">ไปที่โปรเจกต์</a></header>
+      <RecentWork />
+      <p><a href="/demo/projects">ดูตัวอย่างการทำงาน</a> · ข้อมูลตัวอย่างแบบอ่านอย่างเดียว</p>
+      <section className="section" aria-labelledby="start-heading"><h2 id="start-heading">เริ่มการทดสอบครั้งแรก</h2>
+        <ol className="gettingStarted">
+          <li><h3>สร้างโปรเจกต์และแบบทดสอบ</h3><p>โปรเจกต์ใช้รวมแบบทดสอบของงานเดียวกัน เลือกสิ่งที่ต้องการเรียนรู้จากผู้ใช้</p></li>
+          <li><h3>เตรียมงานและเชิญผู้เข้าร่วม</h3><p>เพิ่มลิงก์ต้นแบบหรือเว็บไซต์ หรือกำหนดกิจกรรมวิจัย ตรวจสอบและเผยแพร่ก่อนส่งลิงก์</p></li>
+          <li><h3>ดูผลและสรุปสิ่งที่ควรแก้</h3><p>ตรวจหลักฐานจากผู้เข้าร่วม บันทึกข้อค้นพบ และนำไปสรุปในรายงาน</p></li>
+        </ol>
       </section>
-    </main>
-  );
+    </section>
+  </main>;
 }

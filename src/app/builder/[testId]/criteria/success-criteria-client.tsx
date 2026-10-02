@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch, SESSION_MESSAGE } from "../../../../lib/auth/client.ts";
+
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import styles from "./success-criteria.module.css";
 
@@ -13,9 +15,9 @@ function canonicalNodeId(value: string): string { const trimmed = value.trim(); 
 function overlap(success: string[], failure: string[]): string[] { const successSet = new Set(success.map(canonicalNodeId)); return failure.map(canonicalNodeId).filter((nodeId) => successSet.has(nodeId)); }
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { ...init, headers: init?.body ? { "content-type": "application/json", ...(init.headers ?? {}) } : init?.headers, cache: "no-store" });
+  const response = await authenticatedFetch(url, { ...init, headers: init?.body ? { "content-type": "application/json", ...(init.headers ?? {}) } : init?.headers, cache: "no-store" });
   const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-  if (response.status === 401) { window.location.assign("/login"); throw new Error("authentication_required"); }
+  if (response.status === 401) { throw new Error(SESSION_MESSAGE); }
   if (!response.ok) throw new Error(typeof body.message === "string" ? body.message : String(body.error ?? "request_failed"));
   return body as T;
 }
@@ -99,7 +101,7 @@ export default function SuccessCriteriaClient({ testId }: { testId: string }) {
     <main className={styles.shell}>
       <header className={styles.header}>
         <a href={`/builder/${encodeURIComponent(testId)}/tasks`} className={styles.backLink}>← งานทดสอบ</a>
-        <p className={styles.eyebrow}>สร้างการทดสอบ · เกณฑ์จบงาน</p>
+        <p className={styles.eyebrow}>ตั้งค่าแบบทดสอบ · เกณฑ์จบงาน</p>
         <h1>กำหนดจุดสำเร็จและไม่สำเร็จ</h1>
         <p>ใช้ Figma Node ID ที่ชัดเจนจากต้นแบบ จุดสำเร็จและจุดไม่สำเร็จต้องไม่ซ้ำกันเพื่อให้ผลลัพธ์ของงานตัดสินได้แน่นอน</p>
       </header>

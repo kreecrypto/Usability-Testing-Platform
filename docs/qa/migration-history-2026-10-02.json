@@ -1,0 +1,158 @@
+[
+  {
+    "version": "20260909002209",
+    "name": "initial_v1_schema",
+    "sql_hash": "a5308ce99336eaf09f9f691e27895153",
+    "statement_count": 1
+  },
+  {
+    "version": "20260909002221",
+    "name": "contract_integrity_fixes",
+    "sql_hash": "95c073665b1fdc371e889455fd81ec20",
+    "statement_count": 1
+  },
+  {
+    "version": "20260909002607",
+    "name": "task21_workspace_auth_rls",
+    "sql_hash": "32bd0272fef1cdaa6a4554fd624ccc15",
+    "statement_count": 1
+  },
+  {
+    "version": "20260909031311",
+    "name": "task24_retention_archiving",
+    "sql_hash": "e96c2f074a826830795ec34138b33231",
+    "statement_count": 1
+  },
+  {
+    "version": "20260909032759",
+    "name": "gwd08_grants_rls_views_hardening",
+    "sql_hash": "ff4aa74dd961c91da2f433857e3f582d",
+    "statement_count": 1
+  },
+  {
+    "version": "20260909032803",
+    "name": "gwd07_event_dlq",
+    "sql_hash": "3e449f40f6b81c4729a47d7d1f5da8e3",
+    "statement_count": 1
+  },
+  {
+    "version": "20260909032845",
+    "name": "gwd08_private_acl_fix",
+    "sql_hash": "7d3f7392d8bd0f8191ec2b687aeeb434",
+    "statement_count": 1
+  },
+  {
+    "version": "20260909042926",
+    "name": "gwd06_ingestion_token_gate",
+    "sql_hash": "d52d71285d74c4443920b12d0bfe733b",
+    "statement_count": 1
+  },
+  {
+    "version": "20260909044801",
+    "name": "gwd08_grants_rls_views_hardening",
+    "sql_hash": "a92707fff112529f064da4afe3568bda",
+    "statement_count": 1
+  },
+  {
+    "version": "20260909053844",
+    "name": "task17_prototype_frame_mapping",
+    "sql_hash": "eee2b9450554c8fddc42dd11f71a34ef",
+    "statement_count": 1
+  },
+  {
+    "version": "20260909081424",
+    "name": "task29_task_instruction_and_atomic_reorder",
+    "sql_hash": "a500477cc0ba692d0673fee3039ceff8",
+    "statement_count": 1
+  },
+  {
+    "version": "20260909082424",
+    "name": "task30_disjoint_terminal_targets",
+    "sql_hash": "19585821525713b1a6cb027485f967d4",
+    "statement_count": 1
+  },
+  {
+    "version": "20260909102718",
+    "name": "task31_post_task_questions",
+    "sql_hash": "1e2b21e8a474aa45e370ab8b1729155c",
+    "statement_count": 1
+  },
+  {
+    "version": "20260909102745",
+    "name": "task32_publish_versioning",
+    "sql_hash": "109103543ad0ba8501a74441178c59e3",
+    "statement_count": 1
+  },
+  {
+    "version": "20260909102758",
+    "name": "task33_anonymous_session_entry",
+    "sql_hash": "e1c07a9fd06ded1575a699fb933f4a01",
+    "statement_count": 1
+  },
+  {
+    "version": "20260909102833",
+    "name": "task38_41_lifecycle_derivation",
+    "sql_hash": "f1b1751bad0618e74e4d7f0912acbf3d",
+    "statement_count": 1
+  },
+  {
+    "version": "20260909102851",
+    "name": "task37_post_task_feedback",
+    "sql_hash": "35e8b386b6a64d2589284d14bb29fa6f",
+    "statement_count": 1
+  },
+  {
+    "version": "20260909114606",
+    "name": "task50_findings_evidence_model",
+    "sql_hash": "6e2227f0072f15ead379b7c67c58fe99",
+    "statement_count": 1
+  },
+  {
+    "version": "20260909125410",
+    "name": "task48_funnel_definition",
+    "sql_hash": "29f5f3eff18962e7d45e0ea38b1cc0ed",
+    "statement_count": 1
+  },
+  {
+    "version": "20260910163157",
+    "name": "task39_figma_geometry_snapshot",
+    "sql_hash": "b50dfb8a5fb3f5879764ad2fe8f469fe",
+    "statement_count": 1
+  },
+  {
+    "version": "20260921164925",
+    "name": "mt03_provider_neutral_target_snapshot",
+    "sql_hash": "d916a0bb1a9e16c04dc8f2f376d51d07",
+    "statement_count": 1
+  },
+  {
+    "version": "20260923092440",
+    "name": "auto_major_execution_leases",
+    "sql_hash": "d68ad75eef119277032f25b28144f197",
+    "statement_count": 1
+  },
+  {
+    "version": "20260923095639",
+    "name": "proof_gate_major_ids",
+    "sql_hash": "e5f5f5d72fae0be23774f0765d0aa5ea",
+    "statement_count": 1
+  },
+  {
+    "version": "20260923103600",
+    "name": "major_a_workspace_bootstrap",
+    "sql_hash": "e446a2962b16936f0eecfbb8d588c138",
+    "statement_count": 1
+  },
+  {
+    "version": "20260923122406",
+    "name": "mt08_provider_neutral_outcome_rules",
+    "sql_hash": "c5c07efddc3dfce674026752c0181c64",
+    "statement_count": 1
+  },
+  {
+    "version": "20260925135532",
+    "name": "mt10_report_finding_fields",
+    "sql_hash": "4beed6e597c64f8d5ae08b945d152196",
+    "statement_count": 1
+  }
+]

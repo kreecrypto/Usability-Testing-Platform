@@ -82,7 +82,7 @@ test("MT-08 detects overlapping terminal values deterministically", () => {
 
 test("MT-08 migration keeps DB authoritative for save, publish and deterministic derivation", async () => {
   const migration = await readFile(
-    new URL("../supabase/migrations/20260923125000_mt08_provider_neutral_outcome_rules.sql", import.meta.url),
+    new URL("../supabase/migrations/20260923122406_mt08_provider_neutral_outcome_rules.sql", import.meta.url),
     "utf8",
   );
   assert.match(migration, /save_task_outcome_rules/);

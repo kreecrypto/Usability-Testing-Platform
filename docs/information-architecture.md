@@ -141,3 +141,23 @@ Minimum Report sections:
 6. Retest — baseline/retest context, compatible metrics, sample context and delta.
 
 See `docs/research-evidence-report-contract.md`.
+
+## 2026-09-29 implementation mapping (IA-01..04)
+
+This user-approved task-based IA supersedes earlier menu ordering. Only supported destinations ship; existing URLs, APIs, version identity and authorization stay unchanged.
+
+| Goal | Existing destination | Access | This release |
+|---|---|---|---|
+| Home / next action | `/` | Public; recent work authenticated | IA-01: concise onboarding and recent work |
+| Projects | `/projects`, `/projects/{id}` | Researcher, existing RLS | IA-01: shared menu and plain labels |
+| Tests | `/projects/{id}/tests`, `/builder/{id}/…` | Researcher, existing RLS | IA-02: project-scoped list and builder steps |
+| Results | `/results/{version}`, `/methods/results/{version}` | Researcher, existing RLS | IA-03: common version-scoped navigation |
+| Participants | Published review sharing and method-builder invites | Existing researcher permissions | Keep contextual; global administration backlog |
+| Reports / findings / retest | Existing version-scoped routes | Researcher, existing RLS | IA-03: common terms and evidence navigation |
+| Settings | Existing account controls only | Current account | Global settings backlog |
+| Participant execution | `/t/{version}`, `/m/{version}` | Existing public-link/session policy | IA-03: isolated shell, instructions and recovery |
+| UI examples | `/high-fi`, `/figma-poc` | Existing access rules | Remove from primary navigation; keep routes |
+
+IA-04 backlog: complete cross-project tests/results/reports indexes need paginated permission-filtered source contracts and exact-version links; participant administration needs contact/session permission and deletion contracts; settings needs workspace/member configuration contracts. Do not ship placeholder links or present `/api/recent-work` (five items) as a complete index.
+
+Acceptance: supported pages have truthful next actions, shared Thai terms, project/test/version context where available, and honest loading/empty/restricted/error states. Methods bypass website configuration. Preserve evidence formulas, public URLs and immutable published versions. Verify local checks and real-account Preview separately; do not close release gates with fixtures.

@@ -39,7 +39,7 @@ Task 47 must remain short of COMPLETE until the Release Gate has real published-
 
 ## Task 48 — Funnel & Drop-off — COMPLETE
 
-Task 48 has Release Gate=NO and is COMPLETE in the planning source. `test_versions.funnel_config` stores the versioned ordered funnel definition, `src/lib/analytics/funnel.ts` computes deterministic ordered progression, Largest Drop and No Data semantics, and `tests/task48-funnel.test.ts` covers schema validation, technical-block exclusion, conversion/drop-off formulas and tie-breaking. The hosted migration `20260909123000_task48_funnel_definition.sql` was applied according to the recorded task evidence.
+Task 48 has Release Gate=NO and is COMPLETE in the planning source. `test_versions.funnel_config` stores the versioned ordered funnel definition, `src/lib/analytics/funnel.ts` computes deterministic ordered progression, Largest Drop and No Data semantics, and `tests/task48-funnel.test.ts` covers schema validation, technical-block exclusion, conversion/drop-off formulas and tie-breaking. The hosted migration `20260909125410_task48_funnel_definition.sql` was applied according to the recorded task evidence.
 
 ## Task 49 — Session Timeline & Response Detail
 

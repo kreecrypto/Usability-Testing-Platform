@@ -1,8 +1,12 @@
 "use client";
 
+import { authenticatedFetch } from "../../../lib/auth/client.ts";
+
 import { useEffect, useMemo, useState } from "react";
 import type { ResultsModel } from "../../../lib/analytics/results.ts";
-import { capabilityAvailability, observationFor, presentMetric } from "../../../lib/analytics/presentation.ts";
+import { availabilityLabel, capabilityAvailability, observationFor, presentMetric } from "../../../lib/analytics/presentation.ts";
+import ResultsNavigation from "../../../components/navigation/results-navigation";
+import StudyContext from "../../../components/navigation/study-context";
 import styles from "./results.module.css";
 
 type View = "overview" | "tasks" | "paths" | "heatmap" | "funnel" | "sessions";
@@ -20,7 +24,7 @@ function MetricCard({ label, value, detail }: { label: string; value: string; de
 function ObservationCard({ results, metricKey, taskId = null, label, format }: { results: ResultsModel; metricKey: string; taskId?: string | null; label: string; format: (value: number) => string }) {
   const observed = presentMetric(observationFor(results, metricKey, taskId), format);
   return <article className={styles.metricCard} data-availability={observed.availability}>
-    <span>{label} · {observed.availability}</span><strong>{observed.value}</strong><small>{observed.detail}</small>
+    <span>{label} · {availabilityLabel(observed.availability)}</span><strong>{observed.value}</strong><small>{observed.detail}</small>
     <details><summary>ที่มาและหลักฐาน · {observed.evidenceRefs.length} รายการ</summary><small className={styles.evidenceRefs}>{observed.provenance}</small>{observed.evidenceRefs.length ? <small className={styles.evidenceRefs}>{observed.evidenceRefs.join(", ")}</small> : null}</details>
   </article>;
 }
@@ -48,7 +52,7 @@ function Overview({ results }: { results: ResultsModel }) {
     </section>
     <section className={styles.warningPanel} role="status">
       <strong>คุณภาพของหลักฐานภาพ</strong>
-      <p>สิ่งที่ทดสอบ: {results.context?.target.provider ?? "ไม่ทราบ"} · ข้อมูลต้นทาง v{results.context?.target.snapshotVersion ?? "–"} · เวอร์ชันแบบทดสอบ {results.testVersionId} ฮีตแมปจะแสดงเมื่อมีพิกัดที่ตรวจสอบได้เท่านั้น</p>
+      <p>ฮีตแมปจะแสดงเฉพาะตำแหน่งที่ตรวจสอบได้ หากเป้าหมายทดสอบไม่รองรับ ระบบจะแจ้งว่า “ไม่รองรับ”; หากยังไม่มีหลักฐาน ระบบจะแจ้งว่า “ยังไม่มีข้อมูล”</p>
     </section>
   </div>;
 }
@@ -66,7 +70,7 @@ function Tasks({ results }: { results: ResultsModel }) {
       <MetricCard label="ปัญหาทางเทคนิค" value={String(task.technicalBlockedCount)} detail="รายงานแยกจากผลด้านการใช้งาน" />
     </div>
     <div className={styles.seqBlock}>
-      <strong>คำตอบ SEQ ดิบ · n={task.seqSampleSize}</strong>
+      <strong>คะแนนความง่ายรายคำตอบ · n={task.seqSampleSize}</strong>
       {task.seqResponses.length === 0 ? <span>ยังไม่มีข้อมูล</span> : <div className={styles.chips}>{task.seqResponses.map((response) => <span key={response.answerId}>{response.value}/7 · {response.scaleVersion}</span>)}</div>}
       <small>แสดงคะแนนดิบพร้อมเวอร์ชันของสเกล โดยไม่สร้างค่าเฉลี่ยหรือกลับทิศสเกลที่ยังไม่ได้รับการอนุมัติ</small>
     </div>
@@ -75,7 +79,7 @@ function Tasks({ results }: { results: ResultsModel }) {
 
 function Paths({ results }: { results: ResultsModel }) {
   const pathCapability = capabilityAvailability(results, "path");
-  if (pathCapability !== "Available") return <EmptyState title={pathCapability === "Unsupported" ? "ไม่รองรับเส้นทาง" : pathCapability === "No Data" ? "ยังไม่มีข้อมูลเส้นทาง" : "ข้อมูลเส้นทางยังไม่ครบ"}>สิ่งที่ทดสอบในเวอร์ชันนี้ยังไม่ส่งข้อมูลเส้นทางที่ตรวจสอบได้</EmptyState>;
+  if (pathCapability !== "Available") return <EmptyState title={pathCapability === "Unsupported" ? "ไม่รองรับเส้นทาง" : pathCapability === "No Data" ? "ยังไม่มีข้อมูลเส้นทาง" : "ข้อมูลเส้นทางยังไม่ครบ"}>{pathCapability === "Unsupported" ? "เป้าหมายทดสอบนี้ไม่ส่งข้อมูลการเปลี่ยนหน้าจอ" : "ยังไม่มีหลักฐานเส้นทางที่ใช้วิเคราะห์ได้ในเวอร์ชันนี้"}</EmptyState>;
   const paths = results.paths.filter((path) => path.actualPath.length > 0 || path.expectedPath.length > 0);
   if (paths.length === 0) return <EmptyState title="ยังไม่มีข้อมูลเส้นทาง">ยังไม่มีหลักฐานเส้นทางหน้าจอที่ใช้วิเคราะห์ได้ในเวอร์ชันนี้</EmptyState>;
   return <div className={styles.taskList}>{paths.map((path) => <article key={`${path.sessionId}:${path.taskId}`} className={styles.panel}>
@@ -88,7 +92,7 @@ function Paths({ results }: { results: ResultsModel }) {
       <div><strong>{path.detourCount}</strong><span>ออกนอกเส้นทาง</span></div>
       <div><strong>{path.backtrackCount}</strong><span>ย้อนกลับ</span></div>
       <div><strong>{path.repeatedScreenCount}</strong><span>เข้าหน้าซ้ำ</span></div>
-    </div> : <small>ยังไม่มี screen_view ที่ใช้คำนวณเส้นทาง</small>}
+    </div> : <small>ยังไม่มีหลักฐานการเข้าหน้าจอที่ใช้คำนวณเส้นทาง</small>}
   </article>)}</div>;
 }
 
@@ -104,9 +108,9 @@ function Heatmap({ results }: { results: ResultsModel }) {
   }, [dataset.filters.screenIds, screenId]);
 
   const heatmapCapability = capabilityAvailability(results, "pointer", "coordinates");
-  if (heatmapCapability !== "Available") return <EmptyState title={heatmapCapability === "Unsupported" ? "ไม่รองรับฮีตแมป" : heatmapCapability === "No Data" ? "ยังไม่มีข้อมูลฮีตแมป" : "ข้อมูลฮีตแมปยังไม่ครบ"}>สิ่งที่ทดสอบในเวอร์ชันนี้ยังไม่มีพิกัดที่ตรวจสอบได้</EmptyState>;
-  if (dataset.status === "unsupported") return <EmptyState title="ยังแสดงฮีตแมปไม่ได้">พบการคลิก {dataset.rawPointerCount} รายการ แต่ไม่มีพิกัดหน้าจอที่ตรวจสอบได้ จึงยังแสดงตำแหน่งคลิกไม่ได้</EmptyState>;
-  if (dataset.status === "no_data") return <EmptyState title="ยังไม่มีข้อมูลฮีตแมป">ยังไม่มีข้อมูลการคลิกในเวอร์ชันนี้</EmptyState>;
+  if (heatmapCapability !== "Available") return <EmptyState title={heatmapCapability === "Unsupported" ? "ไม่รองรับฮีตแมป" : heatmapCapability === "No Data" ? "ยังไม่มีข้อมูลฮีตแมป" : "ข้อมูลฮีตแมปยังไม่ครบ"}>{heatmapCapability === "Unsupported" ? "เป้าหมายทดสอบนี้ไม่ส่งตำแหน่งคลิกหรือแตะที่ตรวจสอบได้" : "ยังไม่มีหลักฐานตำแหน่งที่ใช้สร้างฮีตแมปได้"}</EmptyState>;
+  if (dataset.status === "unsupported") return <EmptyState title="ฮีตแมปยังไม่พร้อม">พบการคลิกหรือแตะ {dataset.rawPointerCount} ครั้ง แต่ยังยืนยันตำแหน่งบนหน้าจอไม่ได้ จึงไม่แสดงฮีตแมป</EmptyState>;
+  if (dataset.status === "no_data") return <EmptyState title="ยังไม่มีข้อมูลฮีตแมป">ยังไม่มีการคลิกหรือแตะที่นำมาแสดงได้ในเวอร์ชันนี้</EmptyState>;
 
   const points = dataset.points.filter((point) =>
     (!taskId || point.taskId === taskId)
@@ -119,7 +123,7 @@ function Heatmap({ results }: { results: ResultsModel }) {
 
   return <div className={styles.stack}>
     <section className={styles.panel}>
-      <div className={styles.panelHeader}><div><span className={styles.eyebrow}>ฮีตแมป · คลิกที่ใช้ได้ {dataset.canonicalPointerCount}/{dataset.rawPointerCount}</span><h2>ตำแหน่งคลิกบนต้นแบบ</h2></div><span className={styles.badge}>เวอร์ชัน {results.testVersionId.slice(0, 8)}</span></div>
+      <div className={styles.panelHeader}><div><span className={styles.eyebrow}>ฮีตแมป · ยืนยันตำแหน่งได้ {dataset.canonicalPointerCount}/{dataset.rawPointerCount} ครั้ง</span><h2>ตำแหน่งคลิกบนเป้าหมายทดสอบ</h2></div><span className={styles.badge}>เวอร์ชัน {results.testVersionId.slice(0, 8)}</span></div>
       <div className={styles.heatmapFilters}>
         <label>งาน<select value={taskId} onChange={(event) => setTaskId(event.target.value)}><option value="">ทั้งหมด</option>{dataset.filters.taskIds.map((id) => <option value={id} key={id}>{taskLabel(id)}</option>)}</select></label>
         <label>หน้าจอ<select value={screenId} onChange={(event) => setScreenId(event.target.value)}>{dataset.filters.screenIds.map((id) => <option value={id} key={id}>{id}</option>)}</select></label>
@@ -128,23 +132,24 @@ function Heatmap({ results }: { results: ResultsModel }) {
       </div>
     </section>
     {points.length === 0 || !frame ? <EmptyState title="ไม่มีข้อมูลตามตัวกรอง">ลองเปลี่ยนงาน หน้าจอ อุปกรณ์ หรือผลลัพธ์</EmptyState> : <section className={styles.panel}>
-      <div className={styles.panelHeader}><div><span className={styles.eyebrow}>{frame.transformVersion} · geometry {frame.geometryVersionId.slice(0, 8)}</span><h2>หน้าจอ {frame.screenId}</h2></div><span className={styles.badge}>n={points.length}</span></div>
+      <div className={styles.panelHeader}><div><span className={styles.eyebrow}>หน้าจอที่เลือก</span><h2>หน้าจอ {frame.screenId}</h2></div><span className={styles.badge}>n={points.length}</span></div>
       <div className={styles.heatmapStageWrap}>
         <div className={styles.heatmapStage} style={{ aspectRatio: `${frame.frameWidth} / ${frame.frameHeight}` }} aria-label={`ฮีตแมปหน้าจอ ${frame.screenId}`}>
           {points.map((point) => <span key={point.eventId} className={styles.heatmapPoint} style={{ left: `${point.normalizedX * 100}%`, top: `${point.normalizedY * 100}%` }} title={`session ${point.sessionId.slice(0, 8)} · ${outcomeLabel(point.terminalOutcome)}`} aria-label={`คลิกที่ ${Math.round(point.normalizedX * 100)}%, ${Math.round(point.normalizedY * 100)}%`} />)}
         </div>
       </div>
-      <small className={styles.heatmapNote}>จุดทั้งหมดวางจาก canonical normalized coordinates 0–1 ของ geometry snapshot นี้เท่านั้น ไม่ใช้ browser CSS pixels.</small>
+      <small className={styles.heatmapNote}>แสดงเฉพาะจุดที่ตรวจสอบตำแหน่งบนหน้าจอได้</small>
+      <details><summary>ที่มาของตำแหน่ง</summary><p>{frame.transformVersion} · geometry {frame.geometryVersionId}</p></details>
     </section>}
   </div>;
 }
 
 function Funnel({ results }: { results: ResultsModel }) {
   const funnelCapability = capabilityAvailability(results, "path");
-  if (funnelCapability !== "Available") return <EmptyState title={funnelCapability === "Unsupported" ? "ไม่รองรับลำดับขั้น" : funnelCapability === "No Data" ? "ยังไม่มีข้อมูลลำดับขั้น" : "ข้อมูลลำดับขั้นยังไม่ครบ"}>สิ่งที่ทดสอบในเวอร์ชันนี้ยังไม่มีข้อมูลเส้นทางที่ตรวจสอบได้</EmptyState>;
+  if (funnelCapability !== "Available") return <EmptyState title={funnelCapability === "Unsupported" ? "ไม่รองรับ Funnel" : funnelCapability === "No Data" ? "ยังไม่มีข้อมูล Funnel" : "ข้อมูล Funnel ยังไม่ครบ"}>ยังไม่มีหลักฐานการผ่านแต่ละขั้นที่ตรวจสอบได้ในเวอร์ชันนี้</EmptyState>;
   const funnel = results.funnel;
-  if (!funnel) return <EmptyState title="ยังไม่มีลำดับขั้น">เวอร์ชันนี้ยังไม่ได้กำหนดลำดับหน้าจอสำหรับวิเคราะห์ว่าผู้เข้าร่วมไปถึงขั้นใด</EmptyState>;
-  if (!funnel.eligibleSessionCount) return <EmptyState title="ยังไม่มีข้อมูลลำดับขั้น">ยังไม่มีรอบที่บันทึกการเข้าหน้าจอเพื่อนำมาคำนวณ</EmptyState>;
+  if (!funnel) return <EmptyState title="ยังไม่มี Funnel">เวอร์ชันนี้ยังไม่ได้กำหนดลำดับ Screen ID สำหรับคำนวณ Conversion และ Drop-off</EmptyState>;
+  if (!funnel.eligibleSessionCount) return <EmptyState title="ยังไม่มีข้อมูล Funnel">ยังไม่มีเซสชันที่มีหลักฐานการเข้าหน้าจอสำหรับคำนวณแต่ละขั้น</EmptyState>;
   return <div className={styles.stack}>
     <section className={styles.metricsGrid} aria-label="สรุป Funnel">
       <MetricCard label="รอบที่นำมาคำนวณ" value={String(funnel.eligibleSessionCount)} detail="ไม่รวมรอบที่ติดปัญหาทางเทคนิค" />
@@ -174,6 +179,7 @@ function Sessions({ results }: { results: ResultsModel }) {
 
 export default function ResultsPage({ params }: { params: Promise<{ testVersionId: string }> }) {
   const [versionId, setVersionId] = useState("");
+  const [retry, setRetry] = useState(0);
   const [view, setView] = useState<View>("overview");
   const [state, setState] = useState<LoadState>({ status: "loading" });
 
@@ -182,7 +188,7 @@ export default function ResultsPage({ params }: { params: Promise<{ testVersionI
     if (!versionId) return;
     const controller = new AbortController();
     setState({ status: "loading" });
-    void fetch(`/api/results/${encodeURIComponent(versionId)}`, { cache: "no-store", signal: controller.signal })
+    void authenticatedFetch(`/api/results/${encodeURIComponent(versionId)}`, { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
         if (response.status === 401) throw new Error("ต้องเข้าสู่ระบบเพื่อดูผลการทดสอบ");
         if (response.status === 403) throw new Error("คุณไม่มีสิทธิ์เข้าถึงเวิร์กสเปซนี้");
@@ -196,15 +202,17 @@ export default function ResultsPage({ params }: { params: Promise<{ testVersionI
         setState({ status: "error", message: error instanceof Error ? error.message : "โหลดผลการทดสอบไม่สำเร็จ" });
       });
     return () => controller.abort();
-  }, [versionId]);
+  }, [versionId, retry]);
 
+  const contextResult = state.status === "ready" ? state.results : null;
   const title = useMemo(() => versionId ? `เวอร์ชัน ${versionId.slice(0, 8)}` : "วิเคราะห์ผล", [versionId]);
   return <main className={styles.page}>
+    <StudyContext testId={contextResult?.testId} versionId={versionId} versionNo={contextResult?.context?.versionNo} />
     <header className={styles.header}><div><span className={styles.eyebrow}>วิเคราะห์ผล · หลักฐานจากเวอร์ชันที่เผยแพร่</span><h1>{title}</h1><p>ดูผลการทดสอบจากหลักฐานที่ระบบยอมรับ โดยแยกปัญหาทางเทคนิคออกจากผลด้านการใช้งาน และไม่ใช้ศูนย์แทนข้อมูลที่ไม่มี</p></div><a href="/projects" className={styles.backLink}>โปรเจกต์</a></header>
-    <nav className={styles.studyNav} aria-label="เมนูการวิเคราะห์ของเวอร์ชันนี้"><a href={`/results/${versionId}`} aria-current="page">ผลการทดสอบ</a><a href={`/findings/${versionId}`}>ข้อค้นพบ</a><a href={`/reports/${versionId}`}>รายงาน</a><a href={`/reports/${versionId}#retest`}>ทดสอบซ้ำ</a></nav>
+    <ResultsNavigation versionId={versionId} current="results" />
     <nav className={styles.tabs} aria-label="มุมมองการวิเคราะห์ผล">{(["overview", "tasks", "paths", "heatmap", "funnel", "sessions"] as const).map((item) => <button key={item} type="button" aria-current={view === item ? "page" : undefined} className={view === item ? styles.tabActive : styles.tab} onClick={() => setView(item)}>{viewLabels[item]}</button>)}</nav>
     {state.status === "loading" ? <div className={styles.loading} role="status">กำลังโหลดผลการทดสอบ…</div> : null}
-    {state.status === "error" ? <div className={styles.error} role="alert"><strong>ยังเปิดผลการทดสอบไม่ได้</strong><p>{state.message}</p></div> : null}
+    {state.status === "error" ? <div className={styles.error} role="alert"><strong>ยังเปิดผลการทดสอบไม่ได้</strong><p>{state.message}</p><button onClick={() => setRetry(value => value + 1)}>ลองโหลดผลอีกครั้ง</button></div> : null}
     {state.status === "ready" ? <section className={styles.content}>{view === "overview" ? <Overview results={state.results} /> : view === "tasks" ? <Tasks results={state.results} /> : view === "paths" ? <Paths results={state.results} /> : view === "heatmap" ? <Heatmap results={state.results} /> : view === "funnel" ? <Funnel results={state.results} /> : <Sessions results={state.results} />}</section> : null}
   </main>;
 }

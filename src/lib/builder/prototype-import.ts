@@ -1,5 +1,6 @@
 import {
   approveInternalFirstPartyTarget,
+  approveConfiguredFirstPartyTarget,
   FIRST_PARTY_BRIDGE_VERSION,
   preflightTestTarget,
   type TestTargetSnapshotV1,
@@ -31,7 +32,7 @@ export function validatePrototypeImport(prototypeUrl:string): TestTargetSnapshot
   try { return preflightTestTarget({url:prototypeUrl}); } catch(error){ throw new PrototypeImportError("invalid_prototype_url",400,error instanceof Error?error.message:"invalid_prototype_url"); }
 }
 
-export function createDraftPrototypeStore(options:{supabaseUrl:string;publicKey:string;accessToken:string;fetchImpl?:typeof fetch}){
+export function createDraftPrototypeStore(options:{supabaseUrl:string;publicKey:string;accessToken:string;fetchImpl?:typeof fetch;approvedTargetOrigins?:readonly string[]}){
   const supabaseUrl=options.supabaseUrl.trim().replace(/\/+$/,""); const publicKey=options.publicKey.trim(); const accessToken=options.accessToken.trim(); const fetchImpl=options.fetchImpl??fetch;
   if(!supabaseUrl.startsWith("https://")||!publicKey||!accessToken) throw new Error("authenticated Supabase configuration is required");
   const headers=Object.freeze({apikey:publicKey,authorization:`Bearer ${accessToken}`});
@@ -60,7 +61,12 @@ export function createDraftPrototypeStore(options:{supabaseUrl:string;publicKey:
 
     let approved:TestTargetSnapshotV1;
     try{approved=approveInternalFirstPartyTarget(current,requestOrigin);}
-    catch{throw new PrototypeImportError("target_preflight_failed",409,"approved_internal_target_required");}
+    catch{
+      try {
+        const allowedOrigins=options.approvedTargetOrigins??(process.env.UTP_APPROVED_TARGET_ORIGINS??"").split(",").map((value)=>value.trim()).filter(Boolean);
+        approved=approveConfiguredFirstPartyTarget(current,allowedOrigins);
+      } catch { throw new PrototypeImportError("target_preflight_failed",409,"approved_owned_target_required"); }
+    }
 
     let live:Response;
     try{

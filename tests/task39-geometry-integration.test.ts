@@ -121,7 +121,7 @@ test("collector fails closed to raw evidence when published geometry is absent",
 });
 
 test("Task39 migration binds geometry identity to test_version, draft-only, and preserves mapping on later frame edits", async () => {
-  const sql = await readFile(new URL("../supabase/migrations/20260910173000_task39_figma_geometry_snapshot.sql", import.meta.url), "utf8");
+  const sql = await readFile(new URL("../supabase/migrations/20260910163157_task39_figma_geometry_snapshot.sql", import.meta.url), "utf8");
   assert.match(sql, /geometryVersionId' <> p_test_version_id::text/);
   assert.match(sql, /lifecycle_status = 'draft'/);
   assert.match(sql, /jsonb_set\([\s\S]*'\{geometry\}'/);

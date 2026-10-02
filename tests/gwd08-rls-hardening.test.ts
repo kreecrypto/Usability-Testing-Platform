@@ -5,7 +5,9 @@ import test from "node:test";
 
 const migrationsDir = join(process.cwd(), "supabase", "migrations");
 const task21Name = readdirSync(migrationsDir).find((name) => name.endsWith("_task21_workspace_auth_rls.sql"));
-const gwd08Name = readdirSync(migrationsDir).find((name) => name.endsWith("_gwd08_grants_rls_views_hardening.sql"));
+// The recorded history includes an earlier grant followed by an ACL correction.
+// Verify the final hardening migration, as the database does after ordered replay.
+const gwd08Name = readdirSync(migrationsDir).filter((name) => name.endsWith("_gwd08_grants_rls_views_hardening.sql")).sort().at(-1);
 assert.ok(task21Name);
 assert.ok(gwd08Name);
 const authSql = readFileSync(join(migrationsDir, task21Name), "utf8");

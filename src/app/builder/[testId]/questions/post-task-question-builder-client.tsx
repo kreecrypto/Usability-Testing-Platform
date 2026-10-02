@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch, SESSION_MESSAGE } from "../../../../lib/auth/client.ts";
+
 import { useEffect, useMemo, useState } from "react";
 import styles from "./post-task-question-builder.module.css";
 
@@ -10,9 +12,9 @@ type State = "loading" | "ready" | "saving" | "error";
 type Kind = "seq" | "openFeedback";
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { ...init, headers: init?.body ? { "content-type": "application/json", ...(init.headers ?? {}) } : init?.headers, cache: "no-store" });
+  const response = await authenticatedFetch(url, { ...init, headers: init?.body ? { "content-type": "application/json", ...(init.headers ?? {}) } : init?.headers, cache: "no-store" });
   const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-  if (response.status === 401) { window.location.assign("/login"); throw new Error("authentication_required"); }
+  if (response.status === 401) { throw new Error(SESSION_MESSAGE); }
   if (!response.ok) throw new Error(typeof body.message === "string" ? body.message : String(body.error ?? "request_failed"));
   return body as T;
 }
@@ -78,7 +80,7 @@ export default function PostTaskQuestionBuilderClient({ testId }: { testId: stri
     <main className={styles.shell}>
       <header className={styles.header}>
         <a href={`/builder/${encodeURIComponent(testId)}/criteria`} className={styles.backLink}>← เกณฑ์จบงาน</a>
-        <p className={styles.eyebrow}>สร้างการทดสอบ · คำถามหลังงาน</p>
+        <p className={styles.eyebrow}>ตั้งค่าแบบทดสอบ · คำถามหลังงาน</p>
         <h1>กำหนดคำถามหลังทำแต่ละงาน</h1>
         <p>เลือกว่าจะถามคะแนนความง่ายของงาน (SEQ) และความคิดเห็นเพิ่มเติมหรือไม่ พร้อมกำหนดว่าคำตอบใดเป็นข้อมูลที่ต้องตอบ</p>
       </header>

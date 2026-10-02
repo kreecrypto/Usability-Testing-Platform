@@ -1,0 +1,13 @@
+.shell{min-height:100vh;max-width:980px;margin:0 auto;padding:clamp(24px,4vw,52px) 20px;color:#192824}
+.shell h1{font-size:clamp(30px,5vw,44px);line-height:1.15;margin:8px 0 16px}
+.shell h2{font-size:26px;margin:0 0 18px}.shell h3{font-size:20px;margin:22px 0 14px}
+.shell p{line-height:1.6}.kicker{color:#4c6f5e;font-size:14px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.panel{background:#fff;border:1px solid #d9e4dc;border-radius:16px;padding:clamp(20px,4vw,32px);margin:28px 0;box-shadow:0 8px 30px #163f2309}
+.editor{display:grid;gap:22px}.editor label{display:grid;gap:7px;font-weight:650}.editor input:not([type=checkbox]),.editor textarea,.editor select{min-height:44px;width:100%;border:1px solid #9bb6a4;border-radius:8px;padding:10px 12px;color:#192824;background:#fff;font:inherit}.editor textarea{min-height:110px;resize:vertical}
+.editor input:focus-visible,.editor select:focus-visible,.editor textarea:focus-visible,.shell button:focus-visible,.shell a:focus-visible{outline:3px solid #68a681;outline-offset:2px}
+.shell button,.shell a{min-height:44px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #40785c;border-radius:8px;background:#f7fbf8;color:#1d593d;padding:10px 16px;font:inherit;font-weight:650;text-decoration:none;cursor:pointer}
+.shell button:disabled{opacity:.55;cursor:not-allowed}.shell .primary{background:#176748;color:#fff}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+.item{border:1px solid #d9e4dc;border-radius:10px;padding:16px;margin:16px 0;display:grid;gap:14px}.item legend{font-weight:700;padding:0 8px}.item p{margin-bottom:8px}.item .check{display:flex;align-items:center;gap:8px}.item .check input{width:18px;height:18px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:12px 0}.blocks{list-style:none;padding:0}.blocks li{display:flex;justify-content:space-between;align-items:center;gap:16px;border-top:1px solid #e1e9e3;padding:12px 0}.blocks li>div:first-child{display:grid;gap:4px}.blocks span{color:#526f5d;font-size:14px}.blocks .actions{margin:0}
+.error{border:1px solid #b95050;background:#fff4f2;color:#8b2525;border-radius:8px;padding:12px 16px}
+@media(max-width:650px){.grid{grid-template-columns:1fr}.blocks li{align-items:flex-start;flex-direction:column}}

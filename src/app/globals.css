@@ -59,7 +59,9 @@ button {
 }
 
 .navItem {
-  min-height: var(--ah-sidebar-item-height);
+  min-height: var(--ah-table-header-height);
+  display: flex;
+  align-items: center;
   border-radius: var(--ah-radius-sm);
   color: var(--ah-ink);
   padding: var(--ah-space-4) var(--ah-space-8);
@@ -139,7 +141,7 @@ button {
 
 .heroCard {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--ah-space-32);
   padding: var(--ah-space-24);
   border: 1px solid var(--ah-hairline);
@@ -302,6 +304,15 @@ button {
 }
 
 @media (max-width: 768px) {
+  .sidebar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .nav {
+    flex-wrap: wrap;
+  }
+
   .content {
     padding: var(--ah-space-20) var(--ah-content-gutter) var(--ah-space-32);
   }
@@ -320,3 +331,9 @@ button {
     grid-template-columns: 1fr;
   }
 }
+
+.gettingStarted { padding-inline-start: 24px; max-width: 70ch; }
+.gettingStarted li { padding: 8px 0 12px 8px; }
+.gettingStarted h3 { margin: 0 0 8px; }
+.gettingStarted p { margin: 0; line-height: 1.6; }
+.navItem:focus-visible { outline: 3px solid var(--ah-primary); outline-offset: 2px; }
