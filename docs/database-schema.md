@@ -1,6 +1,6 @@
 # V1 Database Schema Baseline
 
-Task 20 establishes the relational baseline for the Usability Testing Platform. The migration source of truth is `supabase/migrations/20260908141723_initial_v1_schema.sql`, created by the Supabase CLI.
+Task 20 establishes the relational baseline for the Usability Testing Platform. The migration source of truth is `supabase/migrations/20260909002209_initial_v1_schema.sql`, created by the Supabase CLI.
 
 ## Tenant and identity model
 

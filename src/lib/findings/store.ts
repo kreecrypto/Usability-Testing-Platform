@@ -39,6 +39,7 @@ type EvidenceRow = Readonly<{
   session_id: string | null;
   event_id: string | null;
   answer_id: string | null;
+  study_response_id: string | null;
   note: string | null;
   evidence_payload: unknown;
   created_at: string;
@@ -122,6 +123,7 @@ function mapEvidence(row: EvidenceRow): FindingEvidenceRecord {
     sessionId: row.session_id,
     eventId: row.event_id,
     answerId: row.answer_id,
+    studyResponseId: row.study_response_id ?? null,
     note: row.note,
     payload: Object.freeze(objectPayload(row.evidence_payload)),
     createdAt: row.created_at,
@@ -257,7 +259,7 @@ export function createFindingsStore(options: Readonly<{
     const finding = await getFindingRow(findingId);
     const result = await rows<EvidenceRow>("finding_evidence", new URLSearchParams({
       finding_id: `eq.${finding.id}`,
-      select: "id,workspace_id,finding_id,evidence_type,session_id,event_id,answer_id,note,evidence_payload,created_at",
+      select: "id,workspace_id,finding_id,evidence_type,session_id,event_id,answer_id,study_response_id,note,evidence_payload,created_at",
       order: "created_at.asc,id.asc",
     }));
     return Object.freeze(result.map(mapEvidence));
@@ -269,16 +271,18 @@ export function createFindingsStore(options: Readonly<{
     const sessionId = input.sessionId ? uuid(input.sessionId, "sessionId") : null;
     const eventId = input.eventId ? uuid(input.eventId, "eventId") : null;
     const answerId = input.answerId ? uuid(input.answerId, "answerId") : null;
+    const studyResponseId = input.studyResponseId ? uuid(input.studyResponseId, "studyResponseId") : null;
     const note = optionalText(input.note);
     const payload = objectPayload(input.payload);
     if (input.type === "session" && !sessionId) throw new FindingsStoreError("validation_error", 400, "session_evidence_requires_session");
     if (input.type === "event" && (!sessionId || !eventId)) throw new FindingsStoreError("validation_error", 400, "event_evidence_requires_session_event");
     if (input.type === "answer" && (!sessionId || !answerId)) throw new FindingsStoreError("validation_error", 400, "answer_evidence_requires_session_answer");
+    if (input.type === "method_response" && (!sessionId || !studyResponseId)) throw new FindingsStoreError("validation_error", 400, "method_evidence_requires_session_response");
     if ((input.type === "path" || input.type === "heatmap") && (!sessionId || Object.keys(payload).length === 0)) {
       throw new FindingsStoreError("validation_error", 400, `${input.type}_evidence_requires_session_payload`);
     }
     const result = await rows<EvidenceRow>("finding_evidence", new URLSearchParams({
-      select: "id,workspace_id,finding_id,evidence_type,session_id,event_id,answer_id,note,evidence_payload,created_at",
+      select: "id,workspace_id,finding_id,evidence_type,session_id,event_id,answer_id,study_response_id,note,evidence_payload,created_at",
     }), {
       method: "POST",
       headers: { prefer: "return=representation" },
@@ -289,6 +293,7 @@ export function createFindingsStore(options: Readonly<{
         session_id: sessionId,
         event_id: eventId,
         answer_id: answerId,
+        study_response_id: studyResponseId,
         note,
         evidence_payload: payload,
       }),

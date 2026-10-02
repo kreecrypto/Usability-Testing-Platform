@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch, SESSION_MESSAGE } from "../../../../lib/auth/client.ts";
+
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import styles from "./task-scenario-builder.module.css";
 
@@ -17,15 +19,14 @@ type NewTask = { title: string; scenario: string; instruction: string };
 type RequestState = "loading" | "ready" | "saving" | "error";
 
 async function jsonRequest<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
+  const response = await authenticatedFetch(url, {
     ...init,
     headers: init?.body ? { "content-type": "application/json", ...(init.headers ?? {}) } : init?.headers,
     cache: "no-store",
   });
   const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
   if (response.status === 401) {
-    window.location.assign("/login");
-    throw new Error("authentication_required");
+    throw new Error(SESSION_MESSAGE);
   }
   if (!response.ok) throw new Error(typeof body.message === "string" ? body.message : String(body.error ?? "request_failed"));
   return body as T;
@@ -144,8 +145,8 @@ export default function TaskScenarioBuilderClient({ testId }: { testId: string }
   return (
     <main className={styles.shell}>
       <header className={styles.header}>
-        <a href={`/builder/${encodeURIComponent(testId)}/prototype`} className={styles.backLink}>← ต้นแบบ</a>
-        <p className={styles.eyebrow}>สร้างการทดสอบ · งานทดสอบ</p>
+        <a href={`/builder/${encodeURIComponent(testId)}/prototype`} className={styles.backLink}>← เป้าหมายทดสอบ</a>
+        <p className={styles.eyebrow}>ตั้งค่าแบบทดสอบ · งานทดสอบ</p>
         <h1>กำหนดงานที่ต้องการให้ผู้เข้าร่วมทำ</h1>
         <p>เขียนสถานการณ์และคำสั่งให้ชัด กระชับ และไม่เปิดเผยเส้นทางหรือเกณฑ์สำเร็จของงาน</p>
       </header>

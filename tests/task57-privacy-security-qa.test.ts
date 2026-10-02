@@ -54,7 +54,7 @@ test("Task 57 participant client receives only session-bound credentials and no 
 });
 
 test("Task 57 retention and delete propagation remove reconstructable evidence before session deletion", async () => {
-  const retention = await source("supabase/migrations/20260909033000_task24_retention_archiving.sql");
+  const retention = await source("supabase/migrations/20260909031311_task24_retention_archiving.sql");
   assert.match(retention, /completed_at \+ interval '90 days'/i);
   const evidenceDelete = retention.indexOf("delete from public.finding_evidence");
   const sessionDelete = retention.indexOf("delete from public.sessions");
@@ -65,8 +65,8 @@ test("Task 57 retention and delete propagation remove reconstructable evidence b
 });
 
 test("Task 57 grants RLS and tenant-scoped finding evidence fail closed", async () => {
-  const hardening = await source("supabase/migrations/20260909032000_gwd08_grants_rls_views_hardening.sql");
-  const findings = await source("supabase/migrations/20260909111500_task50_findings_evidence_model.sql");
+  const hardening = await source("supabase/migrations/20260909044801_gwd08_grants_rls_views_hardening.sql");
+  const findings = await source("supabase/migrations/20260909114606_task50_findings_evidence_model.sql");
   assert.match(hardening, /revoke all on all tables in schema public from anon/i);
   assert.match(hardening, /revoke execute on all functions in schema public from anon/i);
   assert.match(hardening, /force row level security/i);

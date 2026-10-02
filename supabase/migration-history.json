@@ -1,0 +1,215 @@
+{
+  "projectRef": "qryvrcwbsehrzpersuoc",
+  "auditedAt": "2026-10-02",
+  "baselineCount": 26,
+  "entries": [
+    {
+      "version": "20260909002209",
+      "name": "initial_v1_schema",
+      "path": "supabase/migrations/20260909002209_initial_v1_schema.sql",
+      "repositorySha256": "165a44628ffad05ba32b801e467aa33cc6515104676fd4e4835c4569c47fece6",
+      "storedStatementsSha256": "fac6322775262f8f2c884549e079f1be5b7ce9abfdf07da3688798c2a81027ba",
+      "comparison": "SQL_TOKEN_MATCH"
+    },
+    {
+      "version": "20260909002221",
+      "name": "contract_integrity_fixes",
+      "path": "supabase/migrations/20260909002221_contract_integrity_fixes.sql",
+      "repositorySha256": "eeaa419b7f2881b0581724978ebb42ba37ea4f31298eebf24d306f28aaab27c2",
+      "storedStatementsSha256": "8bfe1141ed4ef5ade9c5a0edb4e373eed09dc174f13aa10ffc5963354220e6b6",
+      "comparison": "SQL_TOKEN_MATCH"
+    },
+    {
+      "version": "20260909002607",
+      "name": "task21_workspace_auth_rls",
+      "path": "supabase/migrations/20260909002607_task21_workspace_auth_rls.sql",
+      "repositorySha256": "15e9a942dec25d2dfc5a6e305174eb937cdcbf47e5c50f7eeeb74e4d97e2c1a9",
+      "storedStatementsSha256": "deea03b9f06c6893c57dab1c333dca82f5973f89d1f939323cae57988b3b0e60",
+      "comparison": "SQL_TOKEN_MATCH"
+    },
+    {
+      "version": "20260909031311",
+      "name": "task24_retention_archiving",
+      "path": "supabase/migrations/20260909031311_task24_retention_archiving.sql",
+      "repositorySha256": "ba8ff217ba907303cc2e8f9b4d5a20c55f6d5d057d79864d75b682b98ee8970c",
+      "storedStatementsSha256": "066d141c22145959bac6e9486d2c8ffe73118a99d1f90e03f7725985d3ee6069",
+      "comparison": "SQL_TOKEN_MATCH"
+    },
+    {
+      "version": "20260909032759",
+      "name": "gwd08_grants_rls_views_hardening",
+      "path": "supabase/migrations/20260909032759_gwd08_grants_rls_views_hardening.sql",
+      "repositorySha256": "fb37424025ac38356c97d43e11eb7ebc6c740552c6e3a3e100184d7b4376c501",
+      "storedStatementsSha256": "fb37424025ac38356c97d43e11eb7ebc6c740552c6e3a3e100184d7b4376c501",
+      "comparison": "SQL_TOKEN_MATCH"
+    },
+    {
+      "version": "20260909032803",
+      "name": "gwd07_event_dlq",
+      "path": "supabase/migrations/20260909032803_gwd07_event_dlq.sql",
+      "repositorySha256": "35230b627df76eb08ef6f04549c80d5d6bb02a5c44910ed2a4894e2e0bca5958",
+      "storedStatementsSha256": "aa554e27a056b7d17e21a6aeca263850f23a9172165f613e77ff04c3497ffff1",
+      "comparison": "SQL_TOKEN_MATCH"
+    },
+    {
+      "version": "20260909032845",
+      "name": "gwd08_private_acl_fix",
+      "path": "supabase/migrations/20260909032845_gwd08_private_acl_fix.sql",
+      "repositorySha256": "744cfab7a273688af037682eb9464c35de6c86359a7bc8910470faa21aedc604",
+      "storedStatementsSha256": "744cfab7a273688af037682eb9464c35de6c86359a7bc8910470faa21aedc604",
+      "comparison": "SQL_TOKEN_MATCH"
+    },
+    {
+      "version": "20260909042926",
+      "name": "gwd06_ingestion_token_gate",
+      "path": "supabase/migrations/20260909042926_gwd06_ingestion_token_gate.sql",
+      "repositorySha256": "ab4d8ade03473690c775d6a3d600f753aebf487b8bb73aa5af7827650821c3f1",
+      "storedStatementsSha256": "ab4d8ade03473690c775d6a3d600f753aebf487b8bb73aa5af7827650821c3f1",
+      "comparison": "SQL_TOKEN_MATCH"
+    },
+    {
+      "version": "20260909044801",
+      "name": "gwd08_grants_rls_views_hardening",
+      "path": "supabase/migrations/20260909044801_gwd08_grants_rls_views_hardening.sql",
+      "repositorySha256": "fabd846e36fcc90c54b04362046fa59c621f28feb9e16d964e22f660f0379287",
+      "storedStatementsSha256": "4966c823fc99b38c618d38a38c88dbcd902f8025b0d1b8f2c60d06c0965e2155",
+      "comparison": "SQL_TOKEN_MATCH"
+    },
+    {
+      "version": "20260909053844",
+      "name": "task17_prototype_frame_mapping",
+      "path": "supabase/migrations/20260909053844_task17_prototype_frame_mapping.sql",
+      "repositorySha256": "68744d75ad66a88743f7005b1732db7098958b977c0272cca5ee4e2b319def2c",
+      "storedStatementsSha256": "152de87dd13c896d6ffa3cce9aa3cf273108a8fc9121168f4f8ea537fcad7348",
+      "comparison": "SQL_TOKEN_MATCH"
+    },
+    {
+      "version": "20260909081424",
+      "name": "task29_task_instruction_and_atomic_reorder",
+      "path": "supabase/migrations/20260909081424_task29_task_instruction_and_atomic_reorder.sql",
+      "repositorySha256": "7ffd42e9000fa03d8596647762fa7ca512f54ca7f790c7bda442e2019333bf74",
+      "storedStatementsSha256": "7ffd42e9000fa03d8596647762fa7ca512f54ca7f790c7bda442e2019333bf74",
+      "comparison": "SQL_TOKEN_MATCH"
+    },
+    {
+      "version": "20260909082424",
+      "name": "task30_disjoint_terminal_targets",
+      "path": "supabase/migrations/20260909082424_task30_disjoint_terminal_targets.sql",
+      "repositorySha256": "5f0abcb225fd4631be64a599057bd6a187ac644c3e6b0ed6c19143969c34e5f5",
+      "storedStatementsSha256": "5f0abcb225fd4631be64a599057bd6a187ac644c3e6b0ed6c19143969c34e5f5",
+      "comparison": "SQL_TOKEN_MATCH"
+    },
+    {
+      "version": "20260909102718",
+      "name": "task31_post_task_questions",
+      "path": "supabase/migrations/20260909102718_task31_post_task_questions.sql",
+      "repositorySha256": "f4748dd17fb75f20f3414187370daef27d74673d3b8196187ab7a6145a58dc72",
+      "storedStatementsSha256": "f4748dd17fb75f20f3414187370daef27d74673d3b8196187ab7a6145a58dc72",
+      "comparison": "SQL_TOKEN_MATCH"
+    },
+    {
+      "version": "20260909102745",
+      "name": "task32_publish_versioning",
+      "path": "supabase/migrations/20260909102745_task32_publish_versioning.sql",
+      "repositorySha256": "81493048ea0c3ede2d2199ba4735370c63575878816f404ef823ebdab13e3ebf",
+      "storedStatementsSha256": "4c442f42a85c48964947d0d912ae74e89af6fc23be0d066e6c7866579a304cf7",
+      "comparison": "SQL_TOKEN_MATCH"
+    },
+    {
+      "version": "20260909102758",
+      "name": "task33_anonymous_session_entry",
+      "path": "supabase/migrations/20260909102758_task33_anonymous_session_entry.sql",
+      "repositorySha256": "4a676df620efa7a84825d5a1f04eacc43eda16f01c36e0e9f77458a1ab5ef647",
+      "storedStatementsSha256": "4a676df620efa7a84825d5a1f04eacc43eda16f01c36e0e9f77458a1ab5ef647",
+      "comparison": "SQL_TOKEN_MATCH"
+    },
+    {
+      "version": "20260909102833",
+      "name": "task38_41_lifecycle_derivation",
+      "path": "supabase/migrations/20260909102833_task38_41_lifecycle_derivation.sql",
+      "repositorySha256": "e05350ec9b415c20aec7c56e48ff51ea62b2a2f9fb89a28613159f90755d1938",
+      "storedStatementsSha256": "97ed5be895a8dfaeb5cad971b11d4ad3bf17a805d0224206646255701947673f",
+      "comparison": "SQL_TOKEN_MATCH"
+    },
+    {
+      "version": "20260909102851",
+      "name": "task37_post_task_feedback",
+      "path": "supabase/migrations/20260909102851_task37_post_task_feedback.sql",
+      "repositorySha256": "ce74ce16e063309126dca7796b0281d4f1a962e0e9fa272fcc342d2902063b84",
+      "storedStatementsSha256": "5da38df8db34ac689bc30c39f8468bb6420032496f78fe30df5681e23c3ee770",
+      "comparison": "SQL_TOKEN_MATCH"
+    },
+    {
+      "version": "20260909114606",
+      "name": "task50_findings_evidence_model",
+      "path": "supabase/migrations/20260909114606_task50_findings_evidence_model.sql",
+      "repositorySha256": "7a231d977bade784fa61e6eeed1d33cfac389d4cd7d2937b6486645afa1de40d",
+      "storedStatementsSha256": "7a231d977bade784fa61e6eeed1d33cfac389d4cd7d2937b6486645afa1de40d",
+      "comparison": "SQL_TOKEN_MATCH"
+    },
+    {
+      "version": "20260909125410",
+      "name": "task48_funnel_definition",
+      "path": "supabase/migrations/20260909125410_task48_funnel_definition.sql",
+      "repositorySha256": "343f888f0b86e930f2eafed989586e62bf11b1c07e1d7ec7ca1b424aa2659985",
+      "storedStatementsSha256": "343f888f0b86e930f2eafed989586e62bf11b1c07e1d7ec7ca1b424aa2659985",
+      "comparison": "SQL_TOKEN_MATCH"
+    },
+    {
+      "version": "20260910163157",
+      "name": "task39_figma_geometry_snapshot",
+      "path": "supabase/migrations/20260910163157_task39_figma_geometry_snapshot.sql",
+      "repositorySha256": "ac07956d75b363162ad07ffcfa653a9dfffb2884b5b17d4c5cb6854dbab1455c",
+      "storedStatementsSha256": "ac07956d75b363162ad07ffcfa653a9dfffb2884b5b17d4c5cb6854dbab1455c",
+      "comparison": "SQL_TOKEN_MATCH"
+    },
+    {
+      "version": "20260921164925",
+      "name": "mt03_provider_neutral_target_snapshot",
+      "path": "supabase/migrations/20260921164925_mt03_provider_neutral_target_snapshot.sql",
+      "repositorySha256": "28b8686ff7445e884c2edd828ec215fb4fab48788740ee4c74f6f68d06b556bd",
+      "storedStatementsSha256": "deb73746d588563af7045edeefca79b69088aee3cad28ecc58ae0f5e60d15a11",
+      "comparison": "SQL_TOKEN_MATCH"
+    },
+    {
+      "version": "20260923092440",
+      "name": "auto_major_execution_leases",
+      "path": "supabase/migrations/20260923092440_auto_major_execution_leases.sql",
+      "repositorySha256": "adaa59c248a58dc77d9ff10d442971452290d6e495ce8c14fad93536bb656efa",
+      "storedStatementsSha256": "adaa59c248a58dc77d9ff10d442971452290d6e495ce8c14fad93536bb656efa",
+      "comparison": "SQL_TOKEN_MATCH"
+    },
+    {
+      "version": "20260923095639",
+      "name": "proof_gate_major_ids",
+      "path": "supabase/migrations/20260923095639_proof_gate_major_ids.sql",
+      "repositorySha256": "3624ae06c4aa919be0fa3c24c8e0889c4fb17957968c1415aec48b9b7cec79bd",
+      "storedStatementsSha256": "0ccdd3ce9ba13feca700187b13e5fb9d151abcd7745f7675de49a3af1f15375a",
+      "comparison": "SQL_TOKEN_MATCH"
+    },
+    {
+      "version": "20260923103600",
+      "name": "major_a_workspace_bootstrap",
+      "path": "supabase/migrations/20260923103600_major_a_workspace_bootstrap.sql",
+      "repositorySha256": "3f7e2621a20567fde441b89145d4af9abac088b81e9cedf7f1b06ecdda0f2980",
+      "storedStatementsSha256": "3f7e2621a20567fde441b89145d4af9abac088b81e9cedf7f1b06ecdda0f2980",
+      "comparison": "SQL_TOKEN_MATCH"
+    },
+    {
+      "version": "20260923122406",
+      "name": "mt08_provider_neutral_outcome_rules",
+      "path": "supabase/migrations/20260923122406_mt08_provider_neutral_outcome_rules.sql",
+      "repositorySha256": "3470368a953a2368c7b8b4113b06ed0dca05ef3763d851323ee5c70db5ca953a",
+      "storedStatementsSha256": "3470368a953a2368c7b8b4113b06ed0dca05ef3763d851323ee5c70db5ca953a",
+      "comparison": "SQL_TOKEN_MATCH"
+    },
+    {
+      "version": "20260925135532",
+      "name": "mt10_report_finding_fields",
+      "path": "supabase/migrations/20260925135532_mt10_report_finding_fields.sql",
+      "repositorySha256": "fabf9131085309f3d61bde08dcc2cdca1e8f23720c752d6f43a52d79b7c8ff2f",
+      "storedStatementsSha256": "fabf9131085309f3d61bde08dcc2cdca1e8f23720c752d6f43a52d79b7c8ff2f",
+      "comparison": "SQL_TOKEN_MATCH"
+    }
+  ]
+}

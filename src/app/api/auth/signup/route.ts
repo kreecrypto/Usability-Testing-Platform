@@ -1,41 +1,22 @@
-import {
-  accessCookieHeader,
-  AuthSessionError,
-  signUpWithPassword,
-} from "../../../../lib/auth/session.ts";
-
+import { AuthSessionError, signUpWithPassword } from "../../../../lib/auth/session.ts";
+import { authJson, authError, createAuthFlow, sameOrigin, setSessionCookies } from "../../../../lib/auth/lifecycle.ts";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function json(body: unknown, status: number, headers: Record<string, string> = {}): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      "cache-control": "private, no-store",
-      ...headers,
-    },
-  });
-}
-
 export async function POST(request: Request): Promise<Response> {
-  let body: unknown;
-  try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400); }
-  if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "invalid_body" }, 400);
-  const input = body as Record<string, unknown>;
+  if (!sameOrigin(request)) return authJson({ error: "invalid_origin" }, 403);
+  let body: Record<string, unknown>;
+  try { body = await request.json(); } catch { return authJson({ error: "invalid_json" }, 400); }
+  if (!body || typeof body !== "object" || Array.isArray(body)) return authJson({ error: "invalid_body" }, 400);
   try {
-    const result = await signUpWithPassword({ email: input.email, password: input.password });
-    if (!result.session) {
-      return json({ user: result.user, confirmationRequired: true }, 202);
-    }
-    const secure = new URL(request.url).protocol === "https:";
-    return json(
-      { user: result.user, confirmationRequired: false },
-      201,
-      { "set-cookie": accessCookieHeader(result.session.accessToken, result.session.expiresIn, secure) },
-    );
-  } catch (error) {
-    if (error instanceof AuthSessionError) return json({ error: error.code }, error.status);
-    return json({ error: "auth_unavailable" }, 503);
-  }
+    if (typeof body.password !== "string" || body.password.length < 8) throw new AuthSessionError("weak_password", 400);
+    const url = new URL(request.url);
+    const flow = createAuthFlow("signup", body.next, url.protocol === "https:");
+    const result = await signUpWithPassword({ email: body.email, password: body.password }, {
+      codeChallenge: flow.challenge, redirectTo: `${url.origin}/auth/callback`,
+    });
+    const response = authJson({ user: result.session?.user, confirmationRequired: !result.session }, result.session ? 201 : 202);
+    if (result.session) setSessionCookies(response, result.session, url.protocol === "https:");
+    else response.headers.append("set-cookie", flow.cookie);
+    return response;
+  } catch (error) { return authError(error); }
 }

@@ -1,7 +1,10 @@
 "use client";
 
+import { authenticatedFetch } from "../../../lib/auth/client.ts";
+
 import { useEffect, useState } from "react";
 import type { RetestMetricComparison } from "../../../lib/findings/model.ts";
+import { retestReasonLabel } from "../../../lib/findings/retest-labels.ts";
 import styles from "./retest.module.css";
 
 type Payload = { retest: { retestId: string; status: string; comparison: RetestMetricComparison } };
@@ -23,7 +26,7 @@ export default function RetestPage({ params }: { params: Promise<{ retestId: str
     let cancelled = false;
     void params.then(async ({ retestId }) => {
       try {
-        const response = await fetch(`/api/retests/${encodeURIComponent(retestId)}`, { cache: "no-store" });
+        const response = await authenticatedFetch(`/api/retests/${encodeURIComponent(retestId)}`, { cache: "no-store" });
         if (!response.ok) throw new Error(response.status === 401 ? "ต้องเข้าสู่ระบบก่อนดูผลการทดสอบซ้ำ" : "โหลดผลเปรียบเทียบการทดสอบซ้ำไม่สำเร็จ");
         const payload = await response.json() as Payload;
         if (!cancelled) setState({ loading: false, error: "", data: payload.retest });
@@ -35,16 +38,17 @@ export default function RetestPage({ params }: { params: Promise<{ retestId: str
   }, [params]);
 
   return <main className={styles.page}>
-    <header className={styles.header}><div><span>ทดสอบซ้ำ</span><h1>ก่อนปรับเทียบกับการทดสอบซ้ำ</h1><p>เปรียบเทียบผลโดยคงรหัสเวอร์ชัน จำนวนตัวอย่าง และจำนวนรอบที่ติดปัญหาทางเทคนิคไว้ให้ตรวจสอบได้ ระบบจะไม่สรุปนัยสำคัญทางสถิติเพราะยังไม่มีวิธีคำนวณที่รองรับ</p></div></header>
+    <p><a href="/projects">กลับไปที่โปรเจกต์</a></p><header className={styles.header}><div><span>ทดสอบซ้ำ</span><h1>ก่อนปรับเทียบกับการทดสอบซ้ำ</h1><p>เปรียบเทียบผลโดยคงรหัสเวอร์ชัน จำนวนตัวอย่าง และจำนวนเซสชันที่ติดปัญหาทางเทคนิคไว้ให้ตรวจสอบได้ ระบบจะไม่สรุปนัยสำคัญทางสถิติจากข้อมูลชุดนี้</p></div></header>
     {state.loading ? <div className={styles.state}>กำลังโหลดผลเปรียบเทียบ…</div> : null}
     {state.error ? <div className={styles.error} role="alert">{state.error}</div> : null}
     {state.data ? <section className={styles.panel}>
       <div className={styles.panelHeader}><div><span>ตัวชี้วัด</span><h2>{state.data.comparison.metricKey}</h2></div><strong>{state.data.status}</strong></div>
       <div className={styles.compareGrid}>
-        <article><span>ก่อนปรับ</span><strong>{value(state.data.comparison.baseline.value)}</strong><small>n={state.data.comparison.baseline.sampleSize} · ติดปัญหาทางเทคนิค={state.data.comparison.baseline.technicalBlockedCount}</small><code>{state.data.comparison.baseline.testVersionId}</code></article>
-        <article><span>ทดสอบซ้ำ</span><strong>{value(state.data.comparison.retest.value)}</strong><small>n={state.data.comparison.retest.sampleSize} · ติดปัญหาทางเทคนิค={state.data.comparison.retest.technicalBlockedCount}</small><code>{state.data.comparison.retest.testVersionId}</code></article>
+        <article><span>ก่อนปรับ</span><strong>{value(state.data.comparison.baseline.value)}</strong><small>n={state.data.comparison.baseline.sampleSize} · ติดปัญหาทางเทคนิค={state.data.comparison.baseline.technicalBlockedCount}</small><small>ตัวตั้ง/ตัวหาร: {state.data.comparison.baseline.numerator ?? "—"}/{state.data.comparison.baseline.denominator ?? "—"}</small><small>เป้าหมาย: {state.data.comparison.baseline.targetProvider ?? "ไม่ระบุ"} · snapshot {state.data.comparison.baseline.targetSnapshotVersion ?? "ไม่ระบุ"}</small><small>นิยาม: {state.data.comparison.baseline.metricDefinitionVersion ?? "ไม่ระบุ"}</small><code>{state.data.comparison.baseline.testVersionId}</code><a href={`/results/${encodeURIComponent(state.data.comparison.baseline.testVersionId)}`}>ดูหลักฐานก่อนปรับ</a></article>
+        <article><span>ทดสอบซ้ำ</span><strong>{value(state.data.comparison.retest.value)}</strong><small>n={state.data.comparison.retest.sampleSize} · ติดปัญหาทางเทคนิค={state.data.comparison.retest.technicalBlockedCount}</small><small>ตัวตั้ง/ตัวหาร: {state.data.comparison.retest.numerator ?? "—"}/{state.data.comparison.retest.denominator ?? "—"}</small><small>เป้าหมาย: {state.data.comparison.retest.targetProvider ?? "ไม่ระบุ"} · snapshot {state.data.comparison.retest.targetSnapshotVersion ?? "ไม่ระบุ"}</small><small>นิยาม: {state.data.comparison.retest.metricDefinitionVersion ?? "ไม่ระบุ"}</small><code>{state.data.comparison.retest.testVersionId}</code><a href={`/results/${encodeURIComponent(state.data.comparison.retest.testVersionId)}`}>ดูหลักฐานการทดสอบซ้ำ</a></article>
       </div>
-      <div className={styles.deltaGrid}><div><span>ผลต่างแบบสัมบูรณ์</span><strong>{delta(state.data.comparison.absoluteDelta)}</strong></div><div><span>ผลต่างสัมพัทธ์</span><strong>{delta(state.data.comparison.relativeDeltaPercent, "%")}</strong></div><div><span>นัยสำคัญทางสถิติ</span><strong>ไม่ได้สรุป</strong></div></div>
+      {!state.data.comparison.comparable ? <p className={styles.note} role="status">ยังเปรียบเทียบผลต่างไม่ได้: {state.data.comparison.incomparableReasons.map(retestReasonLabel).join(" · ")}</p> : null}
+      <div className={styles.deltaGrid}><div><span>ผลต่าง{state.data.comparison.absoluteDeltaUnit === "percentage_points" ? " (จุดเปอร์เซ็นต์)" : ""}</span><strong>{delta(state.data.comparison.absoluteDelta)}</strong></div><div><span>ผลต่างสัมพัทธ์</span><strong>{delta(state.data.comparison.relativeDeltaPercent, "%")}</strong></div><div><span>นัยสำคัญทางสถิติ</span><strong>ไม่ได้สรุป</strong></div></div>
       <p className={styles.note}>ผลต่างสัมพัทธ์จะแสดงเมื่อทั้งสองฝั่งมีข้อมูลและค่าก่อนปรับไม่เป็นศูนย์ ระบบไม่ติดป้ายว่า “ดีขึ้น” หรือ “แย่ลง” เพราะไม่ได้อนุมานว่าทิศทางใดดีกว่าสำหรับตัวชี้วัดแต่ละชนิด</p>
     </section> : null}
   </main>;

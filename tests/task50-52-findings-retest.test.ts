@@ -3,6 +3,8 @@ import test from "node:test";
 
 import { compareRetestMetric, normalizeMetricSnapshot } from "../src/lib/findings/model.ts";
 import { createFindingsStore } from "../src/lib/findings/store.ts";
+import { metricSnapshotFromObservation } from "../src/lib/findings/snapshot.ts";
+import type { MetricObservation } from "../src/lib/analytics/observations.ts";
 
 const workspaceId = "11111111-1111-4111-8111-111111111111";
 const projectId = "22222222-2222-4222-8222-222222222222";
@@ -20,6 +22,15 @@ function metric(testVersionId: string, value: number | null, sampleSize: number,
     aggregationVersion: "task25-v1",
     ruleVersions: ["success-rule-v1"],
     sourceEventIds: ["event-1", "event-2"],
+    metricDefinitionVersion: "analytics-v1",
+    targetProvider: "first_party_web",
+    targetSnapshotVersion: 1,
+    requiredCapabilities: [],
+    availability: sampleSize > 0 ? "Available" : "No Data",
+    scope: "task",
+    taskId: "99999999-9999-4999-8999-999999999999",
+    numerator: value === null ? null : Math.round(value * sampleSize / 100),
+    denominator: sampleSize,
   };
 }
 
@@ -42,6 +53,8 @@ test("Task 52 computes absolute and relative delta without claiming significance
     after: metric(retestVersion, 65, 24, 1),
   });
   assert.equal(comparison.absoluteDelta, 15);
+  assert.equal(comparison.comparable, true);
+  assert.equal(comparison.absoluteDeltaUnit, "percentage_points");
   assert.equal(comparison.relativeDeltaPercent, 30);
   assert.equal(comparison.baseline.sampleSize, 20);
   assert.equal(comparison.retest.sampleSize, 24);
@@ -58,6 +71,49 @@ test("Task 52 relative delta is not fabricated for zero or missing baseline", ()
   const missing = compareRetestMetric({ baselineVersionId: versionId, retestVersionId: retestVersion, before: metric(versionId, null, 0, 3), after: metric(retestVersion, 5, 10, 0) });
   assert.equal(missing.absoluteDelta, null);
   assert.equal(missing.relativeDeltaPercent, null);
+  assert.equal(missing.comparable, false);
+});
+
+test("MT-12 hides delta when metric context or provider capability differs", () => {
+  const retestVersion = "77777777-7777-4777-8777-777777777777";
+  const before = metric(versionId, 50, 20, 2);
+  const after = metric(retestVersion, 65, 24, 1);
+  const definition = compareRetestMetric({ baselineVersionId: versionId, retestVersionId: retestVersion, before, after: { ...after, metricDefinitionVersion: "analytics-v2" } });
+  assert.equal(definition.absoluteDelta, null);
+  assert.deepEqual(definition.incomparableReasons, ["metric_definition_mismatch"]);
+
+  const capability = compareRetestMetric({ baselineVersionId: versionId, retestVersionId: retestVersion, before, after: { ...after, requiredCapabilities: ["pointer"] } });
+  assert.equal(capability.absoluteDelta, null);
+  assert.ok(capability.incomparableReasons.includes("capability_mismatch"));
+
+  const legacy = compareRetestMetric({ baselineVersionId: versionId, retestVersionId: retestVersion, before: { ...before, metricDefinitionVersion: undefined, targetProvider: undefined }, after });
+  assert.equal(legacy.comparable, false);
+  assert.equal(legacy.absoluteDelta, null);
+  assert.ok(legacy.incomparableReasons.includes("target_context_missing"));
+
+  const eligibility = compareRetestMetric({ baselineVersionId: versionId, retestVersionId: retestVersion, before, after: { ...after, denominator: 22 } });
+  assert.equal(eligibility.absoluteDelta, null);
+  assert.ok(eligibility.incomparableReasons.includes("eligibility_context_mismatch"));
+
+  const availableAcrossProviders = compareRetestMetric({ baselineVersionId: versionId, retestVersionId: retestVersion, before, after: { ...after, targetProvider: "figma" } });
+  assert.equal(availableAcrossProviders.comparable, true);
+  assert.equal(availableAcrossProviders.retest.targetProvider, "figma");
+});
+
+test("MT-12 copies authoritative metric observation context into a stored snapshot", () => {
+  const observation: MetricObservation = {
+    metricKey: "completionRate", metricDefinitionVersion: "analytics-v1", scope: "task",
+    taskId: "99999999-9999-4999-8999-999999999999", value: 50, numerator: 10,
+    denominator: 20, sampleSize: 20, technicalBlockedCount: 2,
+    availability: "Available", requiredCapabilities: [], testVersionId: versionId,
+    targetProvider: "first_party_web", targetSnapshotVersion: 1,
+    aggregationVersion: "task25-v1", ruleVersions: ["success-rule-v1"], evidenceRefs: ["event-1"],
+  };
+  const snapshot = metricSnapshotFromObservation(observation);
+  assert.equal(snapshot.metricDefinitionVersion, observation.metricDefinitionVersion);
+  assert.equal(snapshot.targetProvider, observation.targetProvider);
+  assert.deepEqual(snapshot.sourceEventIds, observation.evidenceRefs);
+  assert.equal(snapshot.denominator, observation.denominator);
 });
 
 test("Task 51 path evidence insert carries finding workspace scope", async () => {

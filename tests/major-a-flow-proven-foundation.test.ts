@@ -7,7 +7,7 @@ function read(path: string): string {
 }
 
 test("MAJOR-A zero-state workspace bootstrap stays authenticated and RLS-backed", () => {
-  const migration = read("supabase/migrations/20260923113000_major_a_workspace_bootstrap.sql");
+  const migration = read("supabase/migrations/20260923103600_major_a_workspace_bootstrap.sql");
   const route = read("src/app/api/workspaces/route.ts");
 
   assert.match(migration, /security invoker/i);

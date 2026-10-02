@@ -241,8 +241,8 @@ test("Tasks 34-37 runner UI covers participant states in Thai without exposing i
 });
 
 test("Tasks 37/38/40/41 database rules are idempotent, server-derived, and mark proposed friction thresholds honestly", async () => {
-  const lifecycleSql = await readFile(new URL("../supabase/migrations/20260909110000_task38_41_lifecycle_derivation.sql", import.meta.url), "utf8");
-  const feedbackSql = await readFile(new URL("../supabase/migrations/20260909113000_task37_post_task_feedback.sql", import.meta.url), "utf8");
+  const lifecycleSql = await readFile(new URL("../supabase/migrations/20260909102833_task38_41_lifecycle_derivation.sql", import.meta.url), "utf8");
+  const feedbackSql = await readFile(new URL("../supabase/migrations/20260909102851_task37_post_task_feedback.sql", import.meta.url), "utf8");
   assert.match(lifecycleSql, /participant ingestion remains RAW ONLY/i);
   assert.match(lifecycleSql, /task_success/);
   assert.match(lifecycleSql, /task_failed/);
@@ -257,7 +257,7 @@ test("Tasks 37/38/40/41 database rules are idempotent, server-derived, and mark 
 });
 
 test("Task43 existing database and collector gates retain stable event dedupe/DLQ guarantees", async () => {
-  const schema = await readFile(new URL("../supabase/migrations/20260908141723_initial_v1_schema.sql", import.meta.url), "utf8");
+  const schema = await readFile(new URL("../supabase/migrations/20260909002209_initial_v1_schema.sql", import.meta.url), "utf8");
   const collector = await readFile(new URL("../src/app/v1/events/route.ts", import.meta.url), "utf8");
   const outbox = await readFile(new URL("../src/lib/tracking/event-outbox.ts", import.meta.url), "utf8");
   assert.match(schema, /unique \(session_id, idempotency_key\)/i);
