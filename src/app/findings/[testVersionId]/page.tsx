@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "../../../lib/auth/client.ts";
+
 import { useEffect, useMemo, useState } from "react";
 import type { ResultsModel, TaskDetailResult } from "../../../lib/analytics/results.ts";
 import type { FindingRecord } from "../../../lib/findings/model.ts";
@@ -64,8 +66,8 @@ export default function FindingsPage({ params }: { params: Promise<{ testVersion
     setState("loading"); setError("");
     try {
       const [resultsResponse, findingsResponse] = await Promise.all([
-        fetch(`/api/results/${encodeURIComponent(versionId)}`, { cache: "no-store" }),
-        fetch(`/api/findings?testVersionId=${encodeURIComponent(versionId)}`, { cache: "no-store" }),
+        authenticatedFetch(`/api/results/${encodeURIComponent(versionId)}`, { cache: "no-store" }),
+        authenticatedFetch(`/api/findings?testVersionId=${encodeURIComponent(versionId)}`, { cache: "no-store" }),
       ]);
       if (!resultsResponse.ok || !findingsResponse.ok) throw new Error(resultsResponse.status === 401 || findingsResponse.status === 401 ? "ต้องเข้าสู่ระบบก่อนใช้งาน" : "โหลดข้อมูลประเด็นที่พบไม่สำเร็จ");
       const resultsPayload = await resultsResponse.json() as { results: ResultsModel };
@@ -84,7 +86,7 @@ export default function FindingsPage({ params }: { params: Promise<{ testVersion
     if (!selectedTask || !title.trim() || !problem.trim()) return;
     setSaving(true); setError("");
     try {
-      const response = await fetch("/api/findings", {
+      const response = await authenticatedFetch("/api/findings", {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({
           testVersionId,
@@ -114,7 +116,7 @@ export default function FindingsPage({ params }: { params: Promise<{ testVersion
       if (!path) { setError("ไม่พบหลักฐานเส้นทางของรอบการทดสอบและงานนี้"); return; }
       body.payload = { taskId: path.taskId, expectedPath: path.expectedPath, actualPath: path.actualPath, detourCount: path.detourCount, backtrackCount: path.backtrackCount, terminalOutcome: path.terminalOutcome };
     }
-    const response = await fetch(`/api/findings/${finding.id}/evidence`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    const response = await authenticatedFetch(`/api/findings/${finding.id}/evidence`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
     if (!response.ok) { setError("เชื่อมหลักฐานไม่สำเร็จ"); return; }
     setError("");
   }

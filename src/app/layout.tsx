@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import ResearcherSession from "../components/auth/researcher-session";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,7 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="th">
-      <body>{children}</body>
+      <body><ResearcherSession>{children}</ResearcherSession></body>
     </html>
   );
 }

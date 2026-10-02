@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticatedFetch } from "../../../lib/auth/client.ts";
+
 import { useEffect, useState } from "react";
 import type { RetestMetricComparison } from "../../../lib/findings/model.ts";
 import styles from "./retest.module.css";
@@ -23,7 +25,7 @@ export default function RetestPage({ params }: { params: Promise<{ retestId: str
     let cancelled = false;
     void params.then(async ({ retestId }) => {
       try {
-        const response = await fetch(`/api/retests/${encodeURIComponent(retestId)}`, { cache: "no-store" });
+        const response = await authenticatedFetch(`/api/retests/${encodeURIComponent(retestId)}`, { cache: "no-store" });
         if (!response.ok) throw new Error(response.status === 401 ? "ต้องเข้าสู่ระบบก่อนดูผลการทดสอบซ้ำ" : "โหลดผลเปรียบเทียบการทดสอบซ้ำไม่สำเร็จ");
         const payload = await response.json() as Payload;
         if (!cancelled) setState({ loading: false, error: "", data: payload.retest });

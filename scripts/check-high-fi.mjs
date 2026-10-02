@@ -113,9 +113,9 @@ for (const signal of cssSignals) if (!css.includes(signal)) fail(`base high-fi C
 const fixSignals = ['.reviewStage--mobile .appSidebar','width:280px','.navBackdrop','.componentChips','.reviewStepper','.inlineError','.choiceGrid','.hfButton{','border-radius:var(--ut-radius-pill)','.appTopbar h1','.participantPrototype','var(--ut-touch-target-min)'];
 for (const signal of fixSignals) if (!fixes.includes(signal)) fail(`post-review CSS missing ${signal}`);
 
-for (const signal of ['href: "/demo/projects"','ทดสอบการใช้งานกับผู้ใช้จริง','ดูตัวอย่างการทำงาน','ข้อมูลใน Demo เป็นเรื่องสมมติ','เตรียมแบบทดสอบ','ดูผลและหลักฐาน','แก้ไขและทดสอบซ้ำ']) if (!home.includes(signal)) fail(`Thai home missing ${signal}`);
+for (const signal of ['href: "/demo/projects"','href: "/login"','ทดสอบการใช้งานกับผู้ใช้จริง','เข้าสู่พื้นที่ทำงานผู้วิจัย','ข้อมูลใน Demo เป็นเรื่องสมมติ','เตรียมแบบทดสอบ','ดูผลและหลักฐาน','แก้ไขและทดสอบซ้ำ']) if (!home.includes(signal)) fail(`Thai home missing ${signal}`);
 if (home.includes('รุ่นปัจจุบันเน้นการทดสอบต้นแบบ Figma')) fail('home must not imply Figma is the only test target');
-if (home.includes('href: "/projects"') || home.includes('href="/login"')) fail('public home must not enter protected researcher workspace');
+if (home.includes('href: "/projects"')) fail('public home must enter researcher workspace through authentication');
 if (!layout.includes('<html lang="th">')) fail('document language must be Thai');
 for (const signal of ['--ut-color-brand','--ut-color-text-primary','--ut-color-bg-surface','--ut-color-focus-ring','--ut-color-outcome-technical','--ut-font-family-sans','--ut-space-4']) if (!tokens.includes(signal)) fail(`tokens missing ${signal}`);
 for (const screen of map.screens) {
