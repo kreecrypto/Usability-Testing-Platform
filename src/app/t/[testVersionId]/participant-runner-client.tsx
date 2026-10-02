@@ -540,7 +540,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     if (!snapshot || snapshot.target.instrumentation !== "first_party_bridge") return;
     const opened = window.open(snapshot.target.sourceUrl, "utp-first-party-target");
     if (!opened) {
-      setTechnicalReason("เบราว์เซอร์บล็อกหน้าต่าง Test Target กรุณาอนุญาต pop-up แล้วลองอีกครั้ง");
+      setTechnicalReason("เบราว์เซอร์บล็อกหน้าต่างเว็บไซต์ที่จะทดสอบ โปรดอนุญาตหน้าต่างใหม่แล้วลองอีกครั้ง");
       setProviderReady(false);
       return;
     }
@@ -689,7 +689,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
               ref={iframeRef}
               className={styles.prototypeFrame}
               src={snapshot.target.liveEmbedUrl ?? snapshot.target.embedUrl ?? snapshot.target.sourceUrl}
-              title={`${snapshot.title} เป้าหมายทดสอบสำหรับงาน ${taskIndex + 1}`}
+              title={`${snapshot.title} สิ่งที่จะทดสอบสำหรับงาน ${taskIndex + 1}`}
               allow="fullscreen"
             />
           </>
@@ -697,7 +697,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
           <iframe
             className={styles.prototypeFrame}
             src={snapshot.target.embedUrl ?? snapshot.target.sourceUrl}
-            title={`${snapshot.title} เป้าหมายทดสอบสำหรับงาน ${taskIndex + 1}`}
+            title={`${snapshot.title} สิ่งที่จะทดสอบสำหรับงาน ${taskIndex + 1}`}
           />
         ) : (
           <section className={styles.card} style={{ margin: "24px auto", maxWidth: 720 }}>

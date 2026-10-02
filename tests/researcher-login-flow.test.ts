@@ -29,7 +29,7 @@ test("researcher flow requires login and never creates a guest identity", () => 
   assert.match(projects, /\/api\/workspaces/);
   assert.match(projects, /\/api\/projects/);
   assert.match(projects, /\/api\/tests/);
-  assert.match(projects, /\/builder\/\$\{query\(result\.test\.id\)\}\/\$\{testKind === "methods" \? "methods" : "prototype"\}/);
+  assert.match(projects, /methods\?kind=/);
   for (const field of ["workspace-select", "workspace-name", "project-name", "test-title"]) {
     assert.match(projects, new RegExp(`htmlFor="${field}"`));
     assert.match(projects, new RegExp(`id="${field}"`));

@@ -142,14 +142,14 @@ function MetricCard({ item, report }: { item: MetricObservation; report: Usabili
         <dl>
           <div><dt>ตัวตั้ง</dt><dd>{item.numerator ?? "—"}</dd></div>
           <div><dt>ตัวหาร</dt><dd>{item.denominator ?? "—"}</dd></div>
-          <div><dt>Aggregation</dt><dd>{item.aggregationVersion ?? "N/A"}</dd></div>
-          <div><dt>Definition</dt><dd>{item.metricDefinitionVersion}</dd></div>
+          <div><dt>วิธีรวมผล</dt><dd>{item.aggregationVersion ?? "ไม่ระบุ"}</dd></div>
+          <div><dt>นิยามตัวชี้วัด</dt><dd>{item.metricDefinitionVersion}</dd></div>
         </dl>
-        <p><b>Target:</b> {providerLabel(item.targetProvider)} · snapshot {item.targetSnapshotVersion ?? "N/A"}</p>
-        <p><b>Rule version:</b> {item.ruleVersions.length ? item.ruleVersions.join(", ") : "ไม่มี derived rule"}</p>
+        <p><b>สิ่งที่ทดสอบ:</b> {providerLabel(item.targetProvider)} · snapshot {item.targetSnapshotVersion ?? "ไม่ระบุ"}</p>
+        <p><b>เวอร์ชันเกณฑ์:</b> {item.ruleVersions.length ? item.ruleVersions.join(", ") : "ไม่มีเกณฑ์ที่ใช้คำนวณ"}</p>
         <div className={styles.traceRefs}>
           <b>หลักฐาน:</b>
-          {item.evidenceRefs.length === 0 ? <span>ยังไม่มีหลักฐานใน scope นี้</span> : item.evidenceRefs.map((ref) => {
+          {item.evidenceRefs.length === 0 ? <span>ยังไม่มีหลักฐานสำหรับตัวชี้วัดนี้</span> : item.evidenceRefs.map((ref) => {
             const href = evidenceDestination(report, ref);
             return href
               ? <a key={ref} href={href}>{ref.slice(0, 12)}</a>
@@ -177,12 +177,12 @@ function StudyContext({ report }: { report: UsabilityReport }) {
     <details className={styles.advancedDetails}>
       <summary>ที่มาและรายละเอียดเวอร์ชัน</summary>
       <div className={styles.contextGrid}>
-        <div><span>Test Version</span><strong>{ctx.testVersionId}</strong></div>
-        <div><span>Environment</span><strong>{ctx.target.environment ?? "—"}</strong></div>
-        <div><span>Launch mode</span><strong>{ctx.target.launchMode ?? "—"}</strong></div>
-        <div><span>Technical blocks</span><strong>{report.study.technicalBlockedTaskCount}</strong></div>
+        <div><span>รหัสเวอร์ชันแบบทดสอบ</span><strong>{ctx.testVersionId}</strong></div>
+        <div><span>สภาพแวดล้อม</span><strong>{ctx.target.environment ?? "—"}</strong></div>
+        <div><span>วิธีเปิด</span><strong>{ctx.target.launchMode ?? "—"}</strong></div>
+        <div><span>ติดปัญหาทางเทคนิค</span><strong>{report.study.technicalBlockedTaskCount}</strong></div>
       </div>
-      {ctx.target.sourceUrl ? <p className={styles.sourceUrl}><b>Target snapshot:</b> {ctx.target.sourceUrl}</p> : null}
+      {ctx.target.sourceUrl ? <p className={styles.sourceUrl}><b>ลิงก์ที่ทดสอบ:</b> {ctx.target.sourceUrl}</p> : null}
       <div className={styles.capabilityGrid}>
         {report.study.capabilityCoverage.length ? report.study.capabilityCoverage.map((item) =>
           <div key={item.capability}><span>{item.capability}</span><AvailabilityBadge value={item.state} /></div>,
@@ -322,7 +322,7 @@ function Findings({ report }: { report: UsabilityReport }) {
                 </div>;
               })}
               <div className={styles.traceRefs}>
-                <b>Trace refs:</b>
+                <b>รหัสอ้างอิงหลักฐาน:</b>
                 {item.evidenceRefs.map((ref) => {
                   const href = evidenceDestination(report, ref);
                   return href ? <a key={ref} href={href}>{ref.slice(0, 12)}</a> : <span key={ref}>{ref.slice(0, 12)}</span>;
@@ -488,7 +488,7 @@ export default function ReportPage({ params }: { params: Promise<{ testVersionId
       <button type="button" aria-pressed={view === "evidence"} className={view === "evidence" ? styles.viewActive : styles.viewButton} onClick={() => setView("evidence")}>หลักฐานและวิธีอ่านผล</button>
     </div>
 
-    {state.status === "loading" ? <div className={styles.state} role="status" aria-live="polite">กำลังสังเคราะห์รายงานจากหลักฐาน…</div> : null}
+    {state.status === "loading" ? <div className={styles.state} role="status" aria-live="polite">กำลังโหลดรายงานจากหลักฐาน…</div> : null}
     {state.status === "error" ? <div className={styles.error} role="alert">
       <strong>ยังเปิดรายงานไม่ได้</strong><p>{state.message}</p>
       <div className={styles.errorActions}>

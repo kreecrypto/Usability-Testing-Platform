@@ -13,8 +13,8 @@ export async function GET(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const workspaceId = url.searchParams.get("workspaceId") ?? "";
     const projectId = url.searchParams.get("projectId") ?? undefined;
-    const tests = await crudForRequest(request).listTests(workspaceId, projectId);
-    return jsonResponse({ tests });
+    const result = await crudForRequest(request).pageTests(workspaceId, { projectId, page: Number(url.searchParams.get("page") ?? 1), pageSize: Number(url.searchParams.get("pageSize") ?? 20), search: url.searchParams.get("search") ?? "", status: url.searchParams.get("status") ?? "all" });
+    return jsonResponse({ tests: result.items, pagination: result.pagination });
   } catch (error) {
     return crudErrorResponse(error);
   }
@@ -23,7 +23,11 @@ export async function GET(request: Request): Promise<Response> {
 export async function POST(request: Request): Promise<Response> {
   try {
     const body = await readJsonObject(request);
-    const test = await crudForRequest(request).createTest({
+    const crud = crudForRequest(request);
+    const project = await crud.getProject(body.projectId as string);
+    if (!project || project.workspace_id !== body.workspaceId) return jsonResponse({error:"not_found"},404);
+    if (project.status === "archived") return jsonResponse({error:"project_archived"},409);
+    const test = await crud.createTest({
       workspaceId: body.workspaceId as string,
       projectId: body.projectId as string,
       title: body.title as string,

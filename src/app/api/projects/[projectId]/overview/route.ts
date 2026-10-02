@@ -1,6 +1,6 @@
 import { accessTokenFromRequest, publicSupabaseConfig } from "../../../../../lib/auth/session.ts";
 import { crudErrorResponse, crudForRequest, jsonResponse } from "../../../../../lib/project-test-api.ts";
-import type { TestRow } from "../../../../../lib/project-test-crud.ts";
+import { createTestOverviewReader } from "../../../../../lib/test-overview.ts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,9 +27,10 @@ export async function GET(request: Request, context: Context): Promise<Response>
     const { projectId } = await context.params;
     const crud = crudForRequest(request);
     const project = await crud.getProject(projectId);
-    if (!project || project.status === "archived") return jsonResponse({ error: "not_found" }, 404);
-    const tests: TestRow[] = (await crud.listTests(project.workspace_id, project.id))
-      .filter((test) => test.status !== "archived");
+    if (!project) return jsonResponse({ error: "not_found" }, 404);
+    const url = new URL(request.url);
+    const page = await crud.pageTests(project.workspace_id, {projectId:project.id,page:Number(url.searchParams.get("page") ?? 1),pageSize:20,search:url.searchParams.get("search") ?? "",status:url.searchParams.get("status") ?? "all"});
+    const tests = page.items;
 
     const headers = { apikey: config.key, authorization: `Bearer ${accessToken}`, accept: "application/json" };
     const findingsQuery = new URLSearchParams({
@@ -40,26 +41,12 @@ export async function GET(request: Request, context: Context): Promise<Response>
       order: "updated_at.desc",
       limit: "5",
     });
-    const versionsQuery = new URLSearchParams({
-      select: "id,test_id,version_no,lifecycle_status,study_mode",
-      workspace_id: `eq.${project.workspace_id}`,
-      test_id: `in.(${tests.map((test) => test.id).join(",")})`,
-      lifecycle_status: "in.(draft,published)",
-      order: "version_no.desc",
-    });
-    const [findingsResponse, versionsResponse] = await Promise.all([
-      fetch(`${config.url}/rest/v1/findings?${findingsQuery}`, { headers, cache: "no-store" }),
-      tests.length > 0
-        ? fetch(`${config.url}/rest/v1/test_versions?${versionsQuery}`, { headers, cache: "no-store" })
-        : Promise.resolve(Response.json([])),
-    ]);
+    const findingsResponse = await fetch(`${config.url}/rest/v1/findings?${findingsQuery}`, { headers, cache: "no-store", signal:AbortSignal.timeout(15000) });
     if (!findingsResponse.ok) return providerError(findingsResponse.status);
-    if (!versionsResponse.ok) return providerError(versionsResponse.status);
-
-    const [findings, versions] = await Promise.all([
-      findingsResponse.json() as Promise<FindingRow[]>,
-      versionsResponse.json() as Promise<VersionRow[]>,
-    ]);
+    const findings = await findingsResponse.json() as FindingRow[];
+    const reader = createTestOverviewReader({url:config.url,key:config.key,token:accessToken});
+    const histories = await Promise.all(tests.map(async test => (await reader.versions(test)).map(version => ({...version,test_id:test.id}))));
+    const versions = histories.flat() as VersionRow[];
     const latestPublishedByTest = new Map<string, VersionRow>();
     const latestVersionByTest = new Map<string, VersionRow>();
     for (const version of versions) {
@@ -73,6 +60,7 @@ export async function GET(request: Request, context: Context): Promise<Response>
         latestStudyMode: latestVersionByTest.get(test.id)?.study_mode ?? "usability",
       })),
       findings,
+      pagination: page.pagination,
     });
   } catch (error) {
     return crudErrorResponse(error);

@@ -122,6 +122,10 @@ export default function MethodBuilderClient({ testId }: { testId: string }) {
   const endpoint = `/api/tests/${encodeURIComponent(testId)}/methods`;
   const load = useCallback(async () => { try { setState(await api<State>(endpoint)); setError(""); } catch (cause) { setError(cause instanceof Error ? friendlyError(cause) : "โหลดกิจกรรมไม่สำเร็จ"); } }, [endpoint]);
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const kind = new URLSearchParams(window.location.search).get("kind");
+    if (kind === "survey" || kind === "card_sort" || kind === "tree_test") setAdding(kind);
+  }, []);
   async function initialize() { setBusy(true); try { setState(await api<State>(endpoint, { method: "POST", body: JSON.stringify({ action: "initialize" }) })); } catch (cause) { setError(cause instanceof Error ? friendlyError(cause) : "สร้างฉบับร่างไม่สำเร็จ"); } finally { setBusy(false); } }
   async function save(title: string, config: unknown) {
     setBusy(true); setError("");

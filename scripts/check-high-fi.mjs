@@ -134,5 +134,5 @@ if (!process.exitCode) {
   console.log('PASS retest data remains skeletonized in design-only review');
   console.log('PASS Thai UX writing hides internal researcher/analytics mechanics from participants');
   console.log('PASS consent disclosure remains aligned with the V1 privacy baseline');
-  console.log('PASS home copy uses provider-neutral Test Target mental model');
+  console.log('PASS home copy explains the research workflow and labels Demo as synthetic');
 }

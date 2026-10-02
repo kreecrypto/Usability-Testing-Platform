@@ -24,7 +24,7 @@ export default function StudyContext({ testId, versionId, versionNo }: { testId?
     void load(); return () => { active = false; };
   }, [testId, retry]);
   const current = context?.testId === testId ? context : null;
-  return <section className={styles.context} aria-label="บริบทแบบทดสอบ"><nav aria-label="ตำแหน่งปัจจุบัน"><a href="/">หน้าหลัก</a><span aria-hidden="true"> / </span><a href="/projects">โปรเจกต์</a>{current ? <><span aria-hidden="true"> / </span><a href={`/projects/${encodeURIComponent(current.projectId)}`}>{current.project}</a><span aria-hidden="true"> / </span><a href={`/projects/${encodeURIComponent(current.projectId)}/tests`}>แบบทดสอบในโปรเจกต์</a><span> / {current.title}</span></> : null}</nav>
+  return <section className={styles.context} aria-label="บริบทแบบทดสอบ"><nav aria-label="ตำแหน่งปัจจุบัน"><a href="/">หน้าหลัก</a><span aria-hidden="true"> / </span><a href="/projects">โปรเจกต์</a>{current ? <><span aria-hidden="true"> / </span><a href={`/projects/${encodeURIComponent(current.projectId)}`}>{current.project}</a><span aria-hidden="true"> / </span><a href={`/projects/${encodeURIComponent(current.projectId)}/tests`}>แบบทดสอบในโปรเจกต์</a><span aria-hidden="true"> / </span><a href={`/tests/${encodeURIComponent(current.testId)}`}>{current.title}</a></> : null}</nav>
     {error ? <p role="alert">{error} <button onClick={() => setRetry(value => value + 1)}>ลองโหลดชื่ออีกครั้ง</button></p> : testId && !current ? <p role="status">กำลังโหลดชื่อโปรเจกต์และแบบทดสอบ…</p> : null}
     {versionId ? <p>เวอร์ชัน {versionNo ?? "ไม่ระบุลำดับ"} · <span className={styles.identifier}>รหัสอ้างอิง {versionId}</span></p> : null}
   </section>;
