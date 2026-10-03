@@ -22,6 +22,7 @@ const modules = [
 ];
 
 const reviewLinks = [
+  { label: "ทดลองทำงานกับเว็บบ้านเรา", href: "/trial" },
   { label: "ดู Demo", href: "/demo/projects" },
 ];
 
@@ -46,6 +47,8 @@ export default function Home() {
           </div>
           <a className="primaryButton" href="/demo/projects">ดูตัวอย่างการทำงาน</a>
         </header>
+
+        <p><a className="primaryButton" href="/trial">เริ่มทดลองกับเว็บบ้านเรา</a> · สร้างแบบทดสอบและบันทึกคำตอบในเบราว์เซอร์นี้ ไม่ต้องเข้าสู่ระบบ</p>
 
         <section id="overview" className="heroCard">
           <div>
