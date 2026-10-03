@@ -110,7 +110,7 @@ export default function TrialWorkspace() {
   const commit = (fn: (s: Store) => Store): Store | null => {
     if (!store || blocked) return null;
     try {
-      const next = fn(store);
+      const next = fn(decodeStore(rawRef.current));
       const raw = saveStore(window.localStorage, next, rawRef.current);
       const persisted = decodeStore(raw);
       rawRef.current = raw;
@@ -144,7 +144,14 @@ export default function TrialWorkspace() {
     .at(-1);
   const runner = loc.step === "participant";
   useEffect(() => {
-    if (!window.location.hash) headingRef.current?.focus();
+    const hash = window.location.hash;
+    if (hash.startsWith("#answer-")) {
+      const evidence = document.getElementById(hash.slice(1));
+      evidence?.scrollIntoView({ block: "start" });
+      evidence?.focus({ preventScroll: true });
+    } else if (!hash) {
+      headingRef.current?.focus();
+    }
   }, [loc.step, loc.v, session?.answers.length, Boolean(store)]);
   const begin = () => {
     if (!version) return;
@@ -167,6 +174,7 @@ export default function TrialWorkspace() {
           {s.answers.map((a) => (
             <article
               id={`answer-${s.id}-${a.taskId}`}
+              tabIndex={-1}
               key={a.taskId}
               className={styles.evidence}
             >

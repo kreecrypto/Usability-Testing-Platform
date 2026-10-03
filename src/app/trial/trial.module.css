@@ -234,3 +234,8 @@
     color: var(--ah-ink-deep);
   }
 }
+
+.evidence:focus {
+  outline: 2px solid var(--ah-primary);
+  outline-offset: 3px;
+}

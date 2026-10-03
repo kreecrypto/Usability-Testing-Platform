@@ -10,3 +10,7 @@ Scope: isolated browser-local workflow from main c1be144. No Auth/RLS/API/schema
 - Preview verification pending at commit preparation; do not mark COMPLETE or deploy Production until Preview evidence recorded.
 
 Data limitations: browser/origin only, anonymous self-report, no cross-device invitation, no behavioral capture; browser clearing deletes local data. Print/PDF uses browser print. FEAT-13.07 and MAJOR-A/B/C unchanged.
+
+## Preview validation and correction
+
+Initial Preview acd636c (dpl_Ht3R9TNXsD3iTM6qUngTut14gP4p) is READY. GitHub build/demo/authorization/migration jobs pass. Project → publish v1 → participant with refresh → Results → Finding → Report and 320/390 runner checks passed with labelled local QA fixtures. Evidence deep links preserved exact version/response, but browser did not scroll after hydration; corrected by focusing/scrolling the referenced article after local data loads. Commits now also derive writes from the latest saved in-tab snapshot rather than stale rendered state. Local 290 tests/typecheck/build/design checks re-pass. Corrected Preview and Retest verification still pending at this commit. Legacy Cloudflare/Netlify integrations are not part of this Vercel-only trial gate and have not been used.
