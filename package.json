@@ -20,7 +20,7 @@
     "qa:demo:full": "npm run check:demo-env && npm run check:design-system && npm run check:high-fi && npm run build && npm run typecheck && npm test"
   },
   "dependencies": {
-    "next": "16.3.4",
+    "next": "16.3.8",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
