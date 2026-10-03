@@ -1,3 +1,4 @@
+import { validBehavior, behaviorEvidenceValid, SIMULATION_LAYOUT, type BehaviorEvent } from './behavior.ts';
 export const STORAGE_KEY = "utp.browser-trial.v1";
 export type Task = { id: string; instruction: string };
 export type Version = {
@@ -9,6 +10,7 @@ export type Version = {
   tasks: Task[];
   publishedAt: string;
   parentId?: string;
+  target?: { kind: "simulation"; layoutVersion: string };
 };
 export type Draft = Omit<Version, "publishedAt" | "id" | "number">;
 export type TrialTest = {
@@ -29,8 +31,9 @@ export type Session = {
   startedAt: string;
   submittedAt?: string;
   answers: Answer[];
+  behaviorConsentAt?: string;
 };
-export type Evidence = { sessionId: string; taskId: string };
+export type Evidence = { sessionId: string; taskId: string; eventIds?: string[]; kind?: "event" | "path" | "heatmap" };
 export type Finding = {
   id: string;
   versionId: string;
@@ -54,6 +57,7 @@ export type Store = {
   sessions: Session[];
   findings: Finding[];
   reports: Report[];
+  behaviorEvents?: BehaviorEvent[];
 };
 export const uid = () => crypto.randomUUID();
 export const now = () => new Date().toISOString();
@@ -138,6 +142,7 @@ export function newRound(store: Store, versionId: string): Store {
               url: v.url,
               tasks: structuredClone(v.tasks),
               parentId: v.id,
+              ...(v.target ? { target: structuredClone(v.target) } : {}),
             },
           }
         : t,
@@ -222,15 +227,7 @@ export function addFinding(store: Store, finding: Finding): Store {
   )
     throw new Error("กรอกปัญหา ผลกระทบ ข้อเสนอแนะ และเลือกหลักฐาน");
   if (
-    !finding.evidence.every((e) =>
-      store.sessions.some(
-        (s) =>
-          s.id === e.sessionId &&
-          s.versionId === finding.versionId &&
-          s.submittedAt &&
-          s.answers.some((a) => a.taskId === e.taskId),
-      ),
-    )
+    !finding.evidence.every((e) => behaviorEvidenceValid(store, finding.versionId, e))
   )
     throw new Error("หลักฐานต้องมาจากคำตอบที่ส่งครบในเวอร์ชันนี้");
   return { ...store, findings: [...store.findings, structuredClone(finding)] };
@@ -319,6 +316,7 @@ export function decodeStore(raw: string | null): Store {
         str(t.draft.title);
         str(t.draft.url);
         tasks(t.draft.tasks);
+        if (t.draft.target && (t.draft.target.kind !== "simulation" || t.draft.target.layoutVersion !== SIMULATION_LAYOUT)) throw Error();
       }
     });
     s.versions.forEach((v) => {
@@ -327,6 +325,7 @@ export function decodeStore(raw: string | null): Store {
       str(v.publishedAt);
       safeTarget(v.url);
       tasks(v.tasks);
+      if (v.target && (v.target.kind !== "simulation" || v.target.layoutVersion !== SIMULATION_LAYOUT)) throw Error();
       if (
         !s.tests.some((t) => t.id === v.testId) ||
         !Number.isInteger(v.number)
@@ -339,6 +338,7 @@ export function decodeStore(raw: string | null): Store {
       const v = s.versions.find((v) => v.id === session.versionId);
       if (!v || !Array.isArray(session.answers)) throw Error();
       if (session.submittedAt) str(session.submittedAt);
+      if (session.behaviorConsentAt && (!Number.isFinite(Date.parse(session.behaviorConsentAt)) || v.target?.kind !== "simulation")) throw Error();
       if (
         new Set(session.answers.map((a) => a.taskId)).size !==
         session.answers.length
@@ -357,6 +357,19 @@ export function decodeStore(raw: string | null): Store {
       if (session.submittedAt && session.answers.length !== v.tasks.length)
         throw Error();
     });
+    if (s.behaviorEvents !== undefined) {
+      if (!Array.isArray(s.behaviorEvents)) throw Error();
+      const ids = new Set<string>(); const sequences = new Set<string>();
+      s.behaviorEvents.forEach(e => {
+        const session = s.sessions.find(x => x.id === e.sessionId);
+        const v = s.versions.find(x => x.id === e.versionId);
+        const seq = `${e.sessionId}:${e.sequence}`;
+        if (!validBehavior(e) || ids.has(e.id) || sequences.has(seq) || !session?.behaviorConsentAt
+          || session.versionId !== e.versionId || v?.target?.layoutVersion !== e.layoutVersion
+          || !v.tasks.some(t => t.id === e.taskId)) throw Error();
+        ids.add(e.id); sequences.add(seq);
+      });
+    }
     const finding = (f: Finding) => {
       str(f.id);
       str(f.problem);
@@ -365,15 +378,7 @@ export function decodeStore(raw: string | null): Store {
       if (
         !Array.isArray(f.evidence) ||
         !f.evidence.length ||
-        !f.evidence.every((e) =>
-          s.sessions.some(
-            (session) =>
-              session.id === e.sessionId &&
-              session.versionId === f.versionId &&
-              session.submittedAt &&
-              session.answers.some((a) => a.taskId === e.taskId),
-          ),
-        )
+        !f.evidence.every((e) => behaviorEvidenceValid(s, f.versionId, e))
       )
         throw Error();
     };
