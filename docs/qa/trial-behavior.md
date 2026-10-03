@@ -28,4 +28,12 @@ Storage quota failure is covered by fault-injected storage tests, not claimed as
 
 ## Preview gate
 
-Preview deployment and complete browser flow are pending when this initial QA note is committed. The final PR evidence and Sheet TRIAL-02 row must contain the verified deployment commit/URL and results before COMPLETE. No Production merge/deploy; FEAT-13.07 and MAJOR-A/B/C remain unchanged. No Supabase migration, researcher API access, Auth/RLS changes or Cloudflare integration.
+Vercel Preview `https://usability-testing-platform-9fylkpsc3.vercel.app/trial`, commit `2bf62a9e02c08a8eef0e885f24fde37dc92a6a42`, READY with the exact locally tested tree. All six pull-request GitHub Actions workflows passed (Build, Design System, High-fi, Schema, Authorization and Local Demo).
+
+Actual Preview flow passed Project → save/publish → consent → three tasks → Results → Finding → Report → Retest. Preview v1 `dc65bd83-d43c-474b-8c5a-724a8043f1e2` / submitted session `0870d7a9-dd54-489d-aeaf-efc65a211d50`: 28 persisted events, 4 pointer clicks, 2 keyboard actions; refresh and Back preserved/repeated actual visits. At parent width 390 and 320, scrollWidth matched clientWidth. Mobile click `f4193278-2a80-4361-9eaf-1ce4826faad6` at (82,1036) matched the same house12 background button rectangle described above.
+
+Report `e4d730ef-96e4-49b5-a6cd-bafb5c29a739` linked to exactly one frozen Heatmap event and a three-event path. Both compact links reconstructed the correct evidence subset and keyboard focus. Preview v2 `80fa0e23-6583-4232-9541-803c29957f1d` / submitted session `1b3ac7ff-f4b8-4112-add4-dfd2ac004435` completed all three tasks; Retest compared only common geometry and explained incompatible mobile/desktop groups. No application-origin console errors observed (the initial Vercel SSO page logged a Google identity NetworkError before the share link was used).
+
+This browser pass found a minor builder issue: author CSS could override a hidden URL label. The follow-up conditionally renders URL only for external targets; all 303 tests/build/typecheck/design gates passed again. Verify this UI fix on the final Preview, and record its deployment/commit in the PR and Sheet before COMPLETE.
+
+No Production merge/deploy; FEAT-13.07 and MAJOR-A/B/C remain unchanged. No Supabase migration, researcher API access, Auth/RLS changes or Cloudflare integration.

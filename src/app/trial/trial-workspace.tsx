@@ -530,7 +530,7 @@ export default function TrialWorkspace() {
                         </label>
                         <label>เป้าหมายทดสอบ<select name="target" value={draftTarget} onChange={e=>setDraftTarget(e.target.value)}><option value="external">เว็บไซต์ภายนอก — เก็บคำตอบเท่านั้น</option><option value="simulation">เว็บจำลอง UTP — เก็บคลิก เส้นทาง และ Heatmap</option></select></label>
                         {draftTarget === 'simulation' && <p>ข้อมูลบ้านและงานซ่อมเป็นข้อมูลสังเคราะห์ ไม่ใช่เว็บ Banrao จริง บันทึกฉบับร่างก่อนเผยแพร่</p>}
-                        <label hidden={draftTarget === 'simulation'}>
+                        {draftTarget !== 'simulation' && <label>
                           ลิงก์เว็บไซต์
                           <input
                             name="url"
@@ -538,7 +538,7 @@ export default function TrialWorkspace() {
                             defaultValue={test.draft.url}
                             required={draftTarget !== 'simulation'}
                           />
-                        </label>
+                        </label>}
                         {test.draft.tasks.map((task, i) => (
                           <label key={task.id}>
                             โจทย์ {i + 1}
