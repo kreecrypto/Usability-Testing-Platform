@@ -1,0 +1,236 @@
+.shell {
+  display: grid;
+  grid-template-columns: var(--ah-sidebar-width) minmax(0, 1fr);
+  min-height: 100vh;
+  background: var(--ah-app-bg);
+  color: var(--ah-ink-deep);
+}
+.sidebar {
+  padding: var(--ah-space-24) var(--ah-space-16);
+  background: var(--ah-canvas);
+  border-right: 1px solid var(--ah-hairline);
+}
+.brand {
+  font-weight: 700;
+  color: var(--ah-primary);
+  font-size: var(--ah-type-heading-lg-size);
+}
+.sidebar nav {
+  display: grid;
+  gap: var(--ah-space-8);
+  margin-block: var(--ah-space-24);
+}
+.main {
+  min-width: 0;
+  width: 100%;
+  max-width: 1080px;
+  padding: var(--ah-space-24);
+  margin-inline: auto;
+}
+.notice,
+.error {
+  padding: var(--ah-space-16);
+  border: 1px solid var(--ah-hairline);
+  border-radius: var(--ah-radius-sm);
+  background: var(--ah-primary-soft);
+  display: grid;
+  gap: var(--ah-space-8);
+}
+.error {
+  margin-block: var(--ah-space-16);
+  background: var(--ah-canvas);
+  border-color: var(--ah-primary);
+}
+.meta {
+  font-size: 14px;
+  color: var(--ah-slate);
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ah-space-16);
+  margin-block: var(--ah-space-24);
+}
+.shell h1 {
+  font-size: var(--ah-type-display-xl-size);
+  line-height: var(--ah-type-display-xl-line-height);
+}
+.shell h2 {
+  font-size: var(--ah-type-heading-lg-size);
+}
+.shell h3 {
+  font-size: 20px;
+}
+.shell p,
+.shell li {
+  line-height: 1.6;
+}
+.card {
+  border: 1px solid var(--ah-hairline);
+  background: var(--ah-canvas);
+  padding: var(--ah-space-24);
+  border-radius: var(--ah-radius-lg);
+  margin-block: var(--ah-space-16);
+  overflow-wrap: anywhere;
+}
+.scope {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.shell form,
+.shell label {
+  display: grid;
+  gap: var(--ah-space-8);
+}
+.shell form {
+  gap: var(--ah-space-16);
+}
+.shell input,
+.shell select,
+.shell textarea {
+  font: inherit;
+  min-width: 0;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--ah-space-8);
+  border: 1px solid var(--ah-hairline);
+  border-radius: var(--ah-radius-sm);
+  background: var(--ah-canvas);
+  color: var(--ah-ink-deep);
+}
+.shell textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+.shell button,
+.primary {
+  font: inherit;
+  min-height: 44px;
+  padding: var(--ah-space-8) var(--ah-space-16);
+  border: 1px solid var(--ah-hairline);
+  border-radius: var(--ah-radius-sm);
+  background: var(--ah-canvas);
+  color: var(--ah-primary);
+  cursor: pointer;
+  margin: var(--ah-space-4);
+  text-align: left;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: normal;
+}
+.shell .primary {
+  background: var(--ah-primary);
+  color: var(--ah-on-primary);
+}
+.shell button:hover {
+  border-color: var(--ah-primary);
+}
+.shell button[aria-current] {
+  background: var(--ah-primary-soft);
+}
+.shell button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.shell :is(a, button, input, textarea, select):focus-visible {
+  outline: 2px solid var(--ah-primary);
+  outline-offset: 3px;
+}
+.shell .check {
+  display: flex;
+  align-items: center;
+}
+.shell .check input {
+  width: 24px;
+  flex-shrink: 0;
+  min-height: 24px;
+}
+.shell .check {
+  min-height: 44px;
+}
+.version {
+  max-width: 420px;
+}
+.evidence {
+  border-top: 1px solid var(--ah-hairline);
+  padding-block: var(--ah-space-16);
+  scroll-margin-top: var(--ah-space-24);
+}
+.evidence a {
+  display: block;
+  min-height: 44px;
+  overflow-wrap: anywhere;
+}
+.url {
+  overflow-wrap: anywhere;
+}
+.runner {
+  display: block;
+}
+.runner .main {
+  max-width: 760px;
+}
+.shell progress {
+  width: 100%;
+  accent-color: var(--ah-primary);
+}
+@media (max-width: 700px) {
+  .shell {
+    display: block;
+  }
+  .sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--ah-hairline);
+    padding: var(--ah-space-16);
+  }
+  .sidebar nav {
+    display: flex;
+    overflow-x: auto;
+    margin-block: var(--ah-space-8);
+  }
+  .sidebar nav button {
+    flex: 0 0 auto;
+  }
+  .main {
+    padding: var(--ah-space-16);
+  }
+  .card {
+    padding: var(--ah-space-16);
+  }
+  .header {
+    align-items: flex-start;
+  }
+  .shell h1 {
+    font-size: var(--ah-type-heading-lg-size);
+  }
+}
+@media print {
+  .sidebar,
+  .notice,
+  .header,
+  .meta,
+  .version,
+  .shell button,
+  .shell form {
+    display: none !important;
+  }
+  .shell {
+    display: block;
+    background: var(--ah-canvas);
+  }
+  .main {
+    padding: 0;
+    max-width: none;
+  }
+  .card {
+    break-inside: avoid;
+  }
+  .shell a {
+    color: var(--ah-ink-deep);
+  }
+}
