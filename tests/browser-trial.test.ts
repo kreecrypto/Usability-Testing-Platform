@@ -188,6 +188,6 @@ test("trial isolated from researcher APIs and production data, demo remains read
     .map((p) => readFileSync(p, "utf8"))
     .join("\n");
   assert.doesNotMatch(source, /fetch\s*\(|\/api\/|SUPABASE_|service.role/i);
-  assert.match(source, /ยังไม่ได้เชื่อมตัวเก็บพฤติกรรม/);
+  assert.match(source, /ไม่รองรับสำหรับเว็บไซต์ภายนอก/);
   assert.match(source, /ไม่แชร์คำตอบข้ามเครื่อง/);
 });

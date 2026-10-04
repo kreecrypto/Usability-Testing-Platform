@@ -20,6 +20,10 @@ import {
   type Answer,
   type Version,
 } from "../../lib/trial/model";
+import SimulationRunner from './simulation-runner';
+import BehaviorResults from './behavior-results';
+import { behaviorEvidenceValid, SIMULATION_LAYOUT, geometryKey, behaviorComparable, behaviorSummary, behaviorIsActive, eventName, screenName, geometryName, evidenceName, type BehaviorEvent } from '../../lib/trial/behavior';
+import type { Evidence } from '../../lib/trial/model';
 import styles from "./trial.module.css";
 const steps = [
   ["projects", "โปรเจกต์"],
@@ -62,13 +66,25 @@ export default function TrialWorkspace() {
   const rawRef = useRef<string | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [blocked, setBlocked] = useState(false);
+  const [draftTarget,setDraftTarget] = useState('external');
+  const [trackingPaused,setTrackingPaused] = useState(false);
+  const pendingActive=useRef(false);
+  const pendingEvents=useRef<BehaviorEvent[]>([]);
+  const [pendingConflict,setPendingConflict]=useState(false);
+  const [acknowledgeConflict,setAcknowledgeConflict]=useState(false);
+  const currentUrl=useRef('');
   const load = () => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       const s = decodeStore(raw);
+      if(pendingEvents.current.length && !behaviorIsActive(s,pendingEvents.current[0])) {
+        setBlocked(true);setPendingConflict(true);
+        setError('อีกแท็บปิดหรือส่งคำตอบของโจทย์นี้แล้ว เหตุการณ์ค้างจึงผูกกับโจทย์เดิมไม่ได้');return;
+      }
       rawRef.current = raw;
       setStore(s);
       setBlocked(false);
+      setPendingConflict(false);
       setError("");
       setSaved("โหลดข้อมูลที่เก็บในเบราว์เซอร์แล้ว");
     } catch (e) {
@@ -82,8 +98,11 @@ export default function TrialWorkspace() {
   };
   useEffect(() => {
     load();
-    setLoc(readLocation());
-    const pop = () => setLoc(readLocation());
+    setLoc(readLocation()); currentUrl.current=window.location.href;
+    const pop = () => {
+      if (pendingActive.current) {window.history.pushState(null,'',currentUrl.current);setError('มีเหตุการณ์ค้างบันทึก ให้บันทึกก่อนออกจากโจทย์');return;}
+      setLoc(readLocation());currentUrl.current=window.location.href;
+    };
     const changed = (e: StorageEvent) => {
       if (e.key === STORAGE_KEY || e.key === null) {
         setBlocked(true);
@@ -98,19 +117,24 @@ export default function TrialWorkspace() {
     };
   }, []);
   const move = (patch: Partial<Location>) => {
+    if (pendingActive.current) {setError('มีเหตุการณ์ค้างบันทึก ให้บันทึกเหตุการณ์ค้างก่อนออกจากโจทย์');return;}
     const next = { ...loc, ...patch };
     const q = new URLSearchParams();
     Object.entries(next).forEach(([k, v]) => {
       if (v) q.set(k, v);
     });
     window.history.pushState(null, "", `/trial?${q}`);
+    currentUrl.current=window.location.href;
     setLoc(next);
     setError("");
   };
   const commit = (fn: (s: Store) => Store): Store | null => {
     if (!store || blocked) return null;
     try {
-      const next = fn(decodeStore(rawRef.current));
+      const current = decodeStore(rawRef.current);
+      const changed = fn(current);
+      if (changed === current) return current;
+      const next = decodeStore(JSON.stringify(changed));
       const raw = saveStore(window.localStorage, next, rawRef.current);
       const persisted = decodeStore(raw);
       rawRef.current = raw;
@@ -143,9 +167,14 @@ export default function TrialWorkspace() {
     .filter((r) => r.versionId === version?.id)
     .at(-1);
   const runner = loc.step === "participant";
+  const clickId=typeof window==='undefined'?'':new URLSearchParams(window.location.search).get('click');
+  const clickEvent=store?.behaviorEvents?.find(e=>e.id===clickId && e.versionId===version?.id && e.type==='pointer');
+  const clickEvidence=clickEvent?{sessionId:clickEvent.sessionId,taskId:clickEvent.taskId,kind:'event' as const,eventIds:[clickEvent.id]}:null;
+  const validClick=Boolean(store && version && clickEvidence && behaviorEvidenceValid(store,version.id,clickEvidence));
+  useEffect(()=>{setDraftTarget(test?.draft?.target?.kind || 'external');},[test?.id,test?.draft?.parentId]);
   useEffect(() => {
     const hash = window.location.hash;
-    if (hash.startsWith("#answer-")) {
+    if (hash.startsWith("#answer-") || hash.startsWith("#event-")) {
       const evidence = document.getElementById(hash.slice(1));
       evidence?.scrollIntoView({ block: "start" });
       evidence?.focus({ preventScroll: true });
@@ -223,7 +252,7 @@ export default function TrialWorkspace() {
           </span>
         </div>
         <p className={styles.meta}>
-          ไม่เก็บคลิก เส้นทาง หรือ Heatmap จากเว็บไซต์ปลายทาง ·
+          เก็บคลิก เส้นทาง และแผนที่ตำแหน่งคลิกเฉพาะเว็บจำลองที่เลือก ไม่เก็บจาก URL ภายนอก ·
           อย่ากรอกข้อมูลส่วนบุคคล
         </p>
         <p role="status" className={styles.meta}>
@@ -239,6 +268,13 @@ export default function TrialWorkspace() {
             </p>
           </div>
         )}
+        {pendingConflict && <section className={styles.error} role="alert">
+          <h2>เก็บเหตุการณ์ค้างก่อนใช้ข้อมูลล่าสุด</h2>
+          <p>มี {pendingEvents.current.length} เหตุการณ์ที่ยังไม่ได้รับการบันทึก และจะไม่ถูกนับในผลการทดสอบ ดาวน์โหลดเก็บไว้ตรวจสอบได้ ข้อมูลไม่ส่งออกจากเครื่อง</p>
+          <button onClick={()=>{const url=URL.createObjectURL(new Blob([JSON.stringify({accepted:false,events:pendingEvents.current},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='utp-unaccepted-events.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}}>ดาวน์โหลดเหตุการณ์ที่ยังไม่ได้บันทึก</button>
+          <label className={styles.check}><input type="checkbox" checked={acknowledgeConflict} onChange={e=>setAcknowledgeConflict(e.target.checked)}/>เข้าใจว่าเหตุการณ์ค้างจะไม่ถูกนับ และพร้อมใช้ข้อมูลที่อีกแท็บบันทึกแล้ว</label>
+          <button disabled={!acknowledgeConflict} onClick={()=>{pendingEvents.current=[];pendingActive.current=false;setTrackingPaused(false);setPendingConflict(false);setAcknowledgeConflict(false);load();}}>ใช้ข้อมูลล่าสุดและออกจากสถานะค้าง</button>
+        </section>}
         {!store ? (
           <p>
             {blocked
@@ -474,7 +510,8 @@ export default function TrialWorkspace() {
                                     draft: {
                                       ...t.draft,
                                       title: text(d, "title"),
-                                      url: text(d, "url"),
+                                      url: text(d, "url") || t.draft.url,
+                                      target: text(d, "target") === 'simulation' ? {kind:'simulation',layoutVersion:SIMULATION_LAYOUT} : undefined,
                                       tasks: t.draft.tasks.map((task) => ({
                                         ...task,
                                         instruction: text(d, task.id),
@@ -495,15 +532,17 @@ export default function TrialWorkspace() {
                             maxLength={200}
                           />
                         </label>
-                        <label>
+                        <label>เป้าหมายทดสอบ<select name="target" value={draftTarget} onChange={e=>setDraftTarget(e.target.value)}><option value="external">เว็บไซต์ภายนอก — เก็บคำตอบเท่านั้น</option><option value="simulation">เว็บจำลอง UTP — เก็บคลิก เส้นทาง และแผนที่ตำแหน่งคลิก</option></select></label>
+                        {draftTarget === 'simulation' && <p>ข้อมูลบ้านและงานซ่อมเป็นข้อมูลสังเคราะห์ ไม่ใช่เว็บ Banrao จริง บันทึกฉบับร่างก่อนเผยแพร่</p>}
+                        {draftTarget !== 'simulation' && <label>
                           ลิงก์เว็บไซต์
                           <input
                             name="url"
                             type="url"
                             defaultValue={test.draft.url}
-                            required
+                            required={draftTarget !== 'simulation'}
                           />
-                        </label>
+                        </label>}
                         {test.draft.tasks.map((task, i) => (
                           <label key={task.id}>
                             โจทย์ {i + 1}
@@ -524,7 +563,7 @@ export default function TrialWorkspace() {
                         ให้กดบันทึกฉบับร่างก่อน
                       </p>
                       <h3>{test.draft.title}</h3>
-                      <p className={styles.url}>{test.draft.url}</p>
+                      <p className={styles.url}>{test.draft.target ? "เว็บจำลอง UTP · ข้อมูลสังเคราะห์ · เก็บพฤติกรรมในเบราว์เซอร์" : test.draft.url}</p>
                       <ol>
                         {test.draft.tasks.map((t) => (
                           <li key={t.id}>{t.instruction}</li>
@@ -602,6 +641,7 @@ export default function TrialWorkspace() {
                             key={`${session.id}-${task.id}`}
                             onSubmit={(e) => {
                               const d = formValues(e);
+                              if(pendingActive.current){setError('บันทึกเหตุการณ์ค้างก่อนตอบข้อถัดไป');return;}
                               const answer: Answer = {
                                 taskId: task.id,
                                 outcome: text(
@@ -622,7 +662,7 @@ export default function TrialWorkspace() {
                               โจทย์ {version.tasks.indexOf(task) + 1}
                             </h2>
                             <p>{task.instruction}</p>
-                            <a
+                            {version.target?.kind === 'simulation' ? <SimulationRunner key={`${session.id}-${task.id}`} store={store} session={session} version={version} task={task} commit={commit} blocked={blocked} onPendingChange={(flag,pending)=>{pendingActive.current=flag;pendingEvents.current=pending?[...pending]:[];setTrackingPaused(flag);}}/> : <><a
                               className={styles.primary}
                               href={version.url}
                               target="_blank"
@@ -633,7 +673,7 @@ export default function TrialWorkspace() {
                             <p>
                               เมื่อทดลองแล้วให้กลับมาแท็บนี้ หากเว็บเปิดไม่ได้
                               ให้ระบุในความคิดเห็น โดยไม่เปลี่ยนข้อมูลบนเว็บไซต์
-                            </p>
+                            </p></>}
                             <label>
                               คุณทำโจทย์นี้ได้หรือไม่
                               <select name="outcome" defaultValue="" required>
@@ -667,7 +707,7 @@ export default function TrialWorkspace() {
                               สิ่งที่พบหรือปัญหา (ไม่บังคับ)
                               <textarea name="feedback" maxLength={4000} />
                             </label>
-                            <button className={styles.primary}>
+                            <button className={styles.primary} disabled={trackingPaused}>
                               บันทึกและไปข้อถัดไป
                             </button>
                           </form>
@@ -727,11 +767,9 @@ export default function TrialWorkspace() {
                       ตัวเลขต่อไปนี้มาจากคำตอบของผู้ทดลอง
                       ไม่ใช่ความสำเร็จที่ตรวจจับจากเว็บไซต์
                     </p>
-                    <p>
-                      คลิก / เส้นทาง / Heatmap: ไม่รองรับ —
-                      ยังไม่ได้เชื่อมตัวเก็บพฤติกรรม
-                    </p>
+                    {!version.target && <p>คลิก / เส้นทาง / แผนที่ตำแหน่งคลิก: ไม่รองรับสำหรับเว็บไซต์ภายนอกที่ยังไม่ได้ติดตัวเก็บพฤติกรรม</p>}
                   </section>
+                  {version.target && <BehaviorResults key={version.id} store={store} version={version}/>}
                   {version.tasks.map((t, i) => {
                     const x = taskSummary(store, version.id, t.id);
                     return (
@@ -784,11 +822,13 @@ export default function TrialWorkspace() {
                 <>
                   <section className={styles.card}>
                     <h2>สร้างข้อค้นพบ</h2>
+                    {clickId && <p role="status">{validClick?'เลือกหลักฐานคลิกต้นทางให้แล้ว ตรวจรายละเอียดและกรอกข้อค้นพบก่อนบันทึก':'ใช้คลิกนี้เป็นหลักฐานไม่ได้: ไม่พบข้อมูลในเวอร์ชันนี้หรือรอบทดลองยังส่งไม่ครบ'}</p>}
                     <p>เลือกคำตอบต้นทาง แล้วอธิบายปัญหาและสิ่งที่ควรปรับปรุง</p>
                     <form
                       onSubmit={(e) => {
                         const d = formValues(e);
                         const evidence = d.getAll("evidence").map((value) => {
+                          if (String(value).startsWith('{')) return JSON.parse(String(value)) as Evidence;
                           const [sessionId, taskId] = String(value).split(":");
                           return { sessionId, taskId };
                         });
@@ -824,7 +864,17 @@ export default function TrialWorkspace() {
                         />
                       </label>
                       <fieldset>
-                        <legend>คำตอบที่ใช้เป็นหลักฐาน</legend>
+                        <legend>คำตอบและพฤติกรรมที่ใช้เป็นหลักฐาน</legend>
+                        {(store.behaviorEvents||[]).filter(e=>e.versionId===version.id && store.sessions.some(s=>s.id===e.sessionId && s.submittedAt)).map(e=><label className={styles.check} key={e.id}><input type="checkbox" name="evidence" defaultChecked={validClick && e.id===clickId} value={JSON.stringify({sessionId:e.sessionId,taskId:e.taskId,kind:'event',eventIds:[e.id]})}/><span>{eventName(e.type)} · {screenName(e.screenId)} · {e.elementId||'หน้า'} · ลำดับ {e.sequence} · รอบ {e.sessionId}</span></label>)}
+                        {store.sessions.filter(s=>s.versionId===version.id && s.submittedAt).flatMap(s=>version.tasks.map(t=>{
+                          const events=(store.behaviorEvents||[]).filter(e=>e.versionId===version.id && e.sessionId===s.id && e.taskId===t.id);
+                          const path=events.filter(e=>e.type==='screen_view' && e.transitionReason!=='resize');
+                          const geometries=[...new Set(events.filter(e=>e.type==='pointer').map(geometryKey))];
+                          return <div key={`${s.id}-${t.id}`}>
+                            {path.length>0 && <label className={styles.check}><input type="checkbox" name="evidence" value={JSON.stringify({sessionId:s.id,taskId:t.id,kind:'path',eventIds:path.map(e=>e.id)})}/><span>เส้นทาง · โจทย์ {version.tasks.indexOf(t)+1} · รอบ {s.id} ({path.length} เหตุการณ์)</span></label>}
+                            {geometries.map(g=><label className={styles.check} key={g}><input type="checkbox" name="evidence" value={JSON.stringify({sessionId:s.id,taskId:t.id,kind:'heatmap',eventIds:events.filter(e=>e.type==='pointer' && geometryKey(e)===g).map(e=>e.id)})}/><span>แผนที่ตำแหน่งคลิก · {geometryName(events.find(e=>geometryKey(e)===g)!)} · โจทย์ {version.tasks.indexOf(t)+1} · รอบ {s.id}</span></label>)}
+                          </div>;
+                        }))}
                         {store.sessions
                           .filter(
                             (s) => s.versionId === version.id && s.submittedAt,
@@ -865,12 +915,12 @@ export default function TrialWorkspace() {
                       <h3>{f.problem}</h3>
                       <p>ผลกระทบ: {f.impact}</p>
                       <p>ข้อเสนอแนะ: {f.recommendation}</p>
-                      {f.evidence.map((e) => (
+                      {f.evidence.map((e, ei) => (
                         <a
-                          key={`${e.sessionId}-${e.taskId}`}
-                          href={linkToEvidence(e.sessionId, e.taskId)}
+                          key={`${e.sessionId}-${e.taskId}-${e.eventIds?.join()||"answer"}`}
+                          href={e.eventIds ? `/trial?step=results&p=${loc.p}&t=${loc.t}&v=${loc.v}&finding=${f.id}&ei=${ei}#event-${e.eventIds[0]}` : linkToEvidence(e.sessionId, e.taskId)}
                         >
-                          ดูคำตอบต้นทาง · โจทย์{" "}
+                          {e.eventIds ? `ดูหลักฐาน ${evidenceName(e.kind)} (${e.eventIds.length} เหตุการณ์)` : "ดูคำตอบต้นทาง"} · โจทย์{" "}
                           {version.tasks.findIndex((t) => t.id === e.taskId) +
                             1}
                         </a>
@@ -916,21 +966,20 @@ export default function TrialWorkspace() {
                       </p>
                       <p>
                         พื้นที่ทดลองในเบราว์เซอร์ —
-                        ข้อมูลคำตอบที่ผู้ทดลองรายงานเอง
-                        ไม่ใช่ผลการติดตามพฤติกรรม
+                        {version.target ? 'คำตอบและพฤติกรรมบนเว็บจำลอง UTP ไม่ใช่ผลจาก Banrao' : 'ข้อมูลคำตอบที่ผู้ทดลองรายงานเอง ไม่ใช่ผลการติดตามพฤติกรรม'}
                       </p>
-                      <p>เว็บไซต์: {version.url}</p>
-                      {report.findings.map((f) => (
+                      <p>เป้าหมาย: {version.target ? "เว็บจำลอง UTP — ข้อมูลสังเคราะห์" : version.url}</p>
+                      {report.findings.map((f, fi) => (
                         <article key={f.id} className={styles.evidence}>
                           <h3>{f.problem}</h3>
                           <p>ผลกระทบ: {f.impact}</p>
                           <p>ข้อเสนอแนะ: {f.recommendation}</p>
-                          {f.evidence.map((e) => (
+                          {f.evidence.map((e, ei) => (
                             <a
-                              href={linkToEvidence(e.sessionId, e.taskId)}
-                              key={`${e.sessionId}-${e.taskId}`}
+                              href={e.eventIds ? `/trial?step=results&p=${loc.p}&t=${loc.t}&v=${loc.v}&report=${report.id}&fi=${fi}&ei=${ei}#event-${e.eventIds[0]}` : linkToEvidence(e.sessionId, e.taskId)}
+                              key={`${e.sessionId}-${e.taskId}-${e.eventIds?.join()||"answer"}`}
                             >
-                              คำตอบต้นทาง · รอบ {e.sessionId} · โจทย์{" "}
+                              {e.eventIds ? `หลักฐาน ${evidenceName(e.kind)} (${e.eventIds.length} เหตุการณ์)` : "คำตอบต้นทาง"} · รอบ {e.sessionId} · โจทย์{" "}
                               {version.tasks.findIndex(
                                 (t) => t.id === e.taskId,
                               ) + 1}
@@ -992,6 +1041,15 @@ export default function TrialWorkspace() {
                             {before.tasks.length} โจทย์
                             โดยโจทย์และมาตราส่วนต้องเหมือนเดิม
                           </p>
+                          {version.target && <><h3>เปรียบเทียบพฤติกรรมบนเว็บจำลอง</h3>{!behaviorComparable(before,version) ? <p>เปรียบเทียบไม่ได้: เป้าหมายหรือ layout ไม่ตรงกัน</p> : compatible.map(t=>{
+                            const a=(store.behaviorEvents||[]).filter(e=>e.versionId===before.id && e.taskId===t.id && store.sessions.some(s=>s.id===e.sessionId && s.submittedAt));
+                            const b=(store.behaviorEvents||[]).filter(e=>e.versionId===version.id && e.taskId===t.id && store.sessions.some(s=>s.id===e.sessionId && s.submittedAt));
+                            const common=[...new Set(a.map(geometryKey))].filter(g=>b.some(e=>geometryKey(e)===g));
+                            return <article key={t.id}><h4>{t.instruction}</h4>{common.length ? common.map(g=>{
+                              const x=behaviorSummary(a.filter(e=>geometryKey(e)===g))!;const y=behaviorSummary(b.filter(e=>geometryKey(e)===g))!;
+                              return <p key={g}>{geometryName(a.find(e=>geometryKey(e)===g)!)} · ต้นฉบับ {x.clicks} คลิก / {new Set(a.filter(e=>geometryKey(e)===g).map(e=>e.sessionId)).size} รอบ → รอบใหม่ {y.clicks} คลิก / {new Set(b.filter(e=>geometryKey(e)===g).map(e=>e.sessionId)).size} รอบ · ไม่อนุมานว่าดีขึ้นจากจำนวนคลิก</p>;
+                            }):<p>ยังเปรียบเทียบไม่ได้: ต้องมีข้อมูลทั้งสองเวอร์ชันที่ขนาดหน้าจอและ layout ตรงกัน</p>}</article>;
+                          })}</>}
                           {compatible.map((t) => {
                             const a = taskSummary(store, before.id, t.id);
                             const b = taskSummary(store, version.id, t.id);

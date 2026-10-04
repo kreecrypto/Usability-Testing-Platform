@@ -36,3 +36,7 @@ next-env.d.ts.bak
 
 # coverage
 coverage/
+
+# browser QA artifacts
+/test-results/
+/playwright-report/
