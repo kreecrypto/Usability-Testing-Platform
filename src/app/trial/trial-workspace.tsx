@@ -22,7 +22,7 @@ import {
 } from "../../lib/trial/model";
 import SimulationRunner from './simulation-runner';
 import BehaviorResults from './behavior-results';
-import { SIMULATION_LAYOUT, geometryKey, behaviorComparable, behaviorSummary, behaviorIsActive, eventName, screenName, geometryName, evidenceName, type BehaviorEvent } from '../../lib/trial/behavior';
+import { behaviorEvidenceValid, SIMULATION_LAYOUT, geometryKey, behaviorComparable, behaviorSummary, behaviorIsActive, eventName, screenName, geometryName, evidenceName, type BehaviorEvent } from '../../lib/trial/behavior';
 import type { Evidence } from '../../lib/trial/model';
 import styles from "./trial.module.css";
 const steps = [
@@ -167,6 +167,10 @@ export default function TrialWorkspace() {
     .filter((r) => r.versionId === version?.id)
     .at(-1);
   const runner = loc.step === "participant";
+  const clickId=typeof window==='undefined'?'':new URLSearchParams(window.location.search).get('click');
+  const clickEvent=store?.behaviorEvents?.find(e=>e.id===clickId && e.versionId===version?.id && e.type==='pointer');
+  const clickEvidence=clickEvent?{sessionId:clickEvent.sessionId,taskId:clickEvent.taskId,kind:'event' as const,eventIds:[clickEvent.id]}:null;
+  const validClick=Boolean(store && version && clickEvidence && behaviorEvidenceValid(store,version.id,clickEvidence));
   useEffect(()=>{setDraftTarget(test?.draft?.target?.kind || 'external');},[test?.id,test?.draft?.parentId]);
   useEffect(() => {
     const hash = window.location.hash;
@@ -818,6 +822,7 @@ export default function TrialWorkspace() {
                 <>
                   <section className={styles.card}>
                     <h2>สร้างข้อค้นพบ</h2>
+                    {clickId && <p role="status">{validClick?'เลือกหลักฐานคลิกต้นทางให้แล้ว ตรวจรายละเอียดและกรอกข้อค้นพบก่อนบันทึก':'ใช้คลิกนี้เป็นหลักฐานไม่ได้: ไม่พบข้อมูลในเวอร์ชันนี้หรือรอบทดลองยังส่งไม่ครบ'}</p>}
                     <p>เลือกคำตอบต้นทาง แล้วอธิบายปัญหาและสิ่งที่ควรปรับปรุง</p>
                     <form
                       onSubmit={(e) => {
@@ -860,7 +865,7 @@ export default function TrialWorkspace() {
                       </label>
                       <fieldset>
                         <legend>คำตอบและพฤติกรรมที่ใช้เป็นหลักฐาน</legend>
-                        {(store.behaviorEvents||[]).filter(e=>e.versionId===version.id && store.sessions.some(s=>s.id===e.sessionId && s.submittedAt)).map(e=><label className={styles.check} key={e.id}><input type="checkbox" name="evidence" value={JSON.stringify({sessionId:e.sessionId,taskId:e.taskId,kind:'event',eventIds:[e.id]})}/><span>{eventName(e.type)} · {screenName(e.screenId)} · {e.elementId||'หน้า'} · ลำดับ {e.sequence} · รอบ {e.sessionId}</span></label>)}
+                        {(store.behaviorEvents||[]).filter(e=>e.versionId===version.id && store.sessions.some(s=>s.id===e.sessionId && s.submittedAt)).map(e=><label className={styles.check} key={e.id}><input type="checkbox" name="evidence" defaultChecked={validClick && e.id===clickId} value={JSON.stringify({sessionId:e.sessionId,taskId:e.taskId,kind:'event',eventIds:[e.id]})}/><span>{eventName(e.type)} · {screenName(e.screenId)} · {e.elementId||'หน้า'} · ลำดับ {e.sequence} · รอบ {e.sessionId}</span></label>)}
                         {store.sessions.filter(s=>s.versionId===version.id && s.submittedAt).flatMap(s=>version.tasks.map(t=>{
                           const events=(store.behaviorEvents||[]).filter(e=>e.versionId===version.id && e.sessionId===s.id && e.taskId===t.id);
                           const path=events.filter(e=>e.type==='screen_view' && e.transitionReason!=='resize');

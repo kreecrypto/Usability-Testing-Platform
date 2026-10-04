@@ -37,6 +37,7 @@ test('another tab changes the store: load latest before retry, preserving pendin
   const other = await context.newPage();
   await start(other, url);
   await other.frameLocator('iframe').getByRole('link', { name: 'บ้านทั้งหมด', exact: true }).click();
+  await expect.poll(async()=> (await read(other)).behaviorEvents?.filter(e=>e.screenId==='houses' && e.type==='screen_view').length || 0).toBeGreaterThan(0);
   await expect(page.getByRole('alert').filter({ hasText: 'ข้อมูลเปลี่ยนในแท็บอื่น โหลดข้อมูลล่าสุดก่อนทำต่อ' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'บันทึกเหตุการณ์ค้างและทำต่อ' })).toBeDisabled();
   await page.evaluate(() => { (window as unknown as { qaFailWrites: boolean }).qaFailWrites = false; });
