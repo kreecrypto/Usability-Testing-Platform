@@ -66,5 +66,21 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Install Chromium for Trial browser regressions
+        run: npx playwright install --with-deps chromium
+
+      - name: Trial browser recovery and Results regressions
+        run: npm run test:trial:e2e
+
+      - name: Upload failed browser QA evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trial-browser-qa
+          path: |
+            test-results/trial/
+            playwright-report/
+          retention-days: 7
+
       - name: Verify lockfile stayed deterministic
         run: git diff --exit-code -- package-lock.json

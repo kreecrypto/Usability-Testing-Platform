@@ -37,3 +37,7 @@ Report `e4d730ef-96e4-49b5-a6cd-bafb5c29a739` linked to exactly one frozen Heatm
 This browser pass found a minor builder issue: author CSS could override a hidden URL label. The follow-up conditionally renders URL only for external targets; all 303 tests/build/typecheck/design gates passed again. Verify this UI fix on the final Preview, and record its deployment/commit in the PR and Sheet before COMPLETE.
 
 No Production merge/deploy; FEAT-13.07 and MAJOR-A/B/C remain unchanged. No Supabase migration, researcher API access, Auth/RLS changes or Cloudflare integration.
+
+## TRIAL-02.P1 audit follow-up
+
+Real Chromium DOM regressions now cover Storage.setItem quota injection (test-context only): iframe pauses/removes, answer and in-app leave are blocked, exact pending event retries once and remains after refresh. Two pages sharing one browser context verify stale-tab blocking/reload/rebased unique sequences. Another tab completing the task verifies unaccepted event exclusion, downloaded JSON `accepted:false`, and explicit acknowledgement before recovery. 3/3 passed against local optimized build; baseline 303 tests/build/typecheck passed. This is controlled failure injection, not physical disk exhaustion. Run `npm run build`, `npx playwright install chromium`, then `npm run test:trial:e2e`; CI installs Chromium and runs against its built app. Final Preview remains a separate gate.
