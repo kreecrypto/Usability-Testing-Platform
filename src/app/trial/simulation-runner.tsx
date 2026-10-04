@@ -40,7 +40,7 @@ export default function SimulationRunner({store,session,version,task,commit,bloc
         if(latest.current.commit(s=>retryBehavior(s,pending.current))) {pending.current=[];onPendingChange(false);setPaused(false);setReload(n=>n+1);}
       }}>บันทึกเหตุการณ์ค้างและทำต่อ</button></div>}
       {!paused && !blocked && <iframe ref={frame} key={`${task.id}-${reload}`} src={`/trial/target?mode=run&layout=${SIMULATION_LAYOUT}`} title="เว็บจำลองบ้านเช่า — ทำโจทย์ภายในนี้" className={styles.targetFrame}/>}
-      <small>การกดด้วยคีย์บอร์ดแสดงเป็นการกระทำ ไม่มีพิกัดสำหรับ Heatmap</small>
+      <small>การกดด้วยคีย์บอร์ดแสดงเป็นการกระทำ ไม่มีพิกัดสำหรับแผนที่ตำแหน่งคลิก</small>
     </>}
   </section>;
 }

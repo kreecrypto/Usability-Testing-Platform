@@ -248,7 +248,7 @@ export default function TrialWorkspace() {
           </span>
         </div>
         <p className={styles.meta}>
-          เก็บคลิก เส้นทาง และ Heatmap เฉพาะเว็บจำลองที่เลือก ไม่เก็บจาก URL ภายนอก ·
+          เก็บคลิก เส้นทาง และแผนที่ตำแหน่งคลิกเฉพาะเว็บจำลองที่เลือก ไม่เก็บจาก URL ภายนอก ·
           อย่ากรอกข้อมูลส่วนบุคคล
         </p>
         <p role="status" className={styles.meta}>
@@ -528,7 +528,7 @@ export default function TrialWorkspace() {
                             maxLength={200}
                           />
                         </label>
-                        <label>เป้าหมายทดสอบ<select name="target" value={draftTarget} onChange={e=>setDraftTarget(e.target.value)}><option value="external">เว็บไซต์ภายนอก — เก็บคำตอบเท่านั้น</option><option value="simulation">เว็บจำลอง UTP — เก็บคลิก เส้นทาง และ Heatmap</option></select></label>
+                        <label>เป้าหมายทดสอบ<select name="target" value={draftTarget} onChange={e=>setDraftTarget(e.target.value)}><option value="external">เว็บไซต์ภายนอก — เก็บคำตอบเท่านั้น</option><option value="simulation">เว็บจำลอง UTP — เก็บคลิก เส้นทาง และแผนที่ตำแหน่งคลิก</option></select></label>
                         {draftTarget === 'simulation' && <p>ข้อมูลบ้านและงานซ่อมเป็นข้อมูลสังเคราะห์ ไม่ใช่เว็บ Banrao จริง บันทึกฉบับร่างก่อนเผยแพร่</p>}
                         {draftTarget !== 'simulation' && <label>
                           ลิงก์เว็บไซต์
@@ -763,7 +763,7 @@ export default function TrialWorkspace() {
                       ตัวเลขต่อไปนี้มาจากคำตอบของผู้ทดลอง
                       ไม่ใช่ความสำเร็จที่ตรวจจับจากเว็บไซต์
                     </p>
-                    {!version.target && <p>คลิก / เส้นทาง / Heatmap: ไม่รองรับสำหรับเว็บไซต์ภายนอกที่ยังไม่ได้ติดตัวเก็บพฤติกรรม</p>}
+                    {!version.target && <p>คลิก / เส้นทาง / แผนที่ตำแหน่งคลิก: ไม่รองรับสำหรับเว็บไซต์ภายนอกที่ยังไม่ได้ติดตัวเก็บพฤติกรรม</p>}
                   </section>
                   {version.target && <BehaviorResults key={version.id} store={store} version={version}/>}
                   {version.tasks.map((t, i) => {
@@ -867,7 +867,7 @@ export default function TrialWorkspace() {
                           const geometries=[...new Set(events.filter(e=>e.type==='pointer').map(geometryKey))];
                           return <div key={`${s.id}-${t.id}`}>
                             {path.length>0 && <label className={styles.check}><input type="checkbox" name="evidence" value={JSON.stringify({sessionId:s.id,taskId:t.id,kind:'path',eventIds:path.map(e=>e.id)})}/><span>เส้นทาง · โจทย์ {version.tasks.indexOf(t)+1} · รอบ {s.id} ({path.length} เหตุการณ์)</span></label>}
-                            {geometries.map(g=><label className={styles.check} key={g}><input type="checkbox" name="evidence" value={JSON.stringify({sessionId:s.id,taskId:t.id,kind:'heatmap',eventIds:events.filter(e=>e.type==='pointer' && geometryKey(e)===g).map(e=>e.id)})}/><span>แผนที่คลิก · {geometryName(events.find(e=>geometryKey(e)===g)!)} · โจทย์ {version.tasks.indexOf(t)+1} · รอบ {s.id}</span></label>)}
+                            {geometries.map(g=><label className={styles.check} key={g}><input type="checkbox" name="evidence" value={JSON.stringify({sessionId:s.id,taskId:t.id,kind:'heatmap',eventIds:events.filter(e=>e.type==='pointer' && geometryKey(e)===g).map(e=>e.id)})}/><span>แผนที่ตำแหน่งคลิก · {geometryName(events.find(e=>geometryKey(e)===g)!)} · โจทย์ {version.tasks.indexOf(t)+1} · รอบ {s.id}</span></label>)}
                           </div>;
                         }))}
                         {store.sessions

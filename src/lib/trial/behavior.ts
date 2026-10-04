@@ -76,7 +76,7 @@ export function consentBehavior(store:Store, sessionId:string):Store {
 export const geometryKey=(e:BehaviorEvent)=>[e.layoutVersion,e.screenId,e.viewportWidth,e.viewportHeight,e.documentWidth,e.documentHeight].join('|');
 export const geometryName=(e:BehaviorEvent)=>`${screenName(e.screenId)} · หน้าจอ ${e.viewportWidth} × ${e.viewportHeight} · เนื้อหา ${e.documentWidth} × ${e.documentHeight}`;
 export const eventName=(type:BehaviorEvent['type'])=>({screen_view:'เปิดหน้า',pointer:'คลิก/แตะ',action:'กดด้วยคีย์บอร์ด',scroll:'เลื่อนหน้า'}[type]);
-export const evidenceName=(kind?:Evidence['kind'])=>({event:'เหตุการณ์',path:'เส้นทาง',heatmap:'แผนที่คลิก'}[kind || 'event']);
+export const evidenceName=(kind?:Evidence['kind'])=>({event:'เหตุการณ์',path:'เส้นทาง',heatmap:'แผนที่ตำแหน่งคลิก'}[kind || 'event']);
 export function behaviorEvidenceValid(store:Store, versionId:string, evidence:Evidence):boolean {
   const s=store.sessions.find(s=>s.id===evidence.sessionId && s.versionId===versionId);
   if (!s?.submittedAt || !s.answers.some(a=>a.taskId===evidence.taskId)) return false;
