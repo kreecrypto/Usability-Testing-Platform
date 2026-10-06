@@ -135,3 +135,7 @@ Planning requirements must not be guessed from code. Runtime behavior must not b
 ## Low-fidelity wireframes
 
 Open `public/wireframes/index.html` directly in a browser, or `/wireframes/` with the app running. See [wireframe guide](docs/wireframes.md) and [verification notes](docs/wireframes-qa.md).
+
+## Agentic development
+
+See [Agentic development runbook](docs/agentic-development.md) for the Sheet queue, independent QA, private MAJOR leases and schedule activation gates. Default mode is read-only; merge and Production deploy remain manual.

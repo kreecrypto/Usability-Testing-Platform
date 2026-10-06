@@ -36,3 +36,6 @@ next-env.d.ts.bak
 
 # coverage
 coverage/
+
+# Agentic runtime checkpoints and live Sheet snapshots (not planning authority)
+/.utp-agentic/
