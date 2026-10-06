@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "repository": "kreecrypto/Usability-Testing-Platform",
+  "spreadsheetId": "1car-7heRkDkN2RBiJvD3qr8WlbS2rvFUYSepQS7ABOQ",
+  "supabaseProjectId": "qryvrcwbsehrzpersuoc",
+  "timezone": "Asia/Bangkok",
+  "scheduleHours": [9, 11, 13, 15, 17],
+  "maxTasksPerRound": 3,
+  "startTaskWindowSeconds": 3600,
+  "leaseSeconds": 4500,
+  "heartbeatSeconds": 300,
+  "mode": "read_only",
+  "autoMerge": false,
+  "productionDeploy": false
+}
