@@ -73,6 +73,7 @@ Production source branch:
 Vercel is the active production host; Supabase is the data and auth provider. Historical deployment experiments do not override current Sheet governance.
 
 See:
+- [team roles, workflow and handoff](docs/team-workflow.md)
 - [architecture](docs/architecture.md)
 - [Test Target contract](docs/test-target-contract.md)
 - [research evidence/report contract](docs/research-evidence-report-contract.md)
