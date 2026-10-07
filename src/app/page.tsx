@@ -1,3 +1,7 @@
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { ArrowRight } from 'lucide-react';
+import { Card } from '@/components/ui/card';
 const modules = [
   {
     title: "สร้างการทดสอบ",
@@ -45,14 +49,14 @@ export default function Home() {
             <p className="eyebrow">UT Platform</p>
             <h1>ทดสอบการใช้งานกับผู้ใช้จริง</h1>
           </div>
-          <a className="primaryButton" href="/demo/projects">ดูตัวอย่างการทำงาน</a>
+          <Button asChild variant="legacy"><a className="primaryButton" href="/demo/projects">ดูตัวอย่างการทำงาน</a></Button>
         </header>
 
-        <p><a className="primaryButton" href="/trial">เริ่มทดลองกับเว็บบ้านเรา</a> · สร้างแบบทดสอบและบันทึกคำตอบในเบราว์เซอร์นี้ ไม่ต้องเข้าสู่ระบบ</p>
+        <p><Button asChild variant="legacy"><a className="primaryButton" href="/trial">เริ่มทดลองกับเว็บบ้านเรา</a></Button> · สร้างแบบทดสอบและบันทึกคำตอบในเบราว์เซอร์นี้ ไม่ต้องเข้าสู่ระบบ</p>
 
-        <section id="overview" className="heroCard">
+        <Card asChild appearance="legacy" ><section id="overview" className="heroCard">
           <div>
-            <span className="status">ตัวอย่างแบบอ่านอย่างเดียว</span>
+            <Badge appearance="legacy" className="status">ตัวอย่างแบบอ่านอย่างเดียว</Badge>
             <h2>จากแบบทดสอบถึงสิ่งที่ควรแก้</h2>
             <p>
               สำรวจตัวอย่างโปรเจกต์ ดูงานที่ให้ผู้เข้าร่วมทำ แล้วตามผลกลับไปถึงหลักฐาน ข้อค้นพบ และการทดสอบซ้ำ
@@ -64,7 +68,7 @@ export default function Home() {
             <div className="metric"><strong>2</strong><span>ดูผลและหลักฐาน</span></div>
             <div className="metric"><strong>3</strong><span>แก้ไขและทดสอบซ้ำ</span></div>
           </div>
-        </section>
+        </section></Card>
 
         <section id="modules" className="section">
           <div className="sectionHeading">
@@ -76,11 +80,11 @@ export default function Home() {
 
           <div className="cardGrid">
             {modules.map((module, index) => (
-              <article className="moduleCard" key={module.title}>
+              <Card asChild appearance="legacy" key={module.title}><article className="moduleCard" key={module.title}>
                 <span className="moduleIndex">0{index + 1}</span>
                 <h3>{module.title}</h3>
                 <p>{module.description}</p>
-              </article>
+              </article></Card>
             ))}
           </div>
         </section>
