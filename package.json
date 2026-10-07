@@ -18,18 +18,32 @@
     "qa": "npm run build && npm run typecheck && npm test",
     "qa:demo": "npm run check:demo-env && npm run build && npm run typecheck && node --test tests/task54-58-nonfigma-release-qa.test.ts",
     "qa:demo:full": "npm run check:demo-env && npm run check:design-system && npm run check:high-fi && npm run build && npm run typecheck && npm test",
-    "test:trial:e2e": "playwright test -c playwright.trial.config.ts"
+    "test:trial:e2e": "playwright test -c playwright.trial.config.ts",
+    "test:a11y": "playwright test -c playwright.trial.config.ts ui-accessibility.spec.ts",
+    "test:ui:smoke": "playwright test -c playwright.ui-smoke.config.ts"
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "1.2.0",
+    "@radix-ui/react-dropdown-menu": "2.1.25",
+    "@radix-ui/react-slot": "1.4.0",
+    "@radix-ui/react-tabs": "1.1.22",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "lucide-react": "1.52.0",
     "next": "16.3.8",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "tailwind-merge": "3.7.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@playwright/test": "1.63.0",
+    "@tailwindcss/postcss": "4.3.3",
     "@types/node": "24.13.3",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
+    "postcss": "8.5.29",
+    "tailwindcss": "4.3.3",
     "typescript": "7.0.2"
   },
   "type": "module"
