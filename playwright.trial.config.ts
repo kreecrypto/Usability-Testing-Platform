@@ -12,7 +12,7 @@ export default defineConfig({
   testMatch: '*.spec.ts',
   fullyParallel: false,
   workers: 1,
-  timeout: 30_000,
+  timeout: preview ? 90_000 : 30_000,
   expect: { timeout: 8_000 },
   outputDir: 'test-results/trial',
   reporter: [['list'], ['html', { outputFolder: 'playwright-report', open: 'never' }]],

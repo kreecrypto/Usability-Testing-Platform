@@ -232,7 +232,9 @@ test("Tasks 34-37 runner UI covers participant states in Thai without exposing i
   assert.doesNotMatch(client, /เส้นทางที่คาดไว้|เกณฑ์สำเร็จ/);
   assert.match(client, /role="progressbar"/);
   assert.match(client, /aria-valuenow=\{progress\}/);
-  assert.match(client, /event\.key !== "Escape"/);
+  assert.match(client, /<DialogContent/);
+  assert.match(client, /onEscapeKeyDown=/);
+  assert.match(client, /onCloseAutoFocus=/);
   assert.match(client, /giveUpTriggerRef/);
   assert.match(client, /giveUpCancelRef/);
   assert.match(css, /var\(--ut-/);
