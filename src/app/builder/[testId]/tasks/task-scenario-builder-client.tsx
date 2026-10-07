@@ -1,4 +1,7 @@
 "use client";
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import styles from "./task-scenario-builder.module.css";
@@ -152,15 +155,15 @@ export default function TaskScenarioBuilderClient({ testId }: { testId: string }
 
       {message ? <div className={state === "error" ? styles.error : styles.notice} role={state === "error" ? "alert" : "status"}>{message}</div> : null}
 
-      <section className={styles.card} aria-labelledby="new-task-title">
+      <Card asChild appearance="legacy" ><section className={styles.card} aria-labelledby="new-task-title">
         <h2 id="new-task-title">เพิ่มงาน</h2>
         <form className={styles.form} onSubmit={createTask}>
-          <label><span>ชื่องาน</span><input value={newTask.title} onChange={(event) => setNewTask({ ...newTask, title: event.target.value })} required disabled={busy} /></label>
+          <label><span>ชื่องาน</span><Input appearance="legacy" value={newTask.title} onChange={(event) => setNewTask({ ...newTask, title: event.target.value })} required disabled={busy} /></label>
           <label><span>สถานการณ์</span><textarea rows={3} value={newTask.scenario} onChange={(event) => setNewTask({ ...newTask, scenario: event.target.value })} disabled={busy} /></label>
           <label><span>คำสั่งที่ผู้เข้าร่วมจะเห็น</span><textarea rows={3} value={newTask.instruction} onChange={(event) => setNewTask({ ...newTask, instruction: event.target.value })} disabled={busy} /></label>
-          <button type="submit" disabled={busy || newTask.title.trim() === ""}>{state === "saving" ? "กำลังบันทึก…" : "เพิ่มงาน"}</button>
+          <Button variant="legacy" type="submit" disabled={busy || newTask.title.trim() === ""}>{state === "saving" ? "กำลังบันทึก…" : "เพิ่มงาน"}</Button>
         </form>
-      </section>
+      </section></Card>
 
       <section className={styles.taskSection} aria-labelledby="task-list-title">
         <div className={styles.sectionHeading}>
@@ -177,15 +180,15 @@ export default function TaskScenarioBuilderClient({ testId }: { testId: string }
               <div className={styles.taskTopbar}>
                 <strong>งาน {index + 1}</strong>
                 <div className={styles.reorder} aria-label={`จัดลำดับงาน ${index + 1}`}>
-                  <button type="button" onClick={() => void moveTask(index, -1)} disabled={busy || index === 0} aria-label={`เลื่อนงาน ${index + 1} ขึ้น`}>↑</button>
-                  <button type="button" onClick={() => void moveTask(index, 1)} disabled={busy || index === tasks.length - 1} aria-label={`เลื่อนงาน ${index + 1} ลง`}>↓</button>
+                  <Button variant="legacy" type="button" onClick={() => void moveTask(index, -1)} disabled={busy || index === 0} aria-label={`เลื่อนงาน ${index + 1} ขึ้น`}>↑</Button>
+                  <Button variant="legacy" type="button" onClick={() => void moveTask(index, 1)} disabled={busy || index === tasks.length - 1} aria-label={`เลื่อนงาน ${index + 1} ลง`}>↓</Button>
                 </div>
               </div>
               <div className={styles.form}>
-                <label><span>ชื่องาน</span><input value={task.title} onChange={(event) => editTask(task.id, "title", event.target.value)} disabled={busy} /></label>
+                <label><span>ชื่องาน</span><Input appearance="legacy" value={task.title} onChange={(event) => editTask(task.id, "title", event.target.value)} disabled={busy} /></label>
                 <label><span>สถานการณ์</span><textarea rows={3} value={task.scenario ?? ""} onChange={(event) => editTask(task.id, "scenario", event.target.value)} disabled={busy} /></label>
                 <label><span>คำสั่งที่ผู้เข้าร่วมจะเห็น</span><textarea rows={3} value={task.instruction ?? ""} onChange={(event) => editTask(task.id, "instruction", event.target.value)} disabled={busy} /></label>
-                <button className={styles.secondaryButton} type="button" onClick={() => void saveTask(task)} disabled={busy || !dirtyIds.has(task.id) || task.title.trim() === ""}>บันทึกงาน</button>
+                <Button variant="legacy" className={styles.secondaryButton} type="button" onClick={() => void saveTask(task)} disabled={busy || !dirtyIds.has(task.id) || task.title.trim() === ""}>บันทึกงาน</Button>
               </div>
             </li>
           ))}

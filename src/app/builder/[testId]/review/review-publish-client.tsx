@@ -1,4 +1,6 @@
 "use client";
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 
 import { useCallback, useEffect, useState } from "react";
 import styles from "./review-publish.module.css";
@@ -58,20 +60,20 @@ export default function ReviewPublishClient({ testId }: { testId: string }) {
   }
 
   if (state === "loading" && !preview) return <main className={styles.shell}><p>กำลังเตรียมพรีวิว…</p></main>;
-  if (!preview) return <main className={styles.shell}><h1>ตรวจสอบก่อนเผยแพร่</h1><p role="alert">{error || "ยังเปิดพรีวิวไม่ได้"}</p><button onClick={() => void load()}>ลองอีกครั้ง</button></main>;
+  if (!preview) return <main className={styles.shell}><h1>ตรวจสอบก่อนเผยแพร่</h1><p role="alert">{error || "ยังเปิดพรีวิวไม่ได้"}</p><Button variant="legacy" onClick={() => void load()}>ลองอีกครั้ง</Button></main>;
 
   return (
     <main className={styles.shell}>
       <header className={styles.header}>
         <div><p className={styles.eyebrow}>สร้างการทดสอบ · ตรวจสอบก่อนเผยแพร่</p><h1>เวอร์ชัน {preview.versionNo}</h1><p className={styles.status} data-status={preview.lifecycleStatus}>{preview.lifecycleStatus === "draft" ? "ฉบับร่าง" : "เผยแพร่แล้ว"}</p></div>
         {preview.lifecycleStatus === "draft"
-          ? <button className={styles.primary} disabled={state === "working"} onClick={() => void act("publish")}>เผยแพร่เวอร์ชันนี้</button>
-          : <button className={styles.primary} disabled={state === "working"} onClick={() => void act("create_draft")}>สร้างฉบับร่างใหม่</button>}
+          ? <Button variant="legacy" className={styles.primary} disabled={state === "working"} onClick={() => void act("publish")}>เผยแพร่เวอร์ชันนี้</Button>
+          : <Button variant="legacy" className={styles.primary} disabled={state === "working"} onClick={() => void act("create_draft")}>สร้างฉบับร่างใหม่</Button>}
       </header>
 
       {error ? <p className={styles.error} role="alert">{error}</p> : null}
 
-      <section className={styles.card} aria-labelledby="prototype-heading">
+      <Card asChild appearance="legacy" ><section className={styles.card} aria-labelledby="prototype-heading">
         <h2 id="prototype-heading">สิ่งที่จะทดสอบ</h2>
         <dl className={styles.definition}>
           <div><dt>ต้นแบบสาธารณะ</dt><dd><a href={preview.sourceUrl} target="_blank" rel="noreferrer">{preview.sourceUrl}</a></dd></div>
@@ -79,21 +81,21 @@ export default function ReviewPublishClient({ testId }: { testId: string }) {
           <div><dt>รหัสเวอร์ชันภายใน</dt><dd><code>{preview.testVersionId}</code></dd></div>
         </dl>
         <p className={styles.note}>หลังเผยแพร่ จะเปลี่ยนลิงก์และงานของเวอร์ชันนี้ไม่ได้ ผลการทดสอบจึงอ้างอิงการตั้งค่าเดิมเสมอ</p>
-      </section>
+      </section></Card>
 
-      <section className={styles.card} aria-labelledby="funnel-heading">
+      <Card asChild appearance="legacy" ><section className={styles.card} aria-labelledby="funnel-heading">
         <h2 id="funnel-heading">ลำดับขั้นที่จะวัดผล</h2>
         <p className={styles.note}>เรียงรหัสหน้าจอที่ต้องการวัดว่าผู้เข้าร่วมไปถึงหรือหยุดที่ขั้นใด ระบบจะเก็บลำดับนี้กับเวอร์ชันที่เผยแพร่</p>
         {preview.lifecycleStatus === "draft" ? (
           <div className={styles.funnelEditor}>
             <label htmlFor="funnel-screen-ids">Screen ID ตามลำดับ — 1 บรรทัดต่อ 1 จุด หรือคั่นด้วยจุลภาค</label>
             <textarea id="funnel-screen-ids" rows={5} value={funnelText} onChange={(event) => setFunnelText(event.target.value)} disabled={state === "working"} placeholder={"screen-A\nscreen-B\nscreen-C"} />
-            <button className={styles.secondary} type="button" disabled={state === "working"} onClick={() => void saveFunnel()}>บันทึก Funnel</button>
+            <Button variant="legacy" className={styles.secondary} type="button" disabled={state === "working"} onClick={() => void saveFunnel()}>บันทึก Funnel</Button>
           </div>
         ) : preview.funnelConfig ? (
           <ol className={styles.funnelSteps}>{preview.funnelConfig.screenIds.map((screenId) => <li key={screenId}><code>{screenId}</code></li>)}</ol>
         ) : <p>เวอร์ชันนี้ยังไม่ได้กำหนดลำดับหน้าจอ จึงยังวิเคราะห์การไปต่อในแต่ละขั้นไม่ได้</p>}
-      </section>
+      </section></Card>
 
       <section aria-labelledby="task-heading">
         <div className={styles.sectionTitle}><h2 id="task-heading">งานทดสอบ</h2><span>{preview.tasks.length}</span></div>

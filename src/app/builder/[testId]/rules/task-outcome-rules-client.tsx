@@ -1,4 +1,5 @@
 "use client";
+import { Button } from '@/components/ui/button';
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
@@ -224,9 +225,9 @@ export default function TaskOutcomeRulesClient({ testId }: { testId: string }) {
                 </div>
 
                 {validation ? <p role="alert" style={{ margin: 0 }}>{validation}</p> : <p role="status" style={{ margin: 0 }}>เกณฑ์พร้อมบันทึก ระบบจะตรวจอีกครั้งก่อนเผยแพร่</p>}
-                <button className="primaryButton" type="submit" disabled={saving || Boolean(validation)}>
+                <Button variant="legacy" className="primaryButton" type="submit" disabled={saving || Boolean(validation)}>
                   {saving ? "กำลังบันทึก…" : "บันทึกเกณฑ์จบงาน"}
-                </button>
+                </Button>
               </form>
             ) : null}
           </div>

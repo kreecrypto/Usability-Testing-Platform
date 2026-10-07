@@ -1,4 +1,7 @@
 "use client";
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import styles from "./success-criteria.module.css";
@@ -113,13 +116,13 @@ export default function SuccessCriteriaClient({ testId }: { testId: string }) {
           <aside className={styles.taskRail} aria-label="งานทดสอบ">
             <h2>งานทดสอบ</h2>
             {draft.tasks.map((task) => (
-              <button type="button" key={task.id} className={task.id === selectedTaskId ? styles.activeTask : styles.taskButton} onClick={() => selectTask(task.id)} disabled={busy}>
+              <Button variant="legacy" type="button" key={task.id} className={task.id === selectedTaskId ? styles.activeTask : styles.taskButton} onClick={() => selectTask(task.id)} disabled={busy}>
                 <span>งาน {task.ordinal}</span><strong>{task.title}</strong>
-              </button>
+              </Button>
             ))}
           </aside>
 
-          <section className={styles.card} aria-labelledby="criteria-title">
+          <Card asChild appearance="legacy" ><section className={styles.card} aria-labelledby="criteria-title">
             <div className={styles.cardHeader}>
               <div><p className={styles.eyebrow}>งาน {selectedTask.ordinal}</p><h2 id="criteria-title">{selectedTask.title}</h2></div>
               <span className={selectedTask.editable ? styles.statusReady : styles.statusBlocked}>{selectedTask.editable ? "แก้ไขได้" : "เกณฑ์นี้ยังไม่รองรับ"}</span>
@@ -128,14 +131,14 @@ export default function SuccessCriteriaClient({ testId }: { testId: string }) {
             {!selectedTask.editable ? <div className={styles.warning} role="alert">งานนี้มีเกณฑ์ชนิดที่อยู่นอกขอบเขต presented-node ปัจจุบัน ระบบจะไม่เขียนทับเกณฑ์เดิมโดยอัตโนมัติ</div> : null}
 
             <form className={styles.form} onSubmit={save}>
-              <label><span>Node เริ่มต้น</span><input value={editor.startNodeId} onChange={(event) => setEditor({ ...editor, startNodeId: event.target.value })} placeholder="5:3" disabled={busy || !selectedTask.editable} required /></label>
+              <label><span>Node เริ่มต้น</span><Input appearance="legacy" value={editor.startNodeId} onChange={(event) => setEditor({ ...editor, startNodeId: event.target.value })} placeholder="5:3" disabled={busy || !selectedTask.editable} required /></label>
               <label><span>Node ที่ถือว่าสำเร็จ</span><textarea rows={4} value={editor.successNodeIds} onChange={(event) => setEditor({ ...editor, successNodeIds: event.target.value })} placeholder="10:20, 10:21" disabled={busy || !selectedTask.editable} required /><small>แยกหลาย Node ด้วยเครื่องหมายจุลภาค เว้นวรรค หรือขึ้นบรรทัดใหม่</small></label>
               <label><span>Node ที่ถือว่าไม่สำเร็จ</span><textarea rows={4} value={editor.failureNodeIds} onChange={(event) => setEditor({ ...editor, failureNodeIds: event.target.value })} placeholder="30:40" disabled={busy || !selectedTask.editable} required /></label>
 
               {validation ? <div className={styles.validation} role="alert">{validation}</div> : <div className={styles.valid} role="status">ไม่พบ Node ที่ขัดแย้งกัน</div>}
-              <button type="submit" disabled={busy || Boolean(validation) || !selectedTask.editable}>{state === "saving" ? "กำลังบันทึก…" : "บันทึกเกณฑ์"}</button>
+              <Button variant="legacy" type="submit" disabled={busy || Boolean(validation) || !selectedTask.editable}>{state === "saving" ? "กำลังบันทึก…" : "บันทึกเกณฑ์"}</Button>
             </form>
-          </section>
+          </section></Card>
         </div>
       ) : null}
     </main>
