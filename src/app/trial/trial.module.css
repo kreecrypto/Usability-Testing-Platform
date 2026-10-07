@@ -248,7 +248,7 @@
 
 .mapScroller { overflow: auto; max-height: 65vh; max-width: 100%; min-width: 0; margin-block: var(--ah-space-16); }
 .mapDialog { width: calc(100% - 32px); max-width: 1200px; max-height: 92vh; overflow: auto; padding: var(--ah-space-16); border: 1px solid var(--ah-hairline); background: var(--ah-canvas); color: var(--ah-ink-deep); }
-.mapDialog::backdrop { background: rgb(0 0 0 / 55%); }
+
 .heatPoint[aria-pressed="true"] { outline: 3px solid var(--ah-primary); outline-offset: 3px; opacity: 1; }
 .heatPoint:focus-visible { outline: 3px solid var(--ah-primary); outline-offset: 4px; }
 .clickList { max-height: 280px; overflow: auto; padding-inline-start: 28px; }
