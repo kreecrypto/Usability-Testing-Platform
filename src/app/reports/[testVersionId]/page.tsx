@@ -1,4 +1,5 @@
 "use client";
+import { Button } from '@/components/ui/button';
 
 import { useEffect, useMemo, useState } from "react";
 import type {
@@ -373,7 +374,7 @@ function EvidenceExplorer({ report }: { report: UsabilityReport }) {
             </div>
           </details>,
         )}
-        {report.evidenceExplorer.sessions.length > 5 ? <button className={styles.secondaryButton} type="button" onClick={() => setShowAllSessions((value) => !value)}>{showAllSessions ? "แสดงน้อยลง" : `แสดงทั้งหมด ${report.evidenceExplorer.sessions.length} รอบ`}</button> : null}
+        {report.evidenceExplorer.sessions.length > 5 ? <Button variant="legacy" className={styles.secondaryButton} type="button" onClick={() => setShowAllSessions((value) => !value)}>{showAllSessions ? "แสดงน้อยลง" : `แสดงทั้งหมด ${report.evidenceExplorer.sessions.length} รอบ`}</Button> : null}
       </div>
       <div>
         <h3>เส้นทางการใช้งาน</h3>
@@ -387,7 +388,7 @@ function EvidenceExplorer({ report }: { report: UsabilityReport }) {
             </div>
           </details>,
         )}
-        {report.evidenceExplorer.paths.length > 5 ? <button className={styles.secondaryButton} type="button" onClick={() => setShowAllPaths((value) => !value)}>{showAllPaths ? "แสดงน้อยลง" : `แสดงทั้งหมด ${report.evidenceExplorer.paths.length} เส้นทาง`}</button> : null}
+        {report.evidenceExplorer.paths.length > 5 ? <Button variant="legacy" className={styles.secondaryButton} type="button" onClick={() => setShowAllPaths((value) => !value)}>{showAllPaths ? "แสดงน้อยลง" : `แสดงทั้งหมด ${report.evidenceExplorer.paths.length} เส้นทาง`}</Button> : null}
         <div className={styles.heatmapState}>
           <div><b>ฮีตแมป</b><AvailabilityBadge value={report.evidenceExplorer.heatmapStatus} /></div>
           <p>{report.evidenceExplorer.heatmapReason ?? "ใช้เฉพาะพิกัดที่ตรวจสอบได้"}</p>
@@ -480,15 +481,15 @@ export default function ReportPage({ params }: { params: Promise<{ testVersionId
     </header>
 
     <div className={styles.viewSwitch} role="group" aria-label="รูปแบบการดูรายงาน">
-      <button type="button" aria-pressed={view === "summary"} className={view === "summary" ? styles.viewActive : styles.viewButton} onClick={() => setView("summary")}>สรุปเพื่อการตัดสินใจ</button>
-      <button type="button" aria-pressed={view === "evidence"} className={view === "evidence" ? styles.viewActive : styles.viewButton} onClick={() => setView("evidence")}>หลักฐานและวิธีอ่านผล</button>
+      <Button variant="legacy" type="button" aria-pressed={view === "summary"} className={view === "summary" ? styles.viewActive : styles.viewButton} onClick={() => setView("summary")}>สรุปเพื่อการตัดสินใจ</Button>
+      <Button variant="legacy" type="button" aria-pressed={view === "evidence"} className={view === "evidence" ? styles.viewActive : styles.viewButton} onClick={() => setView("evidence")}>หลักฐานและวิธีอ่านผล</Button>
     </div>
 
     {state.status === "loading" ? <div className={styles.state} role="status" aria-live="polite">กำลังโหลดรายงานจากหลักฐาน…</div> : null}
     {state.status === "error" ? <div className={styles.error} role="alert">
       <strong>ยังเปิดรายงานไม่ได้</strong><p>{state.message}</p>
       <div className={styles.errorActions}>
-        <button type="button" onClick={() => window.location.reload()}>ลองอีกครั้ง</button>
+        <Button variant="legacy" type="button" onClick={() => window.location.reload()}>ลองอีกครั้ง</Button>
         <a href={testVersionId ? `/results/${testVersionId}` : "/projects"}>กลับไปผลการทดสอบ</a>
       </div>
     </div> : null}
