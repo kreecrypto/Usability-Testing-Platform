@@ -1,3 +1,6 @@
+import { Button } from '@/components/ui/button';
+import { ArrowRight } from 'lucide-react';
+import { Card } from '@/components/ui/card';
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { demoMetrics, demoSteps, demoStudy, type DemoStep } from "../../../lib/demo/public-demo.ts";
@@ -20,13 +23,13 @@ function StepContent({ step }: { step: DemoStep }) {
   switch (step) {
     case "projects": return <>
       <div className={styles.intro}><p>โปรเจกต์นี้รวมแบบทดสอบและผลของงานเดียวกัน เลือกแบบทดสอบเพื่อดูว่าทีมตั้งโจทย์อย่างไร</p></div>
-      <article className={styles.card}><span className={styles.kicker}>โปรเจกต์ตัวอย่าง</span><h2>{demoStudy.project}</h2><p>เป้าหมาย: หาว่าผู้ใช้ติดขัดตรงไหนก่อนสมัครสำเร็จ แล้วตรวจผลหลังปรับหน้าแบบฟอร์ม</p><p className={styles.meta}>1 แบบทดสอบ · ก่อนและหลังปรับ 2 เวอร์ชัน</p><a className={styles.action} href="/demo/test">ดูแบบทดสอบ <span aria-hidden="true">→</span></a></article>
+      <Card asChild appearance="legacy" ><article className={styles.card}><span className={styles.kicker}>โปรเจกต์ตัวอย่าง</span><h2>{demoStudy.project}</h2><p>เป้าหมาย: หาว่าผู้ใช้ติดขัดตรงไหนก่อนสมัครสำเร็จ แล้วตรวจผลหลังปรับหน้าแบบฟอร์ม</p><p className={styles.meta}>1 แบบทดสอบ · ก่อนและหลังปรับ 2 เวอร์ชัน</p><Button asChild variant="legacy"><a className={styles.action} href="/demo/test">ดูแบบทดสอบ <ArrowRight aria-hidden="true" data-ui="icon" /></a></Button></article></Card>
     </>;
     case "test": return <>
       <StudyContext />
       <div className={styles.grid}>
-        <article className={styles.card}><span className={styles.kicker}>เป้าหมาย</span><h2>{demoStudy.test}</h2><p>ให้ผู้เข้าร่วมลองสมัครบน{demoStudy.target} แล้วดูว่าสำเร็จหรือหยุดตรงขั้นใด</p><dl><dt>งานที่ให้ทำ</dt><dd>{demoStudy.task}</dd><dt>เวอร์ชันที่ดู</dt><dd>{demoStudy.baselineVersion} · เผยแพร่แล้ว (ตัวอย่าง)</dd></dl></article>
-        <article className={styles.card}><span className={styles.kicker}>ขั้นถัดไป</span><h2>ตรวจผลและหลักฐาน</h2><p>เมื่อผู้เข้าร่วมทำเสร็จ ให้ดูผลของเวอร์ชันนี้และเปิดแต่ละรอบเพื่อดูว่าเกิดอะไรขึ้น</p><a className={styles.action} href="/demo/results">ดูผลการทดสอบ <span aria-hidden="true">→</span></a></article>
+        <Card asChild appearance="legacy" ><article className={styles.card}><span className={styles.kicker}>เป้าหมาย</span><h2>{demoStudy.test}</h2><p>ให้ผู้เข้าร่วมลองสมัครบน{demoStudy.target} แล้วดูว่าสำเร็จหรือหยุดตรงขั้นใด</p><dl><dt>งานที่ให้ทำ</dt><dd>{demoStudy.task}</dd><dt>เวอร์ชันที่ดู</dt><dd>{demoStudy.baselineVersion} · เผยแพร่แล้ว (ตัวอย่าง)</dd></dl></article></Card>
+        <Card asChild appearance="legacy" ><article className={styles.card}><span className={styles.kicker}>ขั้นถัดไป</span><h2>ตรวจผลและหลักฐาน</h2><p>เมื่อผู้เข้าร่วมทำเสร็จ ให้ดูผลของเวอร์ชันนี้และเปิดแต่ละรอบเพื่อดูว่าเกิดอะไรขึ้น</p><Button asChild variant="legacy"><a className={styles.action} href="/demo/results">ดูผลการทดสอบ <ArrowRight aria-hidden="true" data-ui="icon" /></a></Button></article></Card>
       </div>
     </>;
     case "results": return <>
@@ -35,20 +38,20 @@ function StepContent({ step }: { step: DemoStep }) {
         <article className={styles.metric}><span>ทำงานสำเร็จ</span><strong>{demoMetrics.baselineSuccess}/{demoMetrics.baselineEligible}</strong><small>จาก {demoMetrics.baselineEligible} รอบที่นับผลได้ · อีก {demoMetrics.baselineTechnical} รอบติดปัญหาทางเทคนิค</small></article>
         <article className={styles.metric}><span>ติดปัญหาทางเทคนิค</span><strong>{demoMetrics.baselineTechnical}</strong><small>ไม่นำไปรวมกับงานที่ผู้ใช้ทำไม่สำเร็จ</small></article>
       </div>
-      <section className={styles.card}><h2>รอบการทดสอบตัวอย่าง</h2><p>ดูเส้นทางของแต่ละรอบก่อนตัดสินว่าอะไรเป็นปัญหาการใช้งาน</p><div className={styles.sessions}>{demoStudy.sessions.map((session) => <article key={session.id} className={styles.session}><div><strong>{session.id}</strong><span className={styles.outcome}>{session.outcome}</span></div><p>{session.path}</p><small>{session.note}</small></article>)}</div><a className={styles.action} href="/demo/findings">ดูข้อค้นพบ <span aria-hidden="true">→</span></a></section>
+      <Card asChild appearance="legacy" ><section className={styles.card}><h2>รอบการทดสอบตัวอย่าง</h2><p>ดูเส้นทางของแต่ละรอบก่อนตัดสินว่าอะไรเป็นปัญหาการใช้งาน</p><div className={styles.sessions}>{demoStudy.sessions.map((session) => <article key={session.id} className={styles.session}><div><strong>{session.id}</strong><span className={styles.outcome}>{session.outcome}</span></div><p>{session.path}</p><small>{session.note}</small></article>)}</div><Button asChild variant="legacy"><a className={styles.action} href="/demo/findings">ดูข้อค้นพบ <ArrowRight aria-hidden="true" data-ui="icon" /></a></Button></section></Card>
     </>;
     case "findings": return <>
       <StudyContext />
-      <article className={styles.card}><span className={styles.kicker}>ข้อค้นพบตัวอย่าง · ระดับปานกลาง</span><h2>ปุ่มไปต่อหลังกรอกข้อมูลหาได้ยาก</h2><p>ในรอบ S04 ผู้เข้าร่วมกลับหน้าแรกก่อนถึงหน้ายืนยัน ส่วน S05 หยุดหลังกรอกข้อมูล จึงควรตรวจว่าปุ่มไปต่อเห็นชัดพอหรือไม่</p><dl><dt>หลักฐานตัวอย่าง</dt><dd><a href="/demo/results">S04 และ S05 · ดูเส้นทางในผลการทดสอบ</a></dd><dt>ข้อเสนอแนะ</dt><dd>ปรับข้อความและตำแหน่งปุ่มไปต่อ แล้วให้ผู้เข้าร่วมกลุ่มใหม่ลองทำงานเดิม</dd></dl><a className={styles.action} href="/demo/report">ดูรายงาน <span aria-hidden="true">→</span></a></article>
+      <Card asChild appearance="legacy" ><article className={styles.card}><span className={styles.kicker}>ข้อค้นพบตัวอย่าง · ระดับปานกลาง</span><h2>ปุ่มไปต่อหลังกรอกข้อมูลหาได้ยาก</h2><p>ในรอบ S04 ผู้เข้าร่วมกลับหน้าแรกก่อนถึงหน้ายืนยัน ส่วน S05 หยุดหลังกรอกข้อมูล จึงควรตรวจว่าปุ่มไปต่อเห็นชัดพอหรือไม่</p><dl><dt>หลักฐานตัวอย่าง</dt><dd><a href="/demo/results">S04 และ S05 · ดูเส้นทางในผลการทดสอบ</a></dd><dt>ข้อเสนอแนะ</dt><dd>ปรับข้อความและตำแหน่งปุ่มไปต่อ แล้วให้ผู้เข้าร่วมกลุ่มใหม่ลองทำงานเดิม</dd></dl><Button asChild variant="legacy"><a className={styles.action} href="/demo/report">ดูรายงาน <ArrowRight aria-hidden="true" data-ui="icon" /></a></Button></article></Card>
     </>;
     case "report": return <>
       <StudyContext />
-      <article className={styles.card}><span className={styles.kicker}>รายงานตัวอย่าง</span><h2>สิ่งที่พบและสิ่งที่ควรแก้</h2><p>จาก {demoMetrics.baselineEligible} รอบที่นับผลได้ มี {demoMetrics.baselineSuccess} รอบที่ทำงานสำเร็จ อีก {demoMetrics.baselineTechnical} รอบโหลดหน้าไม่สำเร็จ จึงแยกออกจากผลด้านการใช้งาน</p><ol className={styles.list}><li>ตรวจตำแหน่งและข้อความปุ่มดำเนินการต่อ</li><li>ปรับหน้าแบบฟอร์มให้ผู้ใช้เห็นขั้นที่เหลือ</li><li>เผยแพร่เวอร์ชันใหม่ แล้วทดสอบงานเดิมอีกครั้ง</li></ol><p><a href="/demo/findings">ดูข้อค้นพบและหลักฐานตัวอย่าง</a></p><a className={styles.action} href="/demo/retest">ดูการทดสอบซ้ำ <span aria-hidden="true">→</span></a></article>
+      <Card asChild appearance="legacy" ><article className={styles.card}><span className={styles.kicker}>รายงานตัวอย่าง</span><h2>สิ่งที่พบและสิ่งที่ควรแก้</h2><p>จาก {demoMetrics.baselineEligible} รอบที่นับผลได้ มี {demoMetrics.baselineSuccess} รอบที่ทำงานสำเร็จ อีก {demoMetrics.baselineTechnical} รอบโหลดหน้าไม่สำเร็จ จึงแยกออกจากผลด้านการใช้งาน</p><ol className={styles.list}><li>ตรวจตำแหน่งและข้อความปุ่มดำเนินการต่อ</li><li>ปรับหน้าแบบฟอร์มให้ผู้ใช้เห็นขั้นที่เหลือ</li><li>เผยแพร่เวอร์ชันใหม่ แล้วทดสอบงานเดิมอีกครั้ง</li></ol><p><a href="/demo/findings">ดูข้อค้นพบและหลักฐานตัวอย่าง</a></p><Button asChild variant="legacy"><a className={styles.action} href="/demo/retest">ดูการทดสอบซ้ำ <ArrowRight aria-hidden="true" data-ui="icon" /></a></Button></article></Card>
     </>;
     case "retest": return <>
       <StudyContext />
       <div className={styles.grid}><article className={styles.metric}><span>ก่อนปรับ · {demoStudy.baselineVersion}</span><strong>{demoMetrics.baselineSuccess}/{demoMetrics.baselineEligible}</strong><small>สำเร็จ / ผู้ที่นับผลได้ · ติดปัญหาทางเทคนิค {demoMetrics.baselineTechnical}</small></article><article className={styles.metric}><span>หลังปรับ · {demoStudy.retestVersion}</span><strong>{demoStudy.retest.success}/{demoStudy.retest.eligible}</strong><small>สำเร็จ / ผู้ที่นับผลได้ · ติดปัญหาทางเทคนิค {demoStudy.retest.technical}</small></article></div>
-      <article className={styles.card}><h2>เทียบผลหลังแก้ไข</h2><p>ตัวอย่างนี้ทำงานสำเร็จ 3 จาก 5 รอบก่อนปรับ และ 4 จาก 5 รอบหลังปรับ ต่างกัน 20 จุดเปอร์เซ็นต์ แต่จำนวนรอบยังน้อย ควรดูหลักฐานแต่ละรอบและทดสอบเพิ่มก่อนสรุปผลจริง</p><p><a href="/demo/results">ดูผลและรอบการทดสอบก่อนปรับ</a></p><a className={styles.action} href="/demo/projects">กลับไปที่โปรเจกต์ <span aria-hidden="true">→</span></a></article>
+      <Card asChild appearance="legacy" ><article className={styles.card}><h2>เทียบผลหลังแก้ไข</h2><p>ตัวอย่างนี้ทำงานสำเร็จ 3 จาก 5 รอบก่อนปรับ และ 4 จาก 5 รอบหลังปรับ ต่างกัน 20 จุดเปอร์เซ็นต์ แต่จำนวนรอบยังน้อย ควรดูหลักฐานแต่ละรอบและทดสอบเพิ่มก่อนสรุปผลจริง</p><p><a href="/demo/results">ดูผลและรอบการทดสอบก่อนปรับ</a></p><Button asChild variant="legacy"><a className={styles.action} href="/demo/projects">กลับไปที่โปรเจกต์ <ArrowRight aria-hidden="true" data-ui="icon" /></a></Button></article></Card>
     </>;
   }
 }

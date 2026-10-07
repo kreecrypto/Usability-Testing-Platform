@@ -7,8 +7,8 @@ export function fixture() {
 }
 export async function seed(context: BrowserContext) {
   const data = fixture();
-  await context.addInitScript(({ key, raw }) => {
-    if (location.origin === 'http://127.0.0.1:3033' && !localStorage.getItem(key)) localStorage.setItem(key, raw);
+  await context.addInitScript(({ key, raw, origin }) => {
+    if (location.origin === origin && !localStorage.getItem(key)) localStorage.setItem(key, raw);
     // Fault injection exists only inside the browser test context, never app code.
     const original = Storage.prototype.setItem;
     Object.assign(window, { qaFailWrites: false, qaFailedEvent: null });
@@ -20,7 +20,7 @@ export async function seed(context: BrowserContext) {
       }
       return original.call(this, k, value);
     };
-  }, { key: STORAGE_KEY, raw: JSON.stringify(data.store) });
+  }, { key: STORAGE_KEY, raw: JSON.stringify(data.store), origin: new URL(process.env.UTP_UI_QA_BASE_URL || "http://127.0.0.1:3033").origin });
   return `/trial?step=participant&p=p&t=t&v=${data.session.versionId}&s=${data.session.id}`;
 }
 export async function read(page: Page): Promise<Store> {
