@@ -106,7 +106,7 @@ const consentSignals = [
   'ชื่อ อีเมล หรือหมายเลขโทรศัพท์',
 ];
 for (const signal of consentSignals) if (!runner.includes(signal)) fail(`participant consent disclosure missing: ${signal}`);
-for (const signal of ['giveUpTriggerRef','giveUpCancelRef','event.key !== "Escape"','aria-modal="true"','role="progressbar"','aria-valuenow={progress}']) if (!runner.includes(signal)) fail(`participant accessibility contract missing: ${signal}`);
+for (const signal of ['giveUpTriggerRef','giveUpCancelRef','DialogContent','onEscapeKeyDown','onCloseAutoFocus','role="progressbar"','aria-valuenow={progress}']) if (!runner.includes(signal)) fail(`participant accessibility contract missing: ${signal}`);
 
 const cssSignals = ['.reviewStage--mobile',':focus-visible','prefers-reduced-motion','--ut-color-focus-ring','--ut-color-outcome-technical','.stateNotice--error','.stateNotice--restricted','.skeletonStack','.emptyState','.hfButton:disabled','@media (max-width: 1015px)'];
 for (const signal of cssSignals) if (!css.includes(signal)) fail(`base high-fi CSS missing ${signal}`);

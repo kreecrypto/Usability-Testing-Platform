@@ -1,4 +1,8 @@
 "use client";
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFigmaInteractionEventBridge } from "../../../lib/figma/event-bridge.ts";
@@ -475,18 +479,6 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     return () => window.clearTimeout(timeout);
   }, [currentTask, deliver, fetchState, stage]);
 
-  useEffect(() => {
-    if (stage !== "give-up-confirm") return;
-    giveUpCancelRef.current?.focus();
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      setStage("runner");
-      window.setTimeout(() => giveUpTriggerRef.current?.focus(), 0);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [stage]);
 
   async function acceptConsent() {
     if (!snapshot || working) return;
@@ -636,24 +628,24 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     return <ParticipantShell progress={progress} meta="สถานะแบบทดสอบ"><StatusCard title="แบบทดสอบยังดำเนินการต่อไม่ได้" body={technicalReason} technical /></ParticipantShell>;
   }
   if (stage === "recovery") {
-    return <ParticipantShell progress={progress} meta="การเชื่อมต่อ"><StatusCard title={offline ? "คุณออฟไลน์อยู่" : "กำลังเชื่อมต่ออีกครั้ง"} body="งานที่ทำเสร็จแล้วถูกบันทึกไว้ เราจะกลับไปยังจุดเดิมเมื่อเชื่อมต่อได้" loading={!offline}><button className={styles.primaryButton} type="button" onClick={() => void retryRecovery()} disabled={working}>{working ? "กำลังลองอีกครั้ง…" : "ลองอีกครั้ง"}</button></StatusCard></ParticipantShell>;
+    return <ParticipantShell progress={progress} meta="การเชื่อมต่อ"><StatusCard title={offline ? "คุณออฟไลน์อยู่" : "กำลังเชื่อมต่ออีกครั้ง"} body="งานที่ทำเสร็จแล้วถูกบันทึกไว้ เราจะกลับไปยังจุดเดิมเมื่อเชื่อมต่อได้" loading={!offline}><Button variant="legacy" className={styles.primaryButton} type="button" onClick={() => void retryRecovery()} disabled={working}>{working ? "กำลังลองอีกครั้ง…" : "ลองอีกครั้ง"}</Button></StatusCard></ParticipantShell>;
   }
   if (!snapshot) return null;
 
   if (stage === "consent") {
     return (
       <ParticipantShell progress={0} meta="ความยินยอม">
-        <section className={styles.card} aria-labelledby="consent-title">
+        <Card asChild appearance="legacy" ><section className={styles.card} aria-labelledby="consent-title">
           <span className={styles.eyebrow}>ก่อนเริ่ม</span>
           <h1 id="consent-title">เข้าร่วม “{snapshot.title}”</h1>
           <p>หลังจากคุณยินยอม แบบทดสอบจะบันทึกการโต้ตอบกับงาน เส้นทางที่ใช้งาน ตำแหน่งที่คุณคลิกหรือแตะ เวลาที่ใช้ ผลของงาน คะแนนความง่าย และความคิดเห็นที่คุณเลือกส่ง</p>
           <p>แบบทดสอบนี้ไม่ใช้กล้อง ไมโครโฟน หรือการบันทึกหน้าจอ และคุณไม่จำเป็นต้องให้ชื่อ อีเมล หรือหมายเลขโทรศัพท์</p>
           <div className={styles.notice}>การบันทึกการโต้ตอบจะเริ่มหลังจากคุณเลือก <strong>ยินยอมและเริ่ม</strong></div>
           <div className={styles.actions}>
-            <button className={styles.secondaryButton} type="button" onClick={() => setStage("declined")} disabled={working}>ไม่ยินยอม</button>
-            <button className={styles.primaryButton} type="button" onClick={() => void acceptConsent()} disabled={working}>{working ? "กำลังเริ่ม…" : "ยินยอมและเริ่ม"}</button>
+            <Button variant="legacy" className={styles.secondaryButton} type="button" onClick={() => setStage("declined")} disabled={working}>ไม่ยินยอม</Button>
+            <Button variant="legacy" className={styles.primaryButton} type="button" onClick={() => void acceptConsent()} disabled={working}>{working ? "กำลังเริ่ม…" : "ยินยอมและเริ่ม"}</Button>
           </div>
-        </section>
+        </section></Card>
       </ParticipantShell>
     );
   }
@@ -661,24 +653,25 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
   if (stage === "task-intro" && currentTask) {
     return (
       <ParticipantShell progress={progress} meta={`งาน ${taskIndex + 1} จาก ${totalTasks}`}>
-        <section className={styles.card}>
+        <Card asChild appearance="legacy" ><section className={styles.card}>
           <span className={styles.eyebrow}>งาน {taskIndex + 1} จาก {totalTasks}</span>
           <h1>{currentTask.title}</h1>
           {currentTask.scenario ? <p className={styles.scenario}>{currentTask.scenario}</p> : null}
           {currentTask.instruction ? <p>{currentTask.instruction}</p> : null}
           <p className={styles.helper}>ทำงานนี้ตามวิธีที่คุณทำตามปกติ</p>
-          <div className={styles.actions}><button className={styles.primaryButton} type="button" onClick={() => void startTask()} disabled={working}>{working ? "กำลังเริ่ม…" : "เริ่มงาน"}</button></div>
-        </section>
+          <div className={styles.actions}><Button variant="legacy" className={styles.primaryButton} type="button" onClick={() => void startTask()} disabled={working}>{working ? "กำลังเริ่ม…" : "เริ่มงาน"}</Button></div>
+        </section></Card>
       </ParticipantShell>
     );
   }
 
   if ((stage === "runner" || stage === "give-up-confirm") && currentTask) {
     return (
+      <Dialog open={stage === "give-up-confirm"} onOpenChange={open=>{if(open)setStage("give-up-confirm");else if(!working)cancelGiveUp();}}>
       <div className={styles.runnerShell}>
         <header className={styles.runnerHeader}>
           <div><strong>งาน {taskIndex + 1} จาก {totalTasks}</strong><span>{currentTask.title}</span></div>
-          <button ref={giveUpTriggerRef} className={styles.ghostButton} type="button" onClick={() => setStage("give-up-confirm")}>ทำงานนี้ต่อไม่ได้</button>
+          <DialogTrigger asChild><Button variant="legacy" ref={giveUpTriggerRef} className={styles.ghostButton} type="button" onClick={() => setStage("give-up-confirm")}>ทำงานนี้ต่อไม่ได้</Button></DialogTrigger>
         </header>
         <div className={styles.runnerProgress} role="progressbar" aria-label="ความคืบหน้าของแบบทดสอบ" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><i style={{ width: `${progress}%` }} /></div>
         {offline ? <div className={styles.offlineBanner} role="status">คุณออฟไลน์อยู่ ระบบจะลองส่งข้อมูลอีกครั้งเมื่อกลับมาเชื่อมต่อ</div> : null}
@@ -700,7 +693,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
             title={`${snapshot.title} สิ่งที่จะทดสอบสำหรับงาน ${taskIndex + 1}`}
           />
         ) : (
-          <section className={styles.card} style={{ margin: "24px auto", maxWidth: 720 }}>
+          <Card asChild appearance="legacy" ><section className={styles.card} style={{ margin: "24px auto", maxWidth: 720 }}>
             <span className={styles.eyebrow}>เป้าหมายทดสอบ</span>
             <h1>เปิดเว็บไซต์ที่ใช้ทำงานนี้</h1>
             <p>
@@ -712,9 +705,9 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
                   {providerReady ? "เว็บไซต์เชื่อมต่อกับแบบทดสอบแล้ว" : "เปิดเว็บไซต์เพื่อเริ่มทำงาน หากเว็บไซต์ยังไม่เชื่อมต่อ โปรดกลับมาที่หน้านี้แล้วลองอีกครั้ง"}
                 </p>
                 <div className={styles.actions}>
-                  <button className={styles.primaryButton} type="button" onClick={openFirstPartyTarget}>
+                  <Button variant="legacy" className={styles.primaryButton} type="button" onClick={openFirstPartyTarget}>
                     เปิดเว็บไซต์ที่จะทดสอบ
-                  </button>
+                  </Button>
                 </div>
               </>
             ) : (
@@ -730,32 +723,33 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
                 </a>
               </div>
             )}
-          </section>
+          </section></Card>
         )}
-        {stage === "give-up-confirm" ? (
-          <div className={styles.modalBackdrop} role="presentation">
-            <section className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="giveup-title">
-              <h2 id="giveup-title">ต้องการยุติงานนี้หรือไม่?</h2>
-              <p>หากยุติงาน คุณยังตอบคำถามหลังงานและทำแบบทดสอบต่อได้</p>
-              <div className={styles.actions}>
-                <button ref={giveUpCancelRef} className={styles.secondaryButton} type="button" onClick={cancelGiveUp} disabled={working}>ลองต่อ</button>
-                <button className={styles.dangerButton} type="button" onClick={() => void confirmGiveUp()} disabled={working}>{working ? "กำลังยุติ…" : "ยุติงานนี้"}</button>
-              </div>
-            </section>
+        <DialogContent className={styles.modal} aria-labelledby="giveup-title" aria-describedby="giveup-description"
+          onOpenAutoFocus={event=>{event.preventDefault();giveUpCancelRef.current?.focus();}}
+          onCloseAutoFocus={event=>{event.preventDefault();giveUpTriggerRef.current?.focus();}}
+          onEscapeKeyDown={event=>{if(working)event.preventDefault();}}
+          onPointerDownOutside={event=>{if(working)event.preventDefault();}}>
+          <DialogTitle asChild><h2 id="giveup-title">ต้องการยุติงานนี้หรือไม่?</h2></DialogTitle>
+          <DialogDescription asChild><p id="giveup-description">หากยุติงาน คุณยังตอบคำถามหลังงานและทำแบบทดสอบต่อได้</p></DialogDescription>
+          <div className={styles.actions}>
+            <Button variant="legacy" ref={giveUpCancelRef} className={styles.secondaryButton} type="button" onClick={cancelGiveUp} disabled={working}>ลองต่อ</Button>
+            <Button variant="legacy" className={styles.dangerButton} type="button" onClick={() => void confirmGiveUp()} disabled={working}>{working ? "กำลังยุติ…" : "ยุติงานนี้"}</Button>
           </div>
-        ) : null}
+        </DialogContent>
       </div>
+      </Dialog>
     );
   }
 
   if (stage === "timeout") {
-    return <ParticipantShell progress={progress} meta="สถานะงาน"><StatusCard title="หมดเวลาสำหรับงานนี้แล้ว" body="เวลาของงานนี้สิ้นสุดแล้ว ดำเนินการต่อเพื่อดูขั้นตอนถัดไป"><button className={styles.primaryButton} type="button" onClick={() => void continueFromTimeout()}>ดำเนินการต่อ</button></StatusCard></ParticipantShell>;
+    return <ParticipantShell progress={progress} meta="สถานะงาน"><StatusCard title="หมดเวลาสำหรับงานนี้แล้ว" body="เวลาของงานนี้สิ้นสุดแล้ว ดำเนินการต่อเพื่อดูขั้นตอนถัดไป"><Button variant="legacy" className={styles.primaryButton} type="button" onClick={() => void continueFromTimeout()}>ดำเนินการต่อ</Button></StatusCard></ParticipantShell>;
   }
 
   if (stage === "feedback" && currentTask) {
     return (
       <ParticipantShell progress={progress} meta={`คำถามหลังงาน ${taskIndex + 1}`}>
-        <section className={styles.card}>
+        <Card asChild appearance="legacy" ><section className={styles.card}>
           <span className={styles.eyebrow}>หลังทำงาน {taskIndex + 1}</span>
           <h1>งานนี้ทำได้ง่ายหรือยากเพียงใด?</h1>
           {seqConfig.enabled ? (
@@ -764,7 +758,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
               <div className={styles.seqScale}>
                 {[1, 2, 3, 4, 5, 6, 7].map((value) => (
                   <label key={value} className={seq === value ? styles.seqChoiceSelected : styles.seqChoice}>
-                    <input type="radio" name="seq" value={value} checked={seq === value} onChange={() => setSeq(value)} />
+                    <Input appearance="legacy" type="radio" name="seq" value={value} checked={seq === value} onChange={() => setSeq(value)} />
                     <span>{value}</span>
                   </label>
                 ))}
@@ -776,14 +770,14 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
             <label className={styles.field}><span>อะไรทำให้งานนี้ง่ายหรือยาก?{openConfig.required ? " *" : ""}</span><textarea value={openFeedback} onChange={(event) => setOpenFeedback(event.target.value)} rows={5} /></label>
           ) : null}
           {feedbackError ? <p className={styles.errorText} role="alert">{feedbackError}</p> : null}
-          <div className={styles.actions}><button className={styles.primaryButton} type="button" onClick={() => void submitFeedback()} disabled={working}>{working ? "กำลังบันทึก…" : "ส่งคำตอบ"}</button></div>
-        </section>
+          <div className={styles.actions}><Button variant="legacy" className={styles.primaryButton} type="button" onClick={() => void submitFeedback()} disabled={working}>{working ? "กำลังบันทึก…" : "ส่งคำตอบ"}</Button></div>
+        </section></Card>
       </ParticipantShell>
     );
   }
 
   if (stage === "transition") {
-    return <ParticipantShell progress={progress} meta="งานถัดไป"><StatusCard title="พร้อมทำงานถัดไปหรือยัง?" body="ความคืบหน้าของคุณถูกบันทึกแล้ว"><button className={styles.primaryButton} type="button" onClick={() => { setTaskIndex((index) => Math.min(index + 1, totalTasks - 1)); setStage("task-intro"); }}>ไปงานถัดไป</button></StatusCard></ParticipantShell>;
+    return <ParticipantShell progress={progress} meta="งานถัดไป"><StatusCard title="พร้อมทำงานถัดไปหรือยัง?" body="ความคืบหน้าของคุณถูกบันทึกแล้ว"><Button variant="legacy" className={styles.primaryButton} type="button" onClick={() => { setTaskIndex((index) => Math.min(index + 1, totalTasks - 1)); setStage("task-intro"); }}>ไปงานถัดไป</Button></StatusCard></ParticipantShell>;
   }
   if (stage === "complete") {
     return <ParticipantShell progress={100} meta="เสร็จสิ้น"><StatusCard title="แบบทดสอบเสร็จสมบูรณ์" body="ขอบคุณที่เข้าร่วม" complete /></ParticipantShell>;
@@ -809,11 +803,11 @@ function ParticipantShell({ progress, meta, children }: { progress: number; meta
 
 function StatusCard({ title, body, loading = false, technical = false, complete = false, children }: { title: string; body: string; loading?: boolean; technical?: boolean; complete?: boolean; children?: React.ReactNode }) {
   return (
-    <section className={styles.card} data-tone={technical ? "technical" : complete ? "complete" : "neutral"}>
+    <Card asChild appearance="legacy" ><section className={styles.card} data-tone={technical ? "technical" : complete ? "complete" : "neutral"}>
       {loading ? <div className={styles.spinner} aria-hidden="true" /> : <div className={styles.statusIcon} aria-hidden="true">{complete ? "✓" : technical ? "!" : "•"}</div>}
       <h1>{title}</h1>
       <p>{body}</p>
       {children ? <div className={styles.actions}>{children}</div> : null}
-    </section>
+    </section></Card>
   );
 }
