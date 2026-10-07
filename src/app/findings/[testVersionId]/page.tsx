@@ -1,4 +1,7 @@
 "use client";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
 
 import { useEffect, useMemo, useState } from "react";
 import type { ResultsModel, TaskDetailResult } from "../../../lib/analytics/results.ts";
@@ -123,31 +126,31 @@ export default function FindingsPage({ params }: { params: Promise<{ testVersion
     <header className={styles.header}><div><span>วิเคราะห์ผล · เวอร์ชันที่เผยแพร่</span><h1>ข้อค้นพบจากหลักฐาน</h1><p>บันทึกสิ่งที่เห็นจากรอบการทดสอบ แยกการตีความและข้อเสนอแนะ เพื่อให้ทีมตรวจหลักฐานก่อนตัดสินใจแก้ไข</p></div><a href="/projects">โปรเจกต์</a></header>
     <nav className={styles.studyNav} aria-label="เมนูการวิเคราะห์ของเวอร์ชันนี้"><a href={`/results/${testVersionId}`}>ผลการทดสอบ</a><a href={`/findings/${testVersionId}`} aria-current="page">ข้อค้นพบ</a><a href={`/reports/${testVersionId}`}>รายงาน</a><a href={`/reports/${testVersionId}#retest`}>ทดสอบซ้ำ</a></nav>
     {state === "loading" ? <div className={styles.state}>กำลังโหลดประเด็นที่พบ…</div> : null}
-    {state === "error" ? <div className={styles.error} role="alert"><strong>ยังเปิดข้อค้นพบไม่ได้</strong><p>{error}</p><button type="button" onClick={() => void reload()}>ลองอีกครั้ง</button></div> : null}
+    {state === "error" ? <div className={styles.error} role="alert"><strong>ยังเปิดข้อค้นพบไม่ได้</strong><p>{error}</p><Button variant="legacy" type="button" onClick={() => void reload()}>ลองอีกครั้ง</Button></div> : null}
     {state === "ready" && results ? <div className={styles.layout}>
       <form className={styles.form} onSubmit={createFinding}>
         <div><span className={styles.eyebrow}>จากหลักฐานสู่สิ่งที่ต้องแก้</span><h2>สร้างประเด็นใหม่</h2></div>
         <label>งาน<select value={taskId} onChange={(event) => setTaskId(event.target.value)}>{results.taskDetails.map((task) => <option key={task.taskId} value={task.taskId}>{task.ordinal}. {task.title}</option>)}</select></label>
         <label>ตัวชี้วัดหลัก<select value={metricKey} onChange={(event) => setMetricKey(event.target.value as MetricKey)}>{Object.entries(metricLabels).map(([key, label]) => <option value={key} key={key}>{label}</option>)}</select></label>
         {selectedTask ? <div className={styles.snapshot}><strong>{formatMetric(metricValue(selectedTask, metricKey))}</strong><span>n={metricKey === "medianSuccessfulDurationMs" ? selectedTask.successfulDuration.sampleSize : selectedTask.eligible} · ติดปัญหาทางเทคนิค={selectedTask.technicalBlockedCount}</span></div> : null}
-        <label>ชื่อประเด็น<input required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="สรุปปัญหาที่สังเกตได้แบบสั้น ๆ" /></label>
+        <label>ชื่อประเด็น<Input appearance="legacy" required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="สรุปปัญหาที่สังเกตได้แบบสั้น ๆ" /></label>
         <label>ปัญหา<textarea required value={problem} onChange={(event) => setProblem(event.target.value)} placeholder="ผู้เข้าร่วมติดขัดตรงไหน โดยอธิบายเฉพาะสิ่งที่สังเกตได้" /></label>
         <label>การตีความของผู้วิจัย<textarea required value={researcherInterpretation} onChange={(event) => setResearcherInterpretation(event.target.value)} placeholder="อธิบายความหมายของหลักฐาน โดยไม่สรุปเหตุเชิงสาเหตุเกินข้อมูล" /></label>
         <label>ข้อเสนอแนะ<textarea required value={recommendation} onChange={(event) => setRecommendation(event.target.value)} placeholder="สิ่งที่ควรแก้หรือทดลองในรอบถัดไป" /></label>
-        <div className={styles.twoCol}><label>ความรุนแรง<select value={severity} onChange={(event) => setSeverity(event.target.value)}><option value="critical">วิกฤต</option><option value="high">สูง</option><option value="medium">กลาง</option><option value="low">ต่ำ</option></select></label><label>Screen ID<input value={screenId} onChange={(event) => setScreenId(event.target.value)} placeholder="ไม่บังคับ · Screen ID มาตรฐาน" /></label></div>
-        <button disabled={saving || !selectedTask}>{saving ? "กำลังสร้าง…" : "สร้างประเด็น"}</button>
+        <div className={styles.twoCol}><label>ความรุนแรง<select value={severity} onChange={(event) => setSeverity(event.target.value)}><option value="critical">วิกฤต</option><option value="high">สูง</option><option value="medium">กลาง</option><option value="low">ต่ำ</option></select></label><label>Screen ID<Input appearance="legacy" value={screenId} onChange={(event) => setScreenId(event.target.value)} placeholder="ไม่บังคับ · Screen ID มาตรฐาน" /></label></div>
+        <Button variant="legacy" disabled={saving || !selectedTask}>{saving ? "กำลังสร้าง…" : "สร้างประเด็น"}</Button>
       </form>
 
       <section className={styles.list}>
         <div className={styles.listHeader}><div><span className={styles.eyebrow}>ข้อค้นพบที่บันทึกไว้</span><h2>ข้อค้นพบทั้งหมด</h2></div><strong>{findings.length}</strong></div>
-        {findings.length === 0 ? <div className={styles.empty}><strong>ยังไม่มีข้อค้นพบ</strong><p>ตรวจหลักฐานแล้วบันทึกข้อค้นพบเมื่อพบสิ่งที่ควรแก้ การยังไม่มีข้อค้นพบไม่ได้หมายความว่าไม่มีปัญหา</p></div> : findings.map((finding) => <article key={finding.id} id={`finding-${finding.id}`} className={styles.card}>
+        {findings.length === 0 ? <div className={styles.empty}><strong>ยังไม่มีข้อค้นพบ</strong><p>ตรวจหลักฐานแล้วบันทึกข้อค้นพบเมื่อพบสิ่งที่ควรแก้ การยังไม่มีข้อค้นพบไม่ได้หมายความว่าไม่มีปัญหา</p></div> : findings.map((finding) => <Card asChild appearance="legacy" key={finding.id}><article key={finding.id} id={`finding-${finding.id}`} className={styles.card}>
           <div className={styles.cardHeader}><div><span className={styles.severity} data-severity={finding.severity}>{severityLabels[finding.severity] ?? finding.severity}</span><h3>{finding.title}</h3></div><span className={styles.status}>{statusLabels[finding.status] ?? finding.status}</span></div>
           <p>{finding.problem}</p>
           <dl>
             <div><dt>การตีความ</dt><dd>{finding.researcherInterpretation ?? "ยังไม่ได้ระบุ"}</dd></div>
             <div><dt>ข้อเสนอแนะ</dt><dd>{finding.recommendation ?? "ยังไม่ได้ระบุ"}</dd></div><div><dt>ตัวชี้วัด</dt><dd>{metricLabels[finding.metricSnapshot.metricKey as MetricKey] ?? finding.metricSnapshot.metricKey}: {formatMetric(finding.metricSnapshot.value)}</dd></div><div><dt>ตัวอย่าง</dt><dd>n={finding.metricSnapshot.sampleSize}, ติดปัญหาทางเทคนิค={finding.metricSnapshot.technicalBlockedCount}</dd></div><div><dt>เวอร์ชัน</dt><dd>{finding.testVersionId}</dd></div>{finding.screenId ? <div><dt>หน้าจอ</dt><dd>{finding.screenId}</dd></div> : null}</dl>
-          <div className={styles.evidenceBox}><strong>เชื่อมหลักฐาน</strong><input value={evidenceSession[finding.id] ?? ""} onChange={(event) => setEvidenceSession((value) => ({ ...value, [finding.id]: event.target.value }))} placeholder="รหัสรอบการทดสอบ" aria-label="รหัสรอบการทดสอบที่จะเชื่อมเป็นหลักฐาน" /><div><button type="button" onClick={() => void linkEvidence(finding, "session")}>เชื่อมรอบการทดสอบ</button><button type="button" onClick={() => void linkEvidence(finding, "path")}>เชื่อมเส้นทาง</button><button type="button" disabled title="ยังไม่มีข้อมูลฮีตแมปที่ใช้เป็นหลักฐานได้">ฮีตแมปยังใช้ไม่ได้</button></div></div>
-        </article>)}
+          <div className={styles.evidenceBox}><strong>เชื่อมหลักฐาน</strong><Input appearance="legacy" value={evidenceSession[finding.id] ?? ""} onChange={(event) => setEvidenceSession((value) => ({ ...value, [finding.id]: event.target.value }))} placeholder="รหัสรอบการทดสอบ" aria-label="รหัสรอบการทดสอบที่จะเชื่อมเป็นหลักฐาน" /><div><Button variant="legacy" type="button" onClick={() => void linkEvidence(finding, "session")}>เชื่อมรอบการทดสอบ</Button><Button variant="legacy" type="button" onClick={() => void linkEvidence(finding, "path")}>เชื่อมเส้นทาง</Button><Button variant="legacy" type="button" disabled title="ยังไม่มีข้อมูลฮีตแมปที่ใช้เป็นหลักฐานได้">ฮีตแมปยังใช้ไม่ได้</Button></div></div>
+        </article></Card>)}
       </section>
     </div> : null}
     {error && state === "ready" ? <div className={styles.inlineError} role="alert">{error}</div> : null}

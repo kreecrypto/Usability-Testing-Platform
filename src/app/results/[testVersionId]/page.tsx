@@ -1,4 +1,6 @@
 "use client";
+import { Card } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 import { useEffect, useMemo, useState } from "react";
 import type { ResultsModel } from "../../../lib/analytics/results.ts";
@@ -37,7 +39,7 @@ function Overview({ results }: { results: ResultsModel }) {
       <ObservationCard results={results} label="อัตรายุติงาน" metricKey="giveUpRate" format={(n) => metric(n, "%")} />
       <MetricCard label="ติดปัญหาทางเทคนิค" value={value.sessionCount ? String(value.technicalBlockedTaskCount) : "ยังไม่มีข้อมูล"} detail="ไม่นำมารวมในผลด้านการใช้งาน" />
     </section>
-    <section className={styles.panel}>
+    <Card asChild appearance="legacy" ><section className={styles.panel}>
       <div className={styles.panelHeader}><div><span className={styles.eyebrow}>จุดติดขัดที่พบ</span><h2>พฤติกรรมที่ตรวจพบจากหลักฐาน</h2></div></div>
       <div className={styles.frictionGrid}>
         <div><strong>{capabilityAvailability(results, "pointer") === "Available" && value.eligiblePointerInteractionCount ? value.misclickCount : "–"}</strong><span>คลิกพลาด</span></div>
@@ -45,7 +47,7 @@ function Overview({ results }: { results: ResultsModel }) {
         <div><strong>{capabilityAvailability(results, "path") === "Available" && results.paths.some((path) => path.actualPath.length) ? value.backtrackCount : "–"}</strong><span>ย้อนกลับ</span></div>
         <div><strong>{value.eligibleTaskCount ? value.giveUpCount : "–"}</strong><span>ยุติงาน</span></div>
       </div>
-    </section>
+    </section></Card>
     <section className={styles.warningPanel} role="status">
       <strong>คุณภาพของหลักฐานภาพ</strong>
       <p>สิ่งที่ทดสอบ: {results.context?.target.provider ?? "ไม่ทราบ"} · ข้อมูลต้นทาง v{results.context?.target.snapshotVersion ?? "–"} · เวอร์ชันแบบทดสอบ {results.testVersionId} ฮีตแมปจะแสดงเมื่อมีพิกัดที่ตรวจสอบได้เท่านั้น</p>
@@ -55,7 +57,7 @@ function Overview({ results }: { results: ResultsModel }) {
 
 function Tasks({ results }: { results: ResultsModel }) {
   if (results.taskDetails.length === 0) return <EmptyState title="ยังไม่มีผลของงาน">ยังไม่มีหลักฐานของงานที่นำมาคำนวณได้ในเวอร์ชันนี้</EmptyState>;
-  return <div className={styles.taskList}>{results.taskDetails.map((task) => <article key={task.taskId} className={styles.panel}>
+  return <div className={styles.taskList}>{results.taskDetails.map((task) => <Card asChild appearance="legacy" key={task.taskId}><article key={task.taskId} className={styles.panel}>
     <div className={styles.panelHeader}><div><span className={styles.eyebrow}>งาน {task.ordinal}</span><h2>{task.title}</h2></div><span className={styles.badge}>n={task.eligible}</span></div>
     <div className={styles.metricsGrid}>
       <ObservationCard results={results} taskId={task.taskId} label="สำเร็จ" metricKey="completionRate" format={(n) => metric(n, "%")} />
@@ -70,7 +72,7 @@ function Tasks({ results }: { results: ResultsModel }) {
       {task.seqResponses.length === 0 ? <span>ยังไม่มีข้อมูล</span> : <div className={styles.chips}>{task.seqResponses.map((response) => <span key={response.answerId}>{response.value}/7 · {response.scaleVersion}</span>)}</div>}
       <small>แสดงคะแนนดิบพร้อมเวอร์ชันของสเกล โดยไม่สร้างค่าเฉลี่ยหรือกลับทิศสเกลที่ยังไม่ได้รับการอนุมัติ</small>
     </div>
-  </article>)}</div>;
+  </article></Card>)}</div>;
 }
 
 function Paths({ results }: { results: ResultsModel }) {
@@ -78,7 +80,7 @@ function Paths({ results }: { results: ResultsModel }) {
   if (pathCapability !== "Available") return <EmptyState title={pathCapability === "Unsupported" ? "ไม่รองรับเส้นทาง" : pathCapability === "No Data" ? "ยังไม่มีข้อมูลเส้นทาง" : "ข้อมูลเส้นทางยังไม่ครบ"}>สิ่งที่ทดสอบในเวอร์ชันนี้ยังไม่ส่งข้อมูลเส้นทางที่ตรวจสอบได้</EmptyState>;
   const paths = results.paths.filter((path) => path.actualPath.length > 0 || path.expectedPath.length > 0);
   if (paths.length === 0) return <EmptyState title="ยังไม่มีข้อมูลเส้นทาง">ยังไม่มีหลักฐานเส้นทางหน้าจอที่ใช้วิเคราะห์ได้ในเวอร์ชันนี้</EmptyState>;
-  return <div className={styles.taskList}>{paths.map((path) => <article key={`${path.sessionId}:${path.taskId}`} className={styles.panel}>
+  return <div className={styles.taskList}>{paths.map((path) => <Card asChild appearance="legacy" key={`${path.sessionId}:${path.taskId}`}><article key={`${path.sessionId}:${path.taskId}`} className={styles.panel}>
     <div className={styles.panelHeader}><div><span className={styles.eyebrow}>รอบ {path.sessionId.slice(0, 8)}</span><h2>เส้นทางที่คาดไว้เทียบกับที่เกิดขึ้นจริง</h2></div><span className={path.expectedPathMatch ? styles.badgeSuccess : styles.badge}>{outcomeLabel(path.terminalOutcome)}</span></div>
     <div className={styles.pathCompare}>
       <div><strong>เส้นทางที่คาดไว้</strong><div className={styles.pathRow}>{path.expectedPath.length ? path.expectedPath.map((screen, index) => <span key={`${screen}:${index}`}>{screen}</span>) : <em>เวอร์ชันนี้ไม่ได้เก็บเส้นทางที่คาดไว้</em>}</div></div>
@@ -89,7 +91,7 @@ function Paths({ results }: { results: ResultsModel }) {
       <div><strong>{path.backtrackCount}</strong><span>ย้อนกลับ</span></div>
       <div><strong>{path.repeatedScreenCount}</strong><span>เข้าหน้าซ้ำ</span></div>
     </div> : <small>ยังไม่มี screen_view ที่ใช้คำนวณเส้นทาง</small>}
-  </article>)}</div>;
+  </article></Card>)}</div>;
 }
 
 function Heatmap({ results }: { results: ResultsModel }) {
@@ -118,7 +120,7 @@ function Heatmap({ results }: { results: ResultsModel }) {
   const taskLabel = (id: string) => results.taskDetails.find((task) => task.taskId === id)?.title ?? id;
 
   return <div className={styles.stack}>
-    <section className={styles.panel}>
+    <Card asChild appearance="legacy" ><section className={styles.panel}>
       <div className={styles.panelHeader}><div><span className={styles.eyebrow}>ฮีตแมป · คลิกที่ใช้ได้ {dataset.canonicalPointerCount}/{dataset.rawPointerCount}</span><h2>ตำแหน่งคลิกบนต้นแบบ</h2></div><span className={styles.badge}>เวอร์ชัน {results.testVersionId.slice(0, 8)}</span></div>
       <div className={styles.heatmapFilters}>
         <label>งาน<select value={taskId} onChange={(event) => setTaskId(event.target.value)}><option value="">ทั้งหมด</option>{dataset.filters.taskIds.map((id) => <option value={id} key={id}>{taskLabel(id)}</option>)}</select></label>
@@ -126,8 +128,8 @@ function Heatmap({ results }: { results: ResultsModel }) {
         <label>อุปกรณ์<select value={deviceClass} onChange={(event) => setDeviceClass(event.target.value)}><option value="">ทั้งหมด</option>{dataset.filters.deviceClasses.map((value) => <option value={value} key={value}>{value}</option>)}</select></label>
         <label>ผลลัพธ์<select value={outcome} onChange={(event) => setOutcome(event.target.value)}><option value="">ทั้งหมด</option>{dataset.filters.outcomes.map((value) => <option value={value} key={value}>{outcomeLabel(value)}</option>)}</select></label>
       </div>
-    </section>
-    {points.length === 0 || !frame ? <EmptyState title="ไม่มีข้อมูลตามตัวกรอง">ลองเปลี่ยนงาน หน้าจอ อุปกรณ์ หรือผลลัพธ์</EmptyState> : <section className={styles.panel}>
+    </section></Card>
+    {points.length === 0 || !frame ? <EmptyState title="ไม่มีข้อมูลตามตัวกรอง">ลองเปลี่ยนงาน หน้าจอ อุปกรณ์ หรือผลลัพธ์</EmptyState> : <Card asChild appearance="legacy" ><section className={styles.panel}>
       <div className={styles.panelHeader}><div><span className={styles.eyebrow}>{frame.transformVersion} · geometry {frame.geometryVersionId.slice(0, 8)}</span><h2>หน้าจอ {frame.screenId}</h2></div><span className={styles.badge}>n={points.length}</span></div>
       <div className={styles.heatmapStageWrap}>
         <div className={styles.heatmapStage} style={{ aspectRatio: `${frame.frameWidth} / ${frame.frameHeight}` }} aria-label={`ฮีตแมปหน้าจอ ${frame.screenId}`}>
@@ -135,7 +137,7 @@ function Heatmap({ results }: { results: ResultsModel }) {
         </div>
       </div>
       <small className={styles.heatmapNote}>จุดทั้งหมดวางจาก canonical normalized coordinates 0–1 ของ geometry snapshot นี้เท่านั้น ไม่ใช้ browser CSS pixels.</small>
-    </section>}
+    </section></Card>}
   </div>;
 }
 
@@ -151,13 +153,13 @@ function Funnel({ results }: { results: ResultsModel }) {
       <MetricCard label="ติดปัญหาทางเทคนิค" value={String(funnel.technicalBlockedSessionCount)} detail="รายงานแยกต่างหาก" />
       <MetricCard label="จุดที่หลุดมากที่สุด" value={funnel.largestDrop ? metric(funnel.largestDrop.dropOffRate, "%") : "ยังไม่มีข้อมูล"} detail={funnel.largestDrop ? `${funnel.largestDrop.fromScreenId} → ${funnel.largestDrop.toScreenId}` : "ยังไม่มีการเปลี่ยนขั้นที่คำนวณได้"} />
     </section>
-    <section className={styles.panel}>
+    <Card asChild appearance="legacy" ><section className={styles.panel}>
       <div className={styles.panelHeader}><div><span className={styles.eyebrow}>{funnel.version}</span><h2>การไปต่อและการหยุดในแต่ละขั้น</h2></div></div>
       <ol className={styles.funnelList}>{funnel.transitions.map((transition) => <li key={`${transition.index}:${transition.fromScreenId}:${transition.toScreenId}`} className={styles.funnelTransition}>
         <div><strong>{transition.fromScreenId} → {transition.toScreenId}</strong><small>เข้า {transition.entered} · ถึง {transition.reached} · หลุด {transition.dropped}</small></div>
         <div className={styles.funnelRates}><span>Conversion <strong>{metric(transition.conversionRate, "%")}</strong></span><span>Drop-off <strong>{metric(transition.dropOffRate, "%")}</strong></span></div>
       </li>)}</ol>
-    </section>
+    </section></Card>
   </div>;
 }
 
@@ -202,9 +204,13 @@ export default function ResultsPage({ params }: { params: Promise<{ testVersionI
   return <main className={styles.page}>
     <header className={styles.header}><div><span className={styles.eyebrow}>วิเคราะห์ผล · หลักฐานจากเวอร์ชันที่เผยแพร่</span><h1>{title}</h1><p>ดูผลการทดสอบจากหลักฐานที่ระบบยอมรับ โดยแยกปัญหาทางเทคนิคออกจากผลด้านการใช้งาน และไม่ใช้ศูนย์แทนข้อมูลที่ไม่มี</p></div><a href="/projects" className={styles.backLink}>โปรเจกต์</a></header>
     <nav className={styles.studyNav} aria-label="เมนูการวิเคราะห์ของเวอร์ชันนี้"><a href={`/results/${versionId}`} aria-current="page">ผลการทดสอบ</a><a href={`/findings/${versionId}`}>ข้อค้นพบ</a><a href={`/reports/${versionId}`}>รายงาน</a><a href={`/reports/${versionId}#retest`}>ทดสอบซ้ำ</a></nav>
-    <nav className={styles.tabs} aria-label="มุมมองการวิเคราะห์ผล">{(["overview", "tasks", "paths", "heatmap", "funnel", "sessions"] as const).map((item) => <button key={item} type="button" aria-current={view === item ? "page" : undefined} className={view === item ? styles.tabActive : styles.tab} onClick={() => setView(item)}>{viewLabels[item]}</button>)}</nav>
-    {state.status === "loading" ? <div className={styles.loading} role="status">กำลังโหลดผลการทดสอบ…</div> : null}
-    {state.status === "error" ? <div className={styles.error} role="alert"><strong>ยังเปิดผลการทดสอบไม่ได้</strong><p>{state.message}</p></div> : null}
-    {state.status === "ready" ? <section className={styles.content}>{view === "overview" ? <Overview results={state.results} /> : view === "tasks" ? <Tasks results={state.results} /> : view === "paths" ? <Paths results={state.results} /> : view === "heatmap" ? <Heatmap results={state.results} /> : view === "funnel" ? <Funnel results={state.results} /> : <Sessions results={state.results} />}</section> : null}
+    <Tabs value={view} onValueChange={next=>setView(next as View)}>
+      <TabsList className={styles.tabs} aria-label="มุมมองการวิเคราะห์ผล">{(["overview", "tasks", "paths", "heatmap", "funnel", "sessions"] as const).map(item=><TabsTrigger key={item} value={item} className={view===item?styles.tabActive:styles.tab}>{viewLabels[item]}</TabsTrigger>)}</TabsList>
+      {(["overview", "tasks", "paths", "heatmap", "funnel", "sessions"] as const).map(item=><TabsContent key={item} value={item}>
+        {state.status === "loading" ? <div className={styles.loading} role="status">กำลังโหลดผลการทดสอบ…</div> : null}
+        {state.status === "error" ? <div className={styles.error} role="alert"><strong>ยังเปิดผลการทดสอบไม่ได้</strong><p>{state.message}</p></div> : null}
+        {state.status === "ready" ? <section className={styles.content}>{item === "overview" ? <Overview results={state.results} /> : item === "tasks" ? <Tasks results={state.results} /> : item === "paths" ? <Paths results={state.results} /> : item === "heatmap" ? <Heatmap results={state.results} /> : item === "funnel" ? <Funnel results={state.results} /> : <Sessions results={state.results} />}</section> : null}
+      </TabsContent>)}
+    </Tabs>
   </main>;
 }
