@@ -9,6 +9,9 @@
    * - Do not add new literal colors/radii/shadows/spacing under --ut-*.
    */
 
+  /* Accessible modal scrim, shared by native and Radix overlays. */
+  --ah-overlay-bg: rgb(0 0 0 / 55%);
+
   /* AH 2.6 — canonical colors */
   --ah-primary: #00008f;
   --ah-primary-deep: #00006f;

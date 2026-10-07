@@ -1,0 +1,28 @@
+/* Incremental Tailwind v4: intentionally no Preflight. AH remains visual authority. */
+@layer theme, components, utilities;
+@import "tailwindcss/theme.css" layer(theme) prefix(tw);
+@import "tailwindcss/utilities.css" layer(utilities) prefix(tw);
+@theme inline {
+  --color-primary: var(--ah-primary);
+  --color-primary-dark: var(--ah-primary-dark);
+  --color-on-primary: var(--ah-on-primary);
+  --color-canvas: var(--ah-canvas);
+  --color-muted: var(--ah-surface-muted);
+  --color-ink: var(--ah-ink-deep);
+  --color-secondary-ink: var(--ah-slate);
+  --color-hairline: var(--ah-hairline);
+  --color-critical: var(--ah-critical);
+  --color-overlay: var(--ah-overlay-bg);
+  --font-ah: var(--ah-font-primary);
+  --radius-ah-sm: var(--ah-radius-sm);
+  --radius-ah-lg: var(--ah-radius-lg);
+  --shadow-ah-card: var(--ah-shadow-card);
+  --spacing-ah-4: var(--ah-space-4);
+  --spacing-ah-8: var(--ah-space-8);
+  --spacing-ah-16: var(--ah-space-16);
+  --spacing-ah-24: var(--ah-space-24);
+}
+/* Portals are outside page CSS shells, so their base contract is explicit. */
+[data-ui="dialog-overlay"] { position: fixed; inset: 0; z-index: 100; background: var(--ah-overlay-bg); }
+[data-ui="dialog-content"] { position: fixed; z-index: 101; top: 50%; left: 50%; transform: translate(-50%, -50%); box-sizing: border-box; max-width: calc(100vw - 32px); max-height: 92dvh; overflow: auto; background: var(--ah-canvas); color: var(--ah-ink-deep); font-family: var(--ah-font-primary); }
+[data-ui="icon"] { width: 1em; height: 1em; flex: none; vertical-align: middle; }
