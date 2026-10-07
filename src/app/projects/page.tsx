@@ -1,4 +1,6 @@
 "use client";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
@@ -175,7 +177,7 @@ export default function ProjectsPage() {
         <div className="brand">UT Platform</div>
         <nav className="nav" aria-label="เมนูผู้วิจัย">
           <a className="navItem active" href="/projects">โปรเจกต์</a>
-          <button className="navItem" type="button" onClick={() => void signOut()} style={{ border: 0, textAlign: "left", background: "transparent" }}>ออกจากระบบ</button>
+          <Button variant="legacy" className="navItem" type="button" onClick={() => void signOut()} style={{ border: 0, textAlign: "left", background: "transparent" }}>ออกจากระบบ</Button>
         </nav>
       </aside>
 
@@ -195,8 +197,8 @@ export default function ProjectsPage() {
               </select>
             ) : (
               <form onSubmit={createWorkspace} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <input aria-label="ชื่อพื้นที่ทำงานใหม่" placeholder="ชื่อพื้นที่ทำงาน" required value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} style={{ ...input, flex: "1 1 260px" }} />
-                <button className="primaryButton" disabled={working}>สร้างพื้นที่ทำงาน</button>
+                <Input appearance="legacy" aria-label="ชื่อพื้นที่ทำงานใหม่" placeholder="ชื่อพื้นที่ทำงาน" required value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} style={{ ...input, flex: "1 1 260px" }} />
+                <Button variant="legacy" className="primaryButton" disabled={working}>สร้างพื้นที่ทำงาน</Button>
               </form>
             )}
           </section>
@@ -209,8 +211,8 @@ export default function ProjectsPage() {
                 {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <input aria-label="ชื่อโปรเจกต์ใหม่" placeholder="ชื่อโปรเจกต์" required value={projectName} onChange={(e) => setProjectName(e.target.value)} style={{ ...input, flex: "1 1 260px" }} />
-                <button className="primaryButton" disabled={working}>สร้างโปรเจกต์</button>
+                <Input appearance="legacy" aria-label="ชื่อโปรเจกต์ใหม่" placeholder="ชื่อโปรเจกต์" required value={projectName} onChange={(e) => setProjectName(e.target.value)} style={{ ...input, flex: "1 1 260px" }} />
+                <Button variant="legacy" className="primaryButton" disabled={working}>สร้างโปรเจกต์</Button>
               </div>
             </form> : <p>สร้างพื้นที่ทำงานในขั้นที่ 1 ก่อน</p>}
           </section>
@@ -223,8 +225,8 @@ export default function ProjectsPage() {
                 {tests.map((t) => <option key={t.id} value={t.id}>{t.title} — {t.status}</option>)}
               </select>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <input aria-label="ชื่อแบบทดสอบใหม่" placeholder="ชื่อแบบทดสอบ" required value={testTitle} onChange={(e) => setTestTitle(e.target.value)} style={{ ...input, flex: "1 1 260px" }} />
-                <button className="primaryButton" disabled={working}>สร้างแบบทดสอบ</button>
+                <Input appearance="legacy" aria-label="ชื่อแบบทดสอบใหม่" placeholder="ชื่อแบบทดสอบ" required value={testTitle} onChange={(e) => setTestTitle(e.target.value)} style={{ ...input, flex: "1 1 260px" }} />
+                <Button variant="legacy" className="primaryButton" disabled={working}>สร้างแบบทดสอบ</Button>
               </div>
             </form> : <p>เลือกหรือสร้างโปรเจกต์ในขั้นที่ 2 ก่อน</p>}
           </section>
@@ -232,9 +234,9 @@ export default function ProjectsPage() {
           <section style={block}>
             <h2 style={{ marginTop: 0 }}>4. ระบุเว็บไซต์ที่จะทดสอบ</h2>
             {testId ? <form onSubmit={configureTarget} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <input aria-label="URL เว็บไซต์ที่จะทดสอบ" placeholder="https://example.com" required type="url" value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)} style={{ ...input, flex: "1 1 420px" }} />
-              <button className="primaryButton" disabled={working}>บันทึกเว็บไซต์</button>
-              <button className="primaryButton" type="button" disabled={working} onClick={preflightTarget}>ตรวจความพร้อมของเว็บไซต์</button>
+              <Input appearance="legacy" aria-label="URL เว็บไซต์ที่จะทดสอบ" placeholder="https://example.com" required type="url" value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)} style={{ ...input, flex: "1 1 420px" }} />
+              <Button variant="legacy" className="primaryButton" disabled={working}>บันทึกเว็บไซต์</Button>
+              <Button variant="legacy" className="primaryButton" type="button" disabled={working} onClick={preflightTarget}>ตรวจความพร้อมของเว็บไซต์</Button>
             </form> : <p>เลือกหรือสร้างแบบทดสอบในขั้นที่ 3 ก่อน</p>}
           </section>
 
@@ -242,10 +244,10 @@ export default function ProjectsPage() {
             <h2 style={{ marginTop: 0 }}>5. เขียนงานให้ผู้เข้าร่วมทำ</h2>
             {testId ? <>
               <form onSubmit={createTask} style={{ display: "grid", gap: 8 }}>
-                <input aria-label="ชื่องาน" required placeholder="ชื่องาน เช่น สมัครสมาชิก" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} style={input} />
-                <input aria-label="สถานการณ์ของงาน" placeholder="สถานการณ์ เช่น คุณเพิ่งเริ่มใช้บริการ" value={scenario} onChange={(e) => setScenario(e.target.value)} style={input} />
+                <Input appearance="legacy" aria-label="ชื่องาน" required placeholder="ชื่องาน เช่น สมัครสมาชิก" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} style={input} />
+                <Input appearance="legacy" aria-label="สถานการณ์ของงาน" placeholder="สถานการณ์ เช่น คุณเพิ่งเริ่มใช้บริการ" value={scenario} onChange={(e) => setScenario(e.target.value)} style={input} />
                 <textarea aria-label="คำสั่งที่ผู้เข้าร่วมจะเห็น" placeholder="คำสั่งที่ผู้เข้าร่วมจะเห็น" value={instruction} onChange={(e) => setInstruction(e.target.value)} rows={3} style={{ ...input, padding: 10 }} />
-                <button className="primaryButton" disabled={working}>เพิ่มงาน</button>
+                <Button variant="legacy" className="primaryButton" disabled={working}>เพิ่มงาน</Button>
               </form>
               <ol>{tasks.map((task) => <li key={task.id}>{task.ordinal}. {task.title}</li>)}</ol>
               {tasks.length > 0 ? <p><a className="primaryButton" href={`/builder/${testId}/rules`}>กำหนดเกณฑ์จบงาน</a></p> : null}
@@ -255,7 +257,7 @@ export default function ProjectsPage() {
 
           <section style={block}>
             <h2 style={{ marginTop: 0 }}>6. ตรวจและเผยแพร่</h2>
-            <button className="primaryButton" type="button" disabled={working || !testId || tasks.length === 0} onClick={publish}>เผยแพร่เวอร์ชันนี้</button>
+            <Button variant="legacy" className="primaryButton" type="button" disabled={working || !testId || tasks.length === 0} onClick={publish}>เผยแพร่เวอร์ชันนี้</Button>
             {!testId || tasks.length === 0 ? <p>เลือกแบบทดสอบและเพิ่มงานอย่างน้อย 1 งานก่อนเผยแพร่</p> : null}
             {publishedVersionId ? <p>ลิงก์สำหรับผู้เข้าร่วม: <a href={`/t/${publishedVersionId}`} target="_blank" rel="noreferrer">{`/t/${publishedVersionId}`}</a></p> : null}
           </section>

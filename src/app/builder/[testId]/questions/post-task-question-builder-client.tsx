@@ -1,4 +1,7 @@
 "use client";
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 
 import { useEffect, useMemo, useState } from "react";
 import styles from "./post-task-question-builder.module.css";
@@ -92,32 +95,32 @@ export default function PostTaskQuestionBuilderClient({ testId }: { testId: stri
           <aside className={styles.taskRail} aria-label="งานทดสอบ">
             <h2>งานทดสอบ</h2>
             {tasks.map((task) => (
-              <button type="button" key={task.id} className={task.id === selectedTaskId ? styles.activeTask : styles.taskButton} onClick={() => selectTask(task)} disabled={busy}>
+              <Button variant="legacy" type="button" key={task.id} className={task.id === selectedTaskId ? styles.activeTask : styles.taskButton} onClick={() => selectTask(task)} disabled={busy}>
                 <span>งาน {task.ordinal}</span><strong>{task.title}</strong>
-              </button>
+              </Button>
             ))}
           </aside>
 
-          <section className={styles.card} aria-labelledby="question-editor-title">
+          <Card asChild appearance="legacy" ><section className={styles.card} aria-labelledby="question-editor-title">
             <div className={styles.cardHeader}><div><p className={styles.eyebrow}>งาน {selectedTask.ordinal}</p><h2 id="question-editor-title">{selectedTask.title}</h2></div></div>
 
             <fieldset className={styles.questionCard} disabled={busy}>
               <legend>SEQ</legend>
               <p>ให้ผู้เข้าร่วมให้คะแนนความง่ายของงานหลังทำเสร็จ</p>
-              <label className={styles.checkRow}><input type="checkbox" checked={draft.seq.enabled} onChange={(event) => setEnabled("seq", event.target.checked)} /><span>ถามคะแนน SEQ หลังงานนี้</span></label>
-              <label className={styles.checkRow}><input type="checkbox" checked={draft.seq.required} onChange={(event) => setRequired("seq", event.target.checked)} disabled={busy || !draft.seq.enabled} /><span>บังคับตอบ</span></label>
+              <label className={styles.checkRow}><Input appearance="legacy" type="checkbox" checked={draft.seq.enabled} onChange={(event) => setEnabled("seq", event.target.checked)} /><span>ถามคะแนน SEQ หลังงานนี้</span></label>
+              <label className={styles.checkRow}><Input appearance="legacy" type="checkbox" checked={draft.seq.required} onChange={(event) => setRequired("seq", event.target.checked)} disabled={busy || !draft.seq.enabled} /><span>บังคับตอบ</span></label>
             </fieldset>
 
             <fieldset className={styles.questionCard} disabled={busy}>
               <legend>ความคิดเห็นเพิ่มเติม</legend>
               <p>ให้ผู้เข้าร่วมอธิบายว่าอะไรทำให้งานนี้ง่ายหรือยาก</p>
-              <label className={styles.checkRow}><input type="checkbox" checked={draft.openFeedback.enabled} onChange={(event) => setEnabled("openFeedback", event.target.checked)} /><span>ถามความคิดเห็นหลังงานนี้</span></label>
-              <label className={styles.checkRow}><input type="checkbox" checked={draft.openFeedback.required} onChange={(event) => setRequired("openFeedback", event.target.checked)} disabled={busy || !draft.openFeedback.enabled} /><span>บังคับตอบ</span></label>
+              <label className={styles.checkRow}><Input appearance="legacy" type="checkbox" checked={draft.openFeedback.enabled} onChange={(event) => setEnabled("openFeedback", event.target.checked)} /><span>ถามความคิดเห็นหลังงานนี้</span></label>
+              <label className={styles.checkRow}><Input appearance="legacy" type="checkbox" checked={draft.openFeedback.required} onChange={(event) => setRequired("openFeedback", event.target.checked)} disabled={busy || !draft.openFeedback.enabled} /><span>บังคับตอบ</span></label>
             </fieldset>
 
             {validation ? <div className={styles.validation} role="alert">{validation}</div> : <div className={styles.valid} role="status">การตั้งค่าคำถามพร้อมบันทึก</div>}
-            <button type="button" onClick={() => void save()} disabled={busy || Boolean(validation)}>{state === "saving" ? "กำลังบันทึก…" : "บันทึกคำถาม"}</button>
-          </section>
+            <Button variant="legacy" type="button" onClick={() => void save()} disabled={busy || Boolean(validation)}>{state === "saving" ? "กำลังบันทึก…" : "บันทึกคำถาม"}</Button>
+          </section></Card>
         </div>
       ) : null}
     </main>
