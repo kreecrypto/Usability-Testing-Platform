@@ -1,4 +1,7 @@
 "use client";
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   STORAGE_KEY,
@@ -198,7 +201,7 @@ export default function TrialWorkspace() {
     return store!.sessions
       .filter((s) => s.versionId === v.id && s.submittedAt)
       .map((s, i) => (
-        <section className={styles.card} key={s.id}>
+        <Card asChild appearance="legacy" key={s.id}><section className={styles.card} key={s.id}>
           <h3>รอบทดลอง {i + 1}</h3>
           {s.answers.map((a) => (
             <article
@@ -218,7 +221,7 @@ export default function TrialWorkspace() {
               </small>
             </article>
           ))}
-        </section>
+        </section></Card>
       ));
   }
   return (
@@ -231,13 +234,13 @@ export default function TrialWorkspace() {
           <p>พื้นที่ทดลองในเบราว์เซอร์</p>
           <nav aria-label="ขั้นตอนทำงาน">
             {steps.map(([step, label]) => (
-              <button
+              <Button variant="legacy"
                 key={step}
                 aria-current={loc.step === step ? "step" : undefined}
                 onClick={() => move({ step, s: "" })}
               >
                 {label}
-              </button>
+              </Button>
             ))}
           </nav>
           <a href="/demo/projects">ดู Demo อ่านอย่างเดียว</a>
@@ -261,7 +264,7 @@ export default function TrialWorkspace() {
         {error && (
           <div role="alert" className={styles.error}>
             {error}
-            <button onClick={load}>โหลดข้อมูลล่าสุด</button>
+            <Button variant="legacy" onClick={load}>โหลดข้อมูลล่าสุด</Button>
             <p>
               หากบันทึกไม่ได้ ให้ตรวจพื้นที่จัดเก็บ แล้วลองส่งอีกครั้ง
               การโหลดใหม่จะใช้ข้อมูลที่บันทึกสำเร็จล่าสุด
@@ -271,9 +274,9 @@ export default function TrialWorkspace() {
         {pendingConflict && <section className={styles.error} role="alert">
           <h2>เก็บเหตุการณ์ค้างก่อนใช้ข้อมูลล่าสุด</h2>
           <p>มี {pendingEvents.current.length} เหตุการณ์ที่ยังไม่ได้รับการบันทึก และจะไม่ถูกนับในผลการทดสอบ ดาวน์โหลดเก็บไว้ตรวจสอบได้ ข้อมูลไม่ส่งออกจากเครื่อง</p>
-          <button onClick={()=>{const url=URL.createObjectURL(new Blob([JSON.stringify({accepted:false,events:pendingEvents.current},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='utp-unaccepted-events.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}}>ดาวน์โหลดเหตุการณ์ที่ยังไม่ได้บันทึก</button>
-          <label className={styles.check}><input type="checkbox" checked={acknowledgeConflict} onChange={e=>setAcknowledgeConflict(e.target.checked)}/>เข้าใจว่าเหตุการณ์ค้างจะไม่ถูกนับ และพร้อมใช้ข้อมูลที่อีกแท็บบันทึกแล้ว</label>
-          <button disabled={!acknowledgeConflict} onClick={()=>{pendingEvents.current=[];pendingActive.current=false;setTrackingPaused(false);setPendingConflict(false);setAcknowledgeConflict(false);load();}}>ใช้ข้อมูลล่าสุดและออกจากสถานะค้าง</button>
+          <Button variant="legacy" onClick={()=>{const url=URL.createObjectURL(new Blob([JSON.stringify({accepted:false,events:pendingEvents.current},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='utp-unaccepted-events.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}}>ดาวน์โหลดเหตุการณ์ที่ยังไม่ได้บันทึก</Button>
+          <label className={styles.check}><Input appearance="legacy" type="checkbox" checked={acknowledgeConflict} onChange={e=>setAcknowledgeConflict(e.target.checked)}/>เข้าใจว่าเหตุการณ์ค้างจะไม่ถูกนับ และพร้อมใช้ข้อมูลที่อีกแท็บบันทึกแล้ว</label>
+          <Button variant="legacy" disabled={!acknowledgeConflict} onClick={()=>{pendingEvents.current=[];pendingActive.current=false;setTrackingPaused(false);setPendingConflict(false);setAcknowledgeConflict(false);load();}}>ใช้ข้อมูลล่าสุดและออกจากสถานะค้าง</Button>
         </section>}
         {!store ? (
           <p>
@@ -323,7 +326,7 @@ export default function TrialWorkspace() {
             <fieldset disabled={blocked} className={styles.scope}>
               {loc.step === "projects" && (
                 <>
-                  <section className={styles.card}>
+                  <Card asChild appearance="legacy" ><section className={styles.card}>
                     <h2>เริ่มโปรเจกต์ใหม่</h2>
                     <p>
                       โปรเจกต์ใช้รวมแบบทดสอบของงานเดียวกัน เริ่มด้วยเว็บบ้านเรา
@@ -350,7 +353,7 @@ export default function TrialWorkspace() {
                     >
                       <label>
                         ชื่อโปรเจกต์
-                        <input
+                        <Input appearance="legacy"
                           name="name"
                           defaultValue="บ้านเรา — ทดลองจัดการบ้านเช่า"
                           required
@@ -366,25 +369,25 @@ export default function TrialWorkspace() {
                           maxLength={2000}
                         />
                       </label>
-                      <button className={styles.primary}>สร้างโปรเจกต์</button>
+                      <Button variant="legacy" className={styles.primary}>สร้างโปรเจกต์</Button>
                     </form>
-                  </section>
-                  <section className={styles.card}>
+                  </section></Card>
+                  <Card asChild appearance="legacy" ><section className={styles.card}>
                     <h2>โปรเจกต์ในเบราว์เซอร์นี้</h2>
                     {!store.projects.length && (
                       <p>ยังไม่มีโปรเจกต์ เริ่มจากแบบฟอร์มด้านบน</p>
                     )}
                     {store.projects.map((p) => (
-                      <button
+                      <Button variant="legacy"
                         key={p.id}
                         onClick={() => move({ p: p.id, t: "", v: "", s: "" })}
                       >
                         {p.name}
-                      </button>
+                      </Button>
                     ))}
-                  </section>
+                  </section></Card>
                   {project && (
-                    <section className={styles.card}>
+                    <Card asChild appearance="legacy" ><section className={styles.card}>
                       <h2>{project.name}</h2>
                       <form
                         key={project.id}
@@ -406,7 +409,7 @@ export default function TrialWorkspace() {
                       >
                         <label>
                           ชื่อโปรเจกต์
-                          <input
+                          <Input appearance="legacy"
                             name="name"
                             defaultValue={project.name}
                             required
@@ -422,13 +425,13 @@ export default function TrialWorkspace() {
                             maxLength={2000}
                           />
                         </label>
-                        <button>บันทึกโปรเจกต์</button>
+                        <Button variant="legacy">บันทึกโปรเจกต์</Button>
                       </form>
                       <h3>แบบทดสอบทั้งหมด</h3>
                       {store.tests
                         .filter((t) => t.projectId === project.id)
                         .map((t) => (
-                          <button
+                          <Button variant="legacy"
                             key={t.id}
                             onClick={() =>
                               move({
@@ -443,9 +446,9 @@ export default function TrialWorkspace() {
                             }
                           >
                             {t.title}
-                          </button>
+                          </Button>
                         ))}
-                      <button
+                      <Button variant="legacy"
                         className={styles.primary}
                         onClick={() => {
                           const id = uid();
@@ -473,15 +476,15 @@ export default function TrialWorkspace() {
                         }}
                       >
                         สร้างแบบทดสอบเว็บไซต์
-                      </button>
-                    </section>
+                      </Button>
+                    </section></Card>
                   )}
                 </>
               )}
               {loc.step === "test" && test && (
                 <>
                   {test.draft ? (
-                    <section className={styles.card}>
+                    <Card asChild appearance="legacy" ><section className={styles.card}>
                       <h2>1. ตั้งค่าแบบทดสอบ</h2>
                       {test.draft.parentId && (
                         <p>
@@ -525,7 +528,7 @@ export default function TrialWorkspace() {
                       >
                         <label>
                           ชื่อแบบทดสอบ
-                          <input
+                          <Input appearance="legacy"
                             name="title"
                             defaultValue={test.draft.title}
                             required
@@ -536,7 +539,7 @@ export default function TrialWorkspace() {
                         {draftTarget === 'simulation' && <p>ข้อมูลบ้านและงานซ่อมเป็นข้อมูลสังเคราะห์ ไม่ใช่เว็บ Banrao จริง บันทึกฉบับร่างก่อนเผยแพร่</p>}
                         {draftTarget !== 'simulation' && <label>
                           ลิงก์เว็บไซต์
-                          <input
+                          <Input appearance="legacy"
                             name="url"
                             type="url"
                             defaultValue={test.draft.url}
@@ -554,7 +557,7 @@ export default function TrialWorkspace() {
                             />
                           </label>
                         ))}
-                        <button>บันทึกฉบับร่าง</button>
+                        <Button variant="legacy">บันทึกฉบับร่าง</Button>
                       </form>
                       <h2>2. ตรวจสอบและเผยแพร่</h2>
                       <p>
@@ -569,7 +572,7 @@ export default function TrialWorkspace() {
                           <li key={t.id}>{t.instruction}</li>
                         ))}
                       </ol>
-                      <button
+                      <Button variant="legacy"
                         className={styles.primary}
                         onClick={() => {
                           const next = commit((s) => publish(s, test.id));
@@ -577,36 +580,36 @@ export default function TrialWorkspace() {
                         }}
                       >
                         เผยแพร่ฉบับที่บันทึกไว้
-                      </button>
-                    </section>
+                      </Button>
+                    </section></Card>
                   ) : (
-                    <section className={styles.card}>
+                    <Card asChild appearance="legacy" ><section className={styles.card}>
                       <h2>เผยแพร่แล้ว</h2>
                       <p>
                         นิยามที่เผยแพร่แก้ย้อนหลังไม่ได้ เริ่มทดลอง
                         หรือสร้างฉบับร่างรอบใหม่จากเมนูทดลองรอบใหม่
                       </p>
-                    </section>
+                    </section></Card>
                   )}
                   {version && (
-                    <section className={styles.card}>
+                    <Card asChild appearance="legacy" ><section className={styles.card}>
                       <h2>3. ทดลองทำแบบทดสอบ · เวอร์ชัน {version.number}</h2>
                       <p>
                         เปิดเว็บไซต์แล้วกลับมาตอบทีละข้อ ไม่ต้องเข้าสู่ระบบ
                         ลิงก์พื้นที่ทดลองใช้กับข้อมูลในเบราว์เซอร์นี้เท่านั้น
                       </p>
-                      <button className={styles.primary} onClick={begin}>
+                      <Button variant="legacy" className={styles.primary} onClick={begin}>
                         เริ่มหรือทำรอบที่ค้างต่อ
-                      </button>
-                      <button onClick={() => move({ step: "results" })}>
+                      </Button>
+                      <Button variant="legacy" onClick={() => move({ step: "results" })}>
                         ดูผลการทดสอบ
-                      </button>
-                    </section>
+                      </Button>
+                    </section></Card>
                   )}
                 </>
               )}
               {runner && version && session && (
-                <section className={styles.card}>
+                <Card asChild appearance="legacy" ><section className={styles.card}>
                   <h1>{version.title}</h1>
                   <p>
                     เวอร์ชัน {version.number} · คำตอบบันทึกในเครื่องนี้
@@ -616,9 +619,9 @@ export default function TrialWorkspace() {
                     <>
                       <h2>ส่งคำตอบแล้ว</h2>
                       <p>รอบนี้ส่งครบแล้ว การเปิดซ้ำจะไม่เพิ่มคำตอบ</p>
-                      <button onClick={() => move({ step: "results", s: "" })}>
+                      <Button variant="legacy" onClick={() => move({ step: "results", s: "" })}>
                         กลับไปดูผลการทดสอบ
-                      </button>
+                      </Button>
                     </>
                   ) : (
                     <>
@@ -707,9 +710,9 @@ export default function TrialWorkspace() {
                               สิ่งที่พบหรือปัญหา (ไม่บังคับ)
                               <textarea name="feedback" maxLength={4000} />
                             </label>
-                            <button className={styles.primary} disabled={trackingPaused}>
+                            <Button variant="legacy" className={styles.primary} disabled={trackingPaused}>
                               บันทึกและไปข้อถัดไป
-                            </button>
+                            </Button>
                           </form>
                         ) : (
                           <>
@@ -726,7 +729,7 @@ export default function TrialWorkspace() {
                                 {a.feedback && ` · ${a.feedback}`}
                               </p>
                             ))}
-                            <button
+                            <Button variant="legacy"
                               className={styles.primary}
                               onClick={() => {
                                 if (commit((s) => submitSession(s, session.id)))
@@ -734,20 +737,20 @@ export default function TrialWorkspace() {
                               }}
                             >
                               ส่งคำตอบทั้งหมด
-                            </button>
+                            </Button>
                           </>
                         );
                       })()}
-                      <button onClick={() => move({ step: "test", s: "" })}>
+                      <Button variant="legacy" onClick={() => move({ step: "test", s: "" })}>
                         พักไว้และกลับไปแบบทดสอบ
-                      </button>
+                      </Button>
                     </>
                   )}
-                </section>
+                </section></Card>
               )}
               {loc.step === "results" && version && (
                 <>
-                  <section className={styles.card}>
+                  <Card asChild appearance="legacy" ><section className={styles.card}>
                     <h2>คำตอบของเวอร์ชัน {version.number}</h2>
                     <p>
                       เริ่มแล้ว{" "}
@@ -768,12 +771,12 @@ export default function TrialWorkspace() {
                       ไม่ใช่ความสำเร็จที่ตรวจจับจากเว็บไซต์
                     </p>
                     {!version.target && <p>คลิก / เส้นทาง / แผนที่ตำแหน่งคลิก: ไม่รองรับสำหรับเว็บไซต์ภายนอกที่ยังไม่ได้ติดตัวเก็บพฤติกรรม</p>}
-                  </section>
+                  </section></Card>
                   {version.target && <BehaviorResults key={version.id} store={store} version={version}/>}
                   {version.tasks.map((t, i) => {
                     const x = taskSummary(store, version.id, t.id);
                     return (
-                      <section key={t.id} className={styles.card}>
+                      <Card asChild appearance="legacy" key={t.id}><section key={t.id} className={styles.card}>
                         <h3>
                           โจทย์ {i + 1}: {t.instruction}
                         </h3>
@@ -805,22 +808,22 @@ export default function TrialWorkspace() {
                             )}
                           </>
                         )}
-                      </section>
+                      </section></Card>
                     );
                   })}
                   {evidenceCards(version)}
-                  <button onClick={begin}>เริ่มหรือทำรอบที่ค้างต่อ</button>
-                  <button
+                  <Button variant="legacy" onClick={begin}>เริ่มหรือทำรอบที่ค้างต่อ</Button>
+                  <Button variant="legacy"
                     className={styles.primary}
                     onClick={() => move({ step: "findings" })}
                   >
                     สร้างข้อค้นพบจากคำตอบ
-                  </button>
+                  </Button>
                 </>
               )}
               {loc.step === "findings" && version && (
                 <>
-                  <section className={styles.card}>
+                  <Card asChild appearance="legacy" ><section className={styles.card}>
                     <h2>สร้างข้อค้นพบ</h2>
                     {clickId && <p role="status">{validClick?'เลือกหลักฐานคลิกต้นทางให้แล้ว ตรวจรายละเอียดและกรอกข้อค้นพบก่อนบันทึก':'ใช้คลิกนี้เป็นหลักฐานไม่ได้: ไม่พบข้อมูลในเวอร์ชันนี้หรือรอบทดลองยังส่งไม่ครบ'}</p>}
                     <p>เลือกคำตอบต้นทาง แล้วอธิบายปัญหาและสิ่งที่ควรปรับปรุง</p>
@@ -865,14 +868,14 @@ export default function TrialWorkspace() {
                       </label>
                       <fieldset>
                         <legend>คำตอบและพฤติกรรมที่ใช้เป็นหลักฐาน</legend>
-                        {(store.behaviorEvents||[]).filter(e=>e.versionId===version.id && store.sessions.some(s=>s.id===e.sessionId && s.submittedAt)).map(e=><label className={styles.check} key={e.id}><input type="checkbox" name="evidence" defaultChecked={validClick && e.id===clickId} value={JSON.stringify({sessionId:e.sessionId,taskId:e.taskId,kind:'event',eventIds:[e.id]})}/><span>{eventName(e.type)} · {screenName(e.screenId)} · {e.elementId||'หน้า'} · ลำดับ {e.sequence} · รอบ {e.sessionId}</span></label>)}
+                        {(store.behaviorEvents||[]).filter(e=>e.versionId===version.id && store.sessions.some(s=>s.id===e.sessionId && s.submittedAt)).map(e=><label className={styles.check} key={e.id}><Input appearance="legacy" type="checkbox" name="evidence" defaultChecked={validClick && e.id===clickId} value={JSON.stringify({sessionId:e.sessionId,taskId:e.taskId,kind:'event',eventIds:[e.id]})}/><span>{eventName(e.type)} · {screenName(e.screenId)} · {e.elementId||'หน้า'} · ลำดับ {e.sequence} · รอบ {e.sessionId}</span></label>)}
                         {store.sessions.filter(s=>s.versionId===version.id && s.submittedAt).flatMap(s=>version.tasks.map(t=>{
                           const events=(store.behaviorEvents||[]).filter(e=>e.versionId===version.id && e.sessionId===s.id && e.taskId===t.id);
                           const path=events.filter(e=>e.type==='screen_view' && e.transitionReason!=='resize');
                           const geometries=[...new Set(events.filter(e=>e.type==='pointer').map(geometryKey))];
                           return <div key={`${s.id}-${t.id}`}>
-                            {path.length>0 && <label className={styles.check}><input type="checkbox" name="evidence" value={JSON.stringify({sessionId:s.id,taskId:t.id,kind:'path',eventIds:path.map(e=>e.id)})}/><span>เส้นทาง · โจทย์ {version.tasks.indexOf(t)+1} · รอบ {s.id} ({path.length} เหตุการณ์)</span></label>}
-                            {geometries.map(g=><label className={styles.check} key={g}><input type="checkbox" name="evidence" value={JSON.stringify({sessionId:s.id,taskId:t.id,kind:'heatmap',eventIds:events.filter(e=>e.type==='pointer' && geometryKey(e)===g).map(e=>e.id)})}/><span>แผนที่ตำแหน่งคลิก · {geometryName(events.find(e=>geometryKey(e)===g)!)} · โจทย์ {version.tasks.indexOf(t)+1} · รอบ {s.id}</span></label>)}
+                            {path.length>0 && <label className={styles.check}><Input appearance="legacy" type="checkbox" name="evidence" value={JSON.stringify({sessionId:s.id,taskId:t.id,kind:'path',eventIds:path.map(e=>e.id)})}/><span>เส้นทาง · โจทย์ {version.tasks.indexOf(t)+1} · รอบ {s.id} ({path.length} เหตุการณ์)</span></label>}
+                            {geometries.map(g=><label className={styles.check} key={g}><Input appearance="legacy" type="checkbox" name="evidence" value={JSON.stringify({sessionId:s.id,taskId:t.id,kind:'heatmap',eventIds:events.filter(e=>e.type==='pointer' && geometryKey(e)===g).map(e=>e.id)})}/><span>แผนที่ตำแหน่งคลิก · {geometryName(events.find(e=>geometryKey(e)===g)!)} · โจทย์ {version.tasks.indexOf(t)+1} · รอบ {s.id}</span></label>)}
                           </div>;
                         }))}
                         {store.sessions
@@ -885,7 +888,7 @@ export default function TrialWorkspace() {
                                 className={styles.check}
                                 key={`${s.id}-${a.taskId}`}
                               >
-                                <input
+                                <Input appearance="legacy"
                                   type="checkbox"
                                   name="evidence"
                                   value={`${s.id}:${a.taskId}`}
@@ -907,11 +910,11 @@ export default function TrialWorkspace() {
                           <p>ยังไม่มีหลักฐาน ส่งคำตอบให้ครบก่อนสร้างข้อค้นพบ</p>
                         )}
                       </fieldset>
-                      <button className={styles.primary}>บันทึกข้อค้นพบ</button>
+                      <Button variant="legacy" className={styles.primary}>บันทึกข้อค้นพบ</Button>
                     </form>
-                  </section>
+                  </section></Card>
                   {findings.map((f) => (
-                    <section className={styles.card} key={f.id}>
+                    <Card asChild appearance="legacy" key={f.id}><section className={styles.card} key={f.id}>
                       <h3>{f.problem}</h3>
                       <p>ผลกระทบ: {f.impact}</p>
                       <p>ข้อเสนอแนะ: {f.recommendation}</p>
@@ -925,39 +928,39 @@ export default function TrialWorkspace() {
                             1}
                         </a>
                       ))}
-                    </section>
+                    </section></Card>
                   ))}
-                  <button onClick={() => move({ step: "results" })}>
+                  <Button variant="legacy" onClick={() => move({ step: "results" })}>
                     กลับไปผลการทดสอบ
-                  </button>
-                  <button
+                  </Button>
+                  <Button variant="legacy"
                     className={styles.primary}
                     onClick={() => move({ step: "report" })}
                   >
                     ไปที่รายงาน
-                  </button>
+                  </Button>
                 </>
               )}
               {loc.step === "report" && version && (
                 <>
-                  <section className={styles.card}>
+                  <Card asChild appearance="legacy" ><section className={styles.card}>
                     <h2>รายงานเวอร์ชัน {version.number}</h2>
                     <p>
                       รายงานบันทึกชุดข้อค้นพบ ณ เวลาสร้าง
                       หากเพิ่มข้อค้นพบให้สร้างรายงานใหม่
                     </p>
-                    <button
+                    <Button variant="legacy"
                       className={styles.primary}
                       onClick={() => commit((s) => makeReport(s, version.id))}
                     >
                       สร้างรายงานจากข้อค้นพบ
-                    </button>
+                    </Button>
                     {!findings.length && (
                       <p>ยังสร้างรายงานไม่ได้ สร้างข้อค้นพบพร้อมหลักฐานก่อน</p>
                     )}
-                  </section>
+                  </section></Card>
                   {report && (
-                    <section className={styles.card}>
+                    <Card asChild appearance="legacy" ><section className={styles.card}>
                       <h2>
                         {project?.name} / {version.title}
                       </h2>
@@ -987,31 +990,31 @@ export default function TrialWorkspace() {
                           ))}
                         </article>
                       ))}
-                      <button onClick={() => window.print()}>
+                      <Button variant="legacy" onClick={() => window.print()}>
                         พิมพ์ / บันทึกเป็น PDF
-                      </button>
-                    </section>
+                      </Button>
+                    </section></Card>
                   )}
-                  <button onClick={() => move({ step: "findings" })}>
+                  <Button variant="legacy" onClick={() => move({ step: "findings" })}>
                     กลับไปข้อค้นพบ
-                  </button>
-                  <button
+                  </Button>
+                  <Button variant="legacy"
                     className={styles.primary}
                     onClick={() => move({ step: "retest" })}
                   >
                     ไปทดลองรอบใหม่
-                  </button>
+                  </Button>
                 </>
               )}
               {loc.step === "retest" && version && (
-                <section className={styles.card}>
+                <Card asChild appearance="legacy" ><section className={styles.card}>
                   <h2>ทดลองรอบใหม่จากเวอร์ชัน {version.number}</h2>
                   <p>
                     คัดลอกโจทย์เป็นฉบับร่างใหม่ คำตอบรอบเก่ายังคงอยู่
                     ไม่มีหลักฐานยืนยันว่าเว็บไซต์บ้านเราได้รับการแก้ไข
                     จึงไม่สรุปว่ารอบใหม่เป็นผลของการแก้ไข
                   </p>
-                  <button
+                  <Button variant="legacy"
                     className={styles.primary}
                     onClick={() => {
                       if (test?.draft) move({ step: "test" });
@@ -1022,7 +1025,7 @@ export default function TrialWorkspace() {
                     {test?.draft
                       ? "เปิดฉบับร่างรอบใหม่"
                       : "สร้างฉบับร่างรอบใหม่"}
-                  </button>
+                  </Button>
                   {version.parentId &&
                     (() => {
                       const before = versions.find(
@@ -1072,48 +1075,48 @@ export default function TrialWorkspace() {
                               </article>
                             );
                           })}
-                          <button
+                          <Button variant="legacy"
                             onClick={() =>
                               move({ step: "results", v: before.id })
                             }
                           >
                             ดูหลักฐานต้นฉบับ
-                          </button>
-                          <button onClick={() => move({ step: "results" })}>
+                          </Button>
+                          <Button variant="legacy" onClick={() => move({ step: "results" })}>
                             ดูหลักฐานรอบใหม่
-                          </button>
+                          </Button>
                         </>
                       );
                     })()}
-                </section>
+                </section></Card>
               )}
               {loc.step !== "projects" &&
                 (!test || (loc.step !== "test" && !version)) && (
-                  <section className={styles.card}>
+                  <Card asChild appearance="legacy" ><section className={styles.card}>
                     <h2>เลือกแบบทดสอบก่อนทำต่อ</h2>
                     <p>
                       กลับไปโปรเจกต์ เลือกแบบทดสอบ
                       แล้วเลือกเวอร์ชันที่เผยแพร่แล้ว
                       ลิงก์จากเครื่องอื่นไม่มีข้อมูลในเบราว์เซอร์นี้
                     </p>
-                    <button onClick={() => move({ step: "projects", s: "" })}>
+                    <Button variant="legacy" onClick={() => move({ step: "projects", s: "" })}>
                       ไปที่โปรเจกต์
-                    </button>
-                  </section>
+                    </Button>
+                  </section></Card>
                 )}
               {runner && version && !session && (
-                <section className={styles.card}>
+                <Card asChild appearance="legacy" ><section className={styles.card}>
                   <h1>ยังไม่มีรอบทดลองในเครื่องนี้</h1>
-                  <button onClick={begin}>เริ่มรอบทดลอง</button>
-                  <button onClick={() => move({ step: "test", s: "" })}>
+                  <Button variant="legacy" onClick={begin}>เริ่มรอบทดลอง</Button>
+                  <Button variant="legacy" onClick={() => move({ step: "test", s: "" })}>
                     กลับไปแบบทดสอบ
-                  </button>
-                </section>
+                  </Button>
+                </section></Card>
               )}
               {!steps.some(([step]) => step === loc.step) && !runner && (
-                <button onClick={() => move({ step: "projects" })}>
+                <Button variant="legacy" onClick={() => move({ step: "projects" })}>
                   กลับไปโปรเจกต์
-                </button>
+                </Button>
               )}
             </fieldset>
           </>
