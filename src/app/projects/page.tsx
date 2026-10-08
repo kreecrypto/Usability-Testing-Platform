@@ -2,24 +2,37 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 
 type Workspace = { id: string; name: string; slug: string };
 type Project = { id: string; workspace_id: string; name: string; description: string | null; status: string };
 type StudyTest = { id: string; workspace_id: string; project_id: string; title: string; description: string | null; status: string };
 type Task = { id: string; title: string; ordinal: number };
+type LoadState = "loading" | "ready" | "error" | "restricted";
+class RequestError extends Error {
+  constructor(readonly status: number, code: string) { super(code); }
+}
 
 async function json<T>(response: Response): Promise<T> {
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
     const code = typeof body?.error === "string" ? body.error : "request_failed";
-    throw new Error(code);
+    throw new RequestError(response.status, code);
   }
   return body as T;
 }
+function readFailure(error: unknown, setLoad: (state: LoadState) => void) {
+  if (error instanceof RequestError && error.status === 401) { window.location.replace("/login"); return; }
+  setLoad(error instanceof RequestError && error.status === 403 ? "restricted" : "error");
+}
 
 export default function ProjectsPage() {
-  const [ready, setReady] = useState(false);
+  const [bootstrap, setBootstrap] = useState<LoadState>("loading");
+  const [bootstrapAttempt, setBootstrapAttempt] = useState(0);
+  const [projectLoad, setProjectLoad] = useState<LoadState>("loading");
+  const [testLoad, setTestLoad] = useState<LoadState>("loading");
+  const [taskLoad, setTaskLoad] = useState<LoadState>("loading");
+  const [listAttempt, setListAttempt] = useState(0);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [workspaceId, setWorkspaceId] = useState("");
   const [projects, setProjects] = useState<Project[]>([]);
@@ -37,53 +50,90 @@ export default function ProjectsPage() {
   const [publishedVersionId, setPublishedVersionId] = useState("");
   const [message, setMessage] = useState("");
   const [working, setWorking] = useState(false);
+  const scope = useRef({ workspaceId: "", projectId: "", testId: "" });
+  scope.current = { workspaceId, projectId, testId };
 
-  const loadWorkspaces = useCallback(async () => {
-    const response = await fetch("/api/workspaces", { cache: "no-store" });
-    if (response.status === 401) { window.location.replace("/login"); return; }
+  const chooseTest = useCallback((id: string) => {
+    scope.current.testId = id;
+    setTasks([]); setTaskLoad("loading"); setPublishedVersionId(""); setTestId(id);
+  }, []);
+  const chooseProject = useCallback((id: string) => {
+    scope.current.projectId = id;
+    setTests([]); setTestLoad("loading"); chooseTest(""); setProjectId(id);
+  }, [chooseTest]);
+  const chooseWorkspace = useCallback((id: string) => {
+    scope.current.workspaceId = id;
+    setProjects([]); setProjectLoad("loading"); chooseProject(""); setWorkspaceId(id);
+  }, [chooseProject]);
+
+  const loadWorkspaces = useCallback(async (signal?: AbortSignal) => {
+    const response = await fetch("/api/workspaces", { cache: "no-store", signal });
     const body = await json<{ workspaces: Workspace[] }>(response);
+    if (signal?.aborted) return;
     setWorkspaces(body.workspaces);
     setWorkspaceId((current) => current || body.workspaces[0]?.id || "");
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
+    setBootstrap("loading");
     void (async () => {
-      const session = await fetch("/api/auth/session", { cache: "no-store" });
-      if (!session.ok) { window.location.replace("/login"); return; }
-      await loadWorkspaces();
-      setReady(true);
-    })().catch(() => setMessage("โหลดพื้นที่ทำงานไม่สำเร็จ ตรวจการเชื่อมต่อแล้วลองใหม่"));
-  }, [loadWorkspaces]);
+      const session = await fetch("/api/auth/session", { cache: "no-store", signal: controller.signal });
+      await json(session);
+      await loadWorkspaces(controller.signal);
+      if (!controller.signal.aborted) setBootstrap("ready");
+    })().catch(error => { if (!controller.signal.aborted) readFailure(error, setBootstrap); });
+    return () => controller.abort();
+  }, [loadWorkspaces, bootstrapAttempt]);
 
   useEffect(() => {
-    if (!workspaceId) { setProjects([]); setProjectId(""); return; }
-    void fetch(`/api/projects?workspaceId=${encodeURIComponent(workspaceId)}`, { cache: "no-store" })
+    const controller = new AbortController();
+    setProjects([]); setProjectLoad("loading");
+    if (!workspaceId) { setProjectId(""); return () => controller.abort(); }
+    void fetch(`/api/projects?workspaceId=${encodeURIComponent(workspaceId)}`, { cache: "no-store", signal: controller.signal })
       .then((r) => json<{ projects: Project[] }>(r))
       .then((body) => {
+        if (controller.signal.aborted || scope.current.workspaceId !== workspaceId) return;
         setProjects(body.projects);
-        setProjectId((current) => body.projects.some((p) => p.id === current) ? current : body.projects[0]?.id || "");
+        setProjectLoad("ready");
+        const next = body.projects.some(p => p.id === scope.current.projectId) ? scope.current.projectId : body.projects[0]?.id || "";
+        if (next !== scope.current.projectId) chooseProject(next);
       })
-      .catch(() => setMessage("โหลดโปรเจกต์ไม่สำเร็จ ลองเลือกพื้นที่ทำงานอีกครั้ง"));
-  }, [workspaceId]);
+      .catch(error => { if (!controller.signal.aborted) readFailure(error, setProjectLoad); });
+    return () => controller.abort();
+  }, [workspaceId, listAttempt, chooseProject]);
 
   useEffect(() => {
-    if (!workspaceId || !projectId) { setTests([]); setTestId(""); return; }
-    void fetch(`/api/tests?workspaceId=${encodeURIComponent(workspaceId)}&projectId=${encodeURIComponent(projectId)}`, { cache: "no-store" })
+    const controller = new AbortController();
+    setTests([]); setTestLoad("loading");
+    if (!workspaceId || !projectId) { setTestId(""); return () => controller.abort(); }
+    void fetch(`/api/tests?workspaceId=${encodeURIComponent(workspaceId)}&projectId=${encodeURIComponent(projectId)}`, { cache: "no-store", signal: controller.signal })
       .then((r) => json<{ tests: StudyTest[] }>(r))
       .then((body) => {
+        if (controller.signal.aborted || scope.current.workspaceId !== workspaceId || scope.current.projectId !== projectId) return;
         setTests(body.tests);
-        setTestId((current) => body.tests.some((t) => t.id === current) ? current : body.tests[0]?.id || "");
+        setTestLoad("ready");
+        const next = body.tests.some(t => t.id === scope.current.testId) ? scope.current.testId : body.tests[0]?.id || "";
+        if (next !== scope.current.testId) chooseTest(next);
       })
-      .catch(() => setMessage("โหลดแบบทดสอบไม่สำเร็จ ลองเลือกโปรเจกต์อีกครั้ง"));
-  }, [workspaceId, projectId]);
+      .catch(error => { if (!controller.signal.aborted) readFailure(error, setTestLoad); });
+    return () => controller.abort();
+  }, [workspaceId, projectId, listAttempt, chooseTest]);
 
-  const loadTasks = useCallback(async (selectedTestId: string) => {
+  const loadTasks = useCallback(async (selectedTestId: string, signal?: AbortSignal) => {
     if (!selectedTestId) { setTasks([]); return; }
-    const body = await json<{ tasks: Task[] }>(await fetch(`/api/tests/${encodeURIComponent(selectedTestId)}/tasks`, { cache: "no-store" }));
+    const body = await json<{ tasks: Task[] }>(await fetch(`/api/tests/${encodeURIComponent(selectedTestId)}/tasks`, { cache: "no-store", signal }));
+    if (signal?.aborted || scope.current.testId !== selectedTestId) return;
     setTasks(body.tasks);
+    setTaskLoad("ready");
   }, []);
 
-  useEffect(() => { void loadTasks(testId).catch(() => setTasks([])); }, [testId, loadTasks]);
+  useEffect(() => {
+    const controller = new AbortController();
+    setTasks([]); setTaskLoad("loading");
+    void loadTasks(testId, controller.signal).catch(error => { if (!controller.signal.aborted) readFailure(error, setTaskLoad); });
+    return () => controller.abort();
+  }, [testId, loadTasks, listAttempt]);
 
   async function run(label: string, action: () => Promise<void>) {
     if (working) return;
@@ -107,7 +157,7 @@ export default function ProjectsPage() {
     void run("สร้างโปรเจกต์", async () => {
       const body = await json<{ project: Project }>(await fetch("/api/projects", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ workspaceId, name: projectName, description: "Internal real-flow validation for MAJOR-A" }) }));
       setProjects((items) => [body.project, ...items]);
-      setProjectId(body.project.id);
+      chooseProject(body.project.id);
     });
   }
 
@@ -116,7 +166,7 @@ export default function ProjectsPage() {
     void run("สร้างแบบทดสอบ", async () => {
       const body = await json<{ test: StudyTest }>(await fetch("/api/tests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ workspaceId, projectId, title: testTitle, description: "Flow Proven real study" }) }));
       setTests((items) => [body.test, ...items]);
-      setTestId(body.test.id);
+      chooseTest(body.test.id);
     });
   }
 
@@ -166,7 +216,18 @@ export default function ProjectsPage() {
     window.location.replace("/login");
   }
 
-  if (!ready) return <main style={{ padding: 32 }}>กำลังโหลดพื้นที่ทำงาน…</main>;
+  if (bootstrap !== "ready") return <main style={{ padding: 32 }}>
+    <h1>พื้นที่ทำงานผู้วิจัย</h1>
+    {bootstrap === "loading" ? <p role="status">กำลังโหลดพื้นที่ทำงาน…</p> : <>
+      <p role="alert">{bootstrap === "restricted" ? "คุณไม่มีสิทธิ์เปิดพื้นที่ทำงานนี้ ติดต่อผู้ดูแลพื้นที่ทำงาน" : "โหลดพื้นที่ทำงานไม่สำเร็จ ตรวจการเชื่อมต่อแล้วลองใหม่"}</p>
+      <Button variant="legacy" className="primaryButton" onClick={() => setBootstrapAttempt(n => n + 1)}>ลองอีกครั้ง</Button>
+    </>}
+  </main>;
+
+  const listFeedback = (state: LoadState, label: string) => state === "ready" ? null : state === "loading" ? <p role="status">กำลังโหลด{label}…</p> : <div>
+    <p role="alert">{state === "restricted" ? `คุณไม่มีสิทธิ์อ่าน${label}ในบริบทนี้` : `โหลด${label}ไม่สำเร็จ ตรวจการเชื่อมต่อแล้วลองใหม่`}</p>
+    <Button variant="legacy" type="button" onClick={() => setListAttempt(n => n + 1)}>ลองโหลด{label}อีกครั้ง</Button>
+  </div>;
 
   const block = { background: "var(--ah-canvas)", border: "1px solid var(--ah-hairline)", borderRadius: 12, padding: 20 } as const;
   const input = { minHeight: 42, border: "1px solid var(--ah-hairline)", borderRadius: 8, padding: "0 10px", background: "white", width: "100%" } as const;
@@ -192,7 +253,7 @@ export default function ProjectsPage() {
           <section style={block}>
             <h2 style={{ marginTop: 0 }}>1. เลือกพื้นที่ทำงาน</h2>
             {workspaces.length ? (
-              <select aria-label="พื้นที่ทำงาน" value={workspaceId} onChange={(e) => setWorkspaceId(e.target.value)} style={input}>
+              <select aria-label="พื้นที่ทำงาน" value={workspaceId} onChange={(e) => chooseWorkspace(e.target.value)} disabled={working} style={input}>
                 {workspaces.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
               </select>
             ) : (
@@ -206,37 +267,39 @@ export default function ProjectsPage() {
           <section style={block}>
             <h2 style={{ marginTop: 0 }}>2. เลือกโปรเจกต์</h2>
             {workspaceId ? <form onSubmit={createProject} style={{ display: "grid", gap: 10 }}>
-              <select aria-label="โปรเจกต์" value={projectId} onChange={(e) => setProjectId(e.target.value)} style={input}>
+              <select aria-label="โปรเจกต์" value={projectId} onChange={(e) => chooseProject(e.target.value)} disabled={working || projectLoad !== "ready"} style={input}>
                 <option value="">เลือกโปรเจกต์</option>
                 {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <Input appearance="legacy" aria-label="ชื่อโปรเจกต์ใหม่" placeholder="ชื่อโปรเจกต์" required value={projectName} onChange={(e) => setProjectName(e.target.value)} style={{ ...input, flex: "1 1 260px" }} />
-                <Button variant="legacy" className="primaryButton" disabled={working}>สร้างโปรเจกต์</Button>
+                <Button variant="legacy" className="primaryButton" disabled={working || projectLoad !== "ready"}>สร้างโปรเจกต์</Button>
               </div>
             </form> : <p>สร้างพื้นที่ทำงานในขั้นที่ 1 ก่อน</p>}
+            {workspaceId ? listFeedback(projectLoad, "โปรเจกต์") : null}
           </section>
 
           <section style={block}>
             <h2 style={{ marginTop: 0 }}>3. เลือกแบบทดสอบ</h2>
             {projectId ? <form onSubmit={createTest} style={{ display: "grid", gap: 10 }}>
-              <select aria-label="แบบทดสอบ" value={testId} onChange={(e) => setTestId(e.target.value)} style={input}>
+              <select aria-label="แบบทดสอบ" value={testId} onChange={(e) => chooseTest(e.target.value)} disabled={working || projectLoad !== "ready" || testLoad !== "ready"} style={input}>
                 <option value="">เลือกแบบทดสอบ</option>
                 {tests.map((t) => <option key={t.id} value={t.id}>{t.title} — {t.status}</option>)}
               </select>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <Input appearance="legacy" aria-label="ชื่อแบบทดสอบใหม่" placeholder="ชื่อแบบทดสอบ" required value={testTitle} onChange={(e) => setTestTitle(e.target.value)} style={{ ...input, flex: "1 1 260px" }} />
-                <Button variant="legacy" className="primaryButton" disabled={working}>สร้างแบบทดสอบ</Button>
+                <Button variant="legacy" className="primaryButton" disabled={working || projectLoad !== "ready" || testLoad !== "ready"}>สร้างแบบทดสอบ</Button>
               </div>
             </form> : <p>เลือกหรือสร้างโปรเจกต์ในขั้นที่ 2 ก่อน</p>}
+            {projectId ? listFeedback(testLoad, "แบบทดสอบ") : null}
           </section>
 
           <section style={block}>
             <h2 style={{ marginTop: 0 }}>4. ระบุเว็บไซต์ที่จะทดสอบ</h2>
             {testId ? <form onSubmit={configureTarget} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <Input appearance="legacy" aria-label="URL เว็บไซต์ที่จะทดสอบ" placeholder="https://example.com" required type="url" value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)} style={{ ...input, flex: "1 1 420px" }} />
-              <Button variant="legacy" className="primaryButton" disabled={working}>บันทึกเว็บไซต์</Button>
-              <Button variant="legacy" className="primaryButton" type="button" disabled={working} onClick={preflightTarget}>ตรวจความพร้อมของเว็บไซต์</Button>
+              <Button variant="legacy" className="primaryButton" disabled={working || projectLoad !== "ready" || testLoad !== "ready" || taskLoad !== "ready"}>บันทึกเว็บไซต์</Button>
+              <Button variant="legacy" className="primaryButton" type="button" disabled={working || projectLoad !== "ready" || testLoad !== "ready" || taskLoad !== "ready"} onClick={preflightTarget}>ตรวจความพร้อมของเว็บไซต์</Button>
             </form> : <p>เลือกหรือสร้างแบบทดสอบในขั้นที่ 3 ก่อน</p>}
           </section>
 
@@ -247,9 +310,10 @@ export default function ProjectsPage() {
                 <Input appearance="legacy" aria-label="ชื่องาน" required placeholder="ชื่องาน เช่น สมัครสมาชิก" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} style={input} />
                 <Input appearance="legacy" aria-label="สถานการณ์ของงาน" placeholder="สถานการณ์ เช่น คุณเพิ่งเริ่มใช้บริการ" value={scenario} onChange={(e) => setScenario(e.target.value)} style={input} />
                 <textarea aria-label="คำสั่งที่ผู้เข้าร่วมจะเห็น" placeholder="คำสั่งที่ผู้เข้าร่วมจะเห็น" value={instruction} onChange={(e) => setInstruction(e.target.value)} rows={3} style={{ ...input, padding: 10 }} />
-                <Button variant="legacy" className="primaryButton" disabled={working}>เพิ่มงาน</Button>
+                <Button variant="legacy" className="primaryButton" disabled={working || projectLoad !== "ready" || testLoad !== "ready" || taskLoad !== "ready"}>เพิ่มงาน</Button>
               </form>
               <ol>{tasks.map((task) => <li key={task.id}>{task.ordinal}. {task.title}</li>)}</ol>
+              {listFeedback(taskLoad, "งานทดสอบ")}
               {tasks.length > 0 ? <p><a className="primaryButton" href={`/builder/${testId}/rules`}>กำหนดเกณฑ์จบงาน</a></p> : null}
               <p style={{ color: "var(--ah-slate)" }}>ก่อนเผยแพร่ ให้กำหนดว่าแต่ละงานถือว่าสำเร็จหรือไม่สำเร็จเมื่อใด ระบบจะตรวจความครบถ้วนอีกครั้ง</p>
             </> : <p>เลือกหรือสร้างแบบทดสอบในขั้นที่ 3 ก่อน</p>}
@@ -257,7 +321,7 @@ export default function ProjectsPage() {
 
           <section style={block}>
             <h2 style={{ marginTop: 0 }}>6. ตรวจและเผยแพร่</h2>
-            <Button variant="legacy" className="primaryButton" type="button" disabled={working || !testId || tasks.length === 0} onClick={publish}>เผยแพร่เวอร์ชันนี้</Button>
+            <Button variant="legacy" className="primaryButton" type="button" disabled={working || projectLoad !== "ready" || testLoad !== "ready" || taskLoad !== "ready" || !testId || tasks.length === 0} onClick={publish}>เผยแพร่เวอร์ชันนี้</Button>
             {!testId || tasks.length === 0 ? <p>เลือกแบบทดสอบและเพิ่มงานอย่างน้อย 1 งานก่อนเผยแพร่</p> : null}
             {publishedVersionId ? <p>ลิงก์สำหรับผู้เข้าร่วม: <a href={`/t/${publishedVersionId}`} target="_blank" rel="noreferrer">{`/t/${publishedVersionId}`}</a></p> : null}
           </section>
