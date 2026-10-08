@@ -40,10 +40,10 @@ export default function ProjectsPage() {
   const [tests, setTests] = useState<StudyTest[]>([]);
   const [testId, setTestId] = useState("");
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [workspaceName, setWorkspaceName] = useState("UTP Internal Validation");
-  const [projectName, setProjectName] = useState("Golden Path");
-  const [testTitle, setTestTitle] = useState("MAJOR-A Flow Proven");
-  const [targetUrl, setTargetUrl] = useState("https://usability-testing-platform.vercel.app/internal-validation-target");
+  const [workspaceName, setWorkspaceName] = useState("");
+  const [projectName, setProjectName] = useState("");
+  const [testTitle, setTestTitle] = useState("");
+  const [targetUrl, setTargetUrl] = useState("");
   const [taskTitle, setTaskTitle] = useState("");
   const [scenario, setScenario] = useState("");
   const [instruction, setInstruction] = useState("");
@@ -155,7 +155,7 @@ export default function ProjectsPage() {
   function createProject(event: FormEvent) {
     event.preventDefault();
     void run("สร้างโปรเจกต์", async () => {
-      const body = await json<{ project: Project }>(await fetch("/api/projects", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ workspaceId, name: projectName, description: "Internal real-flow validation for MAJOR-A" }) }));
+      const body = await json<{ project: Project }>(await fetch("/api/projects", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ workspaceId, name: projectName, description: null }) }));
       setProjects((items) => [body.project, ...items]);
       chooseProject(body.project.id);
     });
@@ -164,7 +164,7 @@ export default function ProjectsPage() {
   function createTest(event: FormEvent) {
     event.preventDefault();
     void run("สร้างแบบทดสอบ", async () => {
-      const body = await json<{ test: StudyTest }>(await fetch("/api/tests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ workspaceId, projectId, title: testTitle, description: "Flow Proven real study" }) }));
+      const body = await json<{ test: StudyTest }>(await fetch("/api/tests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ workspaceId, projectId, title: testTitle, description: null }) }));
       setTests((items) => [body.test, ...items]);
       chooseTest(body.test.id);
     });
@@ -226,11 +226,11 @@ export default function ProjectsPage() {
 
   const listFeedback = (state: LoadState, label: string) => state === "ready" ? null : state === "loading" ? <p role="status">กำลังโหลด{label}…</p> : <div>
     <p role="alert">{state === "restricted" ? `คุณไม่มีสิทธิ์อ่าน${label}ในบริบทนี้` : `โหลด${label}ไม่สำเร็จ ตรวจการเชื่อมต่อแล้วลองใหม่`}</p>
-    <Button variant="legacy" type="button" onClick={() => setListAttempt(n => n + 1)}>ลองโหลด{label}อีกครั้ง</Button>
+    <Button variant="legacy" className="primaryButton" type="button" onClick={() => setListAttempt(n => n + 1)}>ลองโหลด{label}อีกครั้ง</Button>
   </div>;
 
   const block = { background: "var(--ah-canvas)", border: "1px solid var(--ah-hairline)", borderRadius: 12, padding: 20 } as const;
-  const input = { minHeight: 42, border: "1px solid var(--ah-hairline)", borderRadius: 8, padding: "0 10px", background: "white", width: "100%" } as const;
+  const input = { minHeight: "var(--ah-touch-target-min)", border: "1px solid var(--ah-hairline)", borderRadius: 8, padding: "0 10px", background: "white", width: "100%" } as const;
 
   return (
     <main className="shell">

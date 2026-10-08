@@ -13,7 +13,7 @@
 .header h1{margin:4px 0 0;color:var(--ah-primary);font-size:clamp(28px,4vw,42px);line-height:1.15}
 .eyebrow,.kicker{color:var(--ah-slate);font-size:13px;font-weight:700}
 .eyebrow{margin:0}
-.homeLink{white-space:nowrap}
+.homeLink{white-space:nowrap;display:inline-flex;align-items:center;min-height:var(--ah-touch-target-min);min-width:var(--ah-touch-target-min);padding-inline:var(--ah-space-8)}
 .context{color:var(--ah-slate);font-size:14px;line-height:1.6;margin:0 0 18px}
 .context span{margin:0 6px}
 .intro{max-width:670px;margin:0 0 20px;color:var(--ah-ink)}

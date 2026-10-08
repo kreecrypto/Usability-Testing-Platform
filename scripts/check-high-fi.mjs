@@ -113,7 +113,7 @@ for (const signal of cssSignals) if (!css.includes(signal)) fail(`base high-fi C
 const fixSignals = ['.reviewStage--mobile .appSidebar','width:280px','.navBackdrop','.componentChips','.reviewStepper','.inlineError','.choiceGrid','.hfButton{','border-radius:var(--ut-radius-pill)','.appTopbar h1','.participantPrototype','var(--ut-touch-target-min)'];
 for (const signal of fixSignals) if (!fixes.includes(signal)) fail(`post-review CSS missing ${signal}`);
 
-for (const signal of ['href: "/demo/projects"','ทดสอบการใช้งานกับผู้ใช้จริง','ดูตัวอย่างการทำงาน','ข้อมูลใน Demo เป็นเรื่องสมมติ','เตรียมแบบทดสอบ','ดูผลและหลักฐาน','แก้ไขและทดสอบซ้ำ']) if (!home.includes(signal)) fail(`Thai home missing ${signal}`);
+for (const signal of ['href: "/demo/projects"','ทดสอบการใช้งานกับผู้ใช้จริง','เริ่มทดลองใช้งาน','ดูตัวอย่างแบบอ่านอย่างเดียว','ข้อมูลใน Demo เป็นเรื่องสมมติ','เตรียมแบบทดสอบ','ดูผลและหลักฐาน','แก้ไขและทดสอบซ้ำ']) if (!home.includes(signal)) fail(`Thai home missing ${signal}`);
 if (home.includes('รุ่นปัจจุบันเน้นการทดสอบต้นแบบ Figma')) fail('home must not imply Figma is the only test target');
 if (home.includes('href: "/projects"') || home.includes('href="/login"')) fail('public home must not enter protected researcher workspace');
 if (!layout.includes('<html lang="th">')) fail('document language must be Thai');
