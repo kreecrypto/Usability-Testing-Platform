@@ -141,6 +141,7 @@
   outline: 2px solid var(--ah-primary);
   outline-offset: 3px;
 }
+.sidebar > a, .header > a { display: inline-flex; align-items: center; min-height: var(--ah-touch-target-min); min-width: var(--ah-touch-target-min); }
 .shell .check {
   display: flex;
   align-items: center;

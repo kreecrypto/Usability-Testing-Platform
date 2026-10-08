@@ -60,7 +60,9 @@ button {
 }
 
 .navItem {
-  min-height: var(--ah-sidebar-item-height);
+  min-height: var(--ah-touch-target-min);
+  display: inline-flex;
+  align-items: center;
   border-radius: var(--ah-radius-sm);
   color: var(--ah-ink);
   padding: var(--ah-space-4) var(--ah-space-8);
@@ -113,7 +115,7 @@ button {
 }
 
 .primaryButton {
-  min-height: var(--ah-button-md-height);
+  min-height: var(--ah-touch-target-min);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -127,6 +129,16 @@ button {
   font-weight: var(--ah-font-weight-bold);
   text-decoration: none;
 }
+
+.heroCard.homeIntro { display: block; }
+.homeIntro p { max-width: 75ch; line-height: 1.65; }
+.homeActions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ah-space-16); margin-block: var(--ah-space-24); }
+.homeSecondary { display: inline-flex; align-items: center; min-height: var(--ah-touch-target-min); padding: var(--ah-space-8) var(--ah-space-16); border: 1px solid var(--ah-neutral-border); border-radius: var(--ah-radius-sm); color: var(--ah-primary); text-decoration: none; }
+.homeSecondary:hover { background: var(--ah-primary-soft); }
+.homeSecondary:focus-visible { outline: 2px solid var(--ah-primary); outline-offset: 2px; }
+.homeWorkflow { padding-inline-start: var(--ah-space-24); max-width: 75ch; }
+.homeWorkflow li { padding-inline-start: var(--ah-space-8); margin-block: var(--ah-space-16); }
+.homeWorkflow p { margin: var(--ah-space-4) 0 0; color: var(--ah-slate); line-height: 1.65; }
 
 .primaryButton:hover {
   background: var(--ah-primary-dark);
