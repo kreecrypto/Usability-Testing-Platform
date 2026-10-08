@@ -16,6 +16,7 @@ import {
 import { createRunnerLifecycle } from "../../../lib/tracking/lifecycle.ts";
 import type { RawTrackingEvent } from "../../../lib/tracking/events.ts";
 import { belongsToTest, remainingTaskTime } from "../../../lib/runner/recovery.ts";
+import { readRunnerJson, invalidParticipantLink, RunnerRequestError } from "../../../lib/runner/access.ts";
 import styles from "./participant-runner.module.css";
 
 const CONSENT_VERSION = "utp-privacy-v1";
@@ -140,12 +141,23 @@ function browserSupported(): boolean {
 }
 
 async function readJson<T>(response: Response): Promise<T> {
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const error = typeof body?.error === "string" ? body.error : "request_failed";
-    throw new Error(error);
-  }
-  return body as T;
+  return readRunnerJson<T>(response);
+}
+
+function usableSnapshot(test: TestSnapshot | undefined, versionId: string): test is TestSnapshot {
+  const textOrNull = (value: unknown) => value === null || typeof value === "string";
+  return Boolean(test && test.testVersionId === versionId && typeof test.testId === "string" && test.testId &&
+    typeof test.title === "string" && textOrNull(test.description) && Number.isInteger(test.versionNo) && test.versionNo > 0 &&
+    test.target && ["figma_prototype", "first_party_web", "external_web"].includes(test.target.provider) &&
+    typeof test.target.sourceUrl === "string" && test.target.sourceUrl &&
+    ["embed", "new_tab", "same_tab"].includes(test.target.launchMode) &&
+    textOrNull(test.target.embedUrl) && textOrNull(test.target.liveEmbedUrl) && textOrNull(test.target.startScreenId) &&
+    ["figma_embed_api", "first_party_bridge", "cooperative_bridge", "none"].includes(test.target.instrumentation) &&
+    Array.isArray(test.tasks) && test.tasks.length > 0 && test.tasks.every(task => task &&
+      typeof task.id === "string" && task.id && typeof task.title === "string" &&
+      Number.isInteger(task.ordinal) && task.ordinal > 0 && textOrNull(task.scenario) && textOrNull(task.instruction) &&
+      (task.timeoutSeconds === null || (typeof task.timeoutSeconds === "number" && Number.isFinite(task.timeoutSeconds) && task.timeoutSeconds > 0)) &&
+      task.postTaskQuestions && typeof task.postTaskQuestions === "object" && !Array.isArray(task.postTaskQuestions)));
 }
 
 function maxPendingSequence(events: readonly RawTrackingEvent[]): number {
@@ -154,6 +166,8 @@ function maxPendingSequence(events: readonly RawTrackingEvent[]): number {
 
 export default function ParticipantRunnerClient({ testVersionId }: { testVersionId: string }) {
   const [stage, setStage] = useState<Stage>("access-loading");
+  const [accessAttempt, setAccessAttempt] = useState(0);
+  const [accessFailed, setAccessFailed] = useState(false);
   const [snapshot, setSnapshot] = useState<TestSnapshot | null>(null);
   const [taskIndex, setTaskIndex] = useState(0);
   const [sessionState, setSessionState] = useState<SessionState | null>(null);
@@ -329,6 +343,9 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
+    setStage("access-loading");
+    setAccessFailed(false);
     runtimeRef.current = null;
     initialCredentialRef.current = null;
     taskStartedAtRef.current = null;
@@ -340,10 +357,13 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
         }
         return;
       }
+      let readingSnapshot = true;
       try {
-        const response = await fetch(`/api/public/tests/${encodeURIComponent(testVersionId)}`, { cache: "no-store" });
+        const response = await fetch(`/api/public/tests/${encodeURIComponent(testVersionId)}`, { cache: "no-store", signal: controller.signal });
         const body = await readJson<{ test: TestSnapshot }>(response);
         if (cancelled) return;
+        if (!usableSnapshot(body?.test, testVersionId)) throw new Error("invalid_snapshot_response");
+        readingSnapshot = false;
         setSnapshot(body.test);
         const existing = await fetchState();
         if (cancelled) return;
@@ -353,12 +373,21 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
         try { await deliver(); } catch { return; }
         const refreshed = await fetchState();
         if (refreshed && !cancelled) await inferStageFromState(refreshed.state, body.test);
-      } catch {
-        if (!cancelled) setStage("invalid");
+      } catch (error) {
+        if (!cancelled) {
+          if (readingSnapshot && invalidParticipantLink(error)) setStage("invalid");
+          else {
+            setAccessFailed(true);
+            setTechnicalReason(error instanceof RunnerRequestError && error.status === 403
+              ? "ยังไม่มีสิทธิ์เข้าถึงแบบทดสอบนี้ ติดต่อผู้ส่งลิงก์ แล้วลองอีกครั้งเมื่อสิทธิ์พร้อม"
+              : "ยังโหลดแบบทดสอบไม่ได้ ตรวจการเชื่อมต่อแล้วลองอีกครั้ง ข้อมูลที่บันทึกไว้ในเบราว์เซอร์จะยังอยู่");
+            setStage("technical");
+          }
+        }
       }
     })();
-    return () => { cancelled = true; };
-  }, [configureRuntime, deliver, fetchState, inferStageFromState, testVersionId]);
+    return () => { cancelled = true; controller.abort(); };
+  }, [configureRuntime, deliver, fetchState, inferStageFromState, testVersionId, accessAttempt]);
 
   useEffect(() => {
     const onOnline = () => {
@@ -625,7 +654,7 @@ export default function ParticipantRunnerClient({ testVersionId }: { testVersion
     return <ParticipantShell progress={0} meta="ความยินยอม"><StatusCard title="คุณเลือกไม่เข้าร่วม" body="แบบทดสอบจะไม่เริ่ม และจะไม่มีการบันทึกการโต้ตอบ" /></ParticipantShell>;
   }
   if (stage === "technical") {
-    return <ParticipantShell progress={progress} meta="สถานะแบบทดสอบ"><StatusCard title="แบบทดสอบยังดำเนินการต่อไม่ได้" body={technicalReason} technical /></ParticipantShell>;
+    return <ParticipantShell progress={progress} meta="สถานะแบบทดสอบ"><StatusCard title={accessFailed ? "ยังโหลดแบบทดสอบไม่ได้" : "แบบทดสอบยังดำเนินการต่อไม่ได้"} body={technicalReason} technical>{accessFailed ? <Button variant="legacy" className={styles.primaryButton} type="button" onClick={() => setAccessAttempt(n => n + 1)}>ลองอีกครั้ง</Button> : null}</StatusCard></ParticipantShell>;
   }
   if (stage === "recovery") {
     return <ParticipantShell progress={progress} meta="การเชื่อมต่อ"><StatusCard title={offline ? "คุณออฟไลน์อยู่" : "กำลังเชื่อมต่ออีกครั้ง"} body="งานที่ทำเสร็จแล้วถูกบันทึกไว้ เราจะกลับไปยังจุดเดิมเมื่อเชื่อมต่อได้" loading={!offline}><Button variant="legacy" className={styles.primaryButton} type="button" onClick={() => void retryRecovery()} disabled={working}>{working ? "กำลังลองอีกครั้ง…" : "ลองอีกครั้ง"}</Button></StatusCard></ParticipantShell>;
