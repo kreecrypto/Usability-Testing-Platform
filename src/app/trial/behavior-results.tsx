@@ -1,14 +1,19 @@
 "use client";
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { behaviorEvidenceValid, geometryKey, geometryName, screenName, eventName, evidenceName, selectedEvidence, behaviorSummary, type BehaviorEvent } from '../../lib/trial/behavior';
 import type { Store, Version } from '../../lib/trial/model';
 import styles from './trial.module.css';
+import DensityOverlay from './density-overlay';
 import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Maximize2, X } from 'lucide-react';
 function Heatmap({points,selectedId,onSelect}:{points:BehaviorEvent[];selectedId:string;onSelect:(id:string)=>void}) {
   const e=points[0];
+  const [view,setView]=useState(selectedId?'points':'density');
+  const [densityFailed,setDensityFailed]=useState(false);
+  const densityFailure=useCallback(()=>{setDensityFailed(true);setView('points');},[]);
+  useEffect(()=>{if(selectedId)setView(current=>current==='density'?'points':current);},[selectedId]);
   const box=useRef<HTMLDivElement>(null);
   const [width,setWidth]=useState(280);
   const [status,setStatus]=useState<'loading'|'ready'|'error'|'mismatch'>('loading');
@@ -42,7 +47,10 @@ function Heatmap({points,selectedId,onSelect}:{points:BehaviorEvent[];selectedId
   }
   const canvas=<div ref={box} aria-busy={status==='loading'}>
 
-    <p>{geometryName(e)} · {points.length} คลิก</p>
+    <p>{geometryName(e)} · {new Set(points.map(p=>p.id)).size} คลิก · {new Set(points.map(p=>p.sessionId)).size} รอบที่มีคลิก</p>
+    <label>มุมมองแผนที่<select value={view} onChange={event=>{setView(event.target.value);setDensityFailed(false);}}><option value="density">ความหนาแน่น</option><option value="points">จุดคลิก</option><option value="both">สีพร้อมจุดคลิก</option></select></label>
+    {densityFailed && <p role="alert">วาดสีความหนาแน่นไม่สำเร็จ ดูจุดคลิกและรายการหลักฐานแทน หรือลองเลือกมุมมองสีอีกครั้ง</p>}
+    {view!=='points' && <div className={styles.densityLegend}><p>สีแสดงความกระจุกตัวของคลิกในชุดข้อมูลนี้ ไม่ใช่คะแนนความสำเร็จ</p><div><span>ต่ำ</span><span className={styles.densityScale} aria-hidden="true" /><span>สูง</span></div><small>เทียบภายในชุดที่เลือกเท่านั้น สีระหว่างตัวกรองหรือรอบทดสอบเปรียบเทียบปริมาณกันโดยตรงไม่ได้</small></div>}
     <label>ขนาดแผนที่<select value={zoom} onChange={event=>setZoom(event.target.value)}><option value="fit">พอดีพื้นที่</option><option value="1">100%</option><option value="1.5">150%</option><option value="2">200%</option></select></label>
     <div ref={scroller} className={styles.mapScroller} tabIndex={0} role="region" aria-label="แผนที่เลื่อนได้">
     {status==='loading' && <p role="status">กำลังโหลดแผนที่ตำแหน่งคลิก…</p>}
@@ -57,7 +65,8 @@ function Heatmap({points,selectedId,onSelect}:{points:BehaviorEvent[];selectedId
             if(!doc || doc.body?.dataset.layoutVersion!==e.layoutVersion){setStatus('error');return;}
             setStatus(doc.documentElement.scrollWidth===e.documentWidth && doc.documentElement.scrollHeight===e.documentHeight?'ready':'mismatch');
           }}/>
-        {status==='ready' && points.map((p,i)=><button type="button" key={p.id} aria-label={`เลือกคลิก ${i+1}`} aria-pressed={p.id===selectedId} className={styles.heatPoint} style={{left:p.documentX,top:p.documentY,transform:`scale(${1/scale})`}} onClick={()=>choose(p)}>{i+1}</button>)}
+        {status==='ready' && view!=='points' && <DensityOverlay key={points.map(p=>p.id).join('|')} points={points} onFailure={densityFailure}/>}
+        {status==='ready' && view!=='density' && points.map((p,i)=><button type="button" key={p.id} aria-label={`เลือกคลิก ${i+1}`} aria-pressed={p.id===selectedId} className={styles.heatPoint} style={{left:p.documentX,top:p.documentY,transform:`scale(${1/scale})`}} onClick={()=>choose(p)}>{i+1}</button>)}
       </div>
     </div>
     </div>
@@ -82,13 +91,13 @@ export default function BehaviorResults({store,version}:{store:Store;version:Ver
   const selected=selectedEvidence(store,version.id,query);
   const invalidSelection=['report','finding','evidence'].some(key=>query.has(key))&&!selected;
   const all=(store.behaviorEvents||[]).filter(e=>e.versionId===version.id);
-  const events=all.filter(e=>(!task||e.taskId===task)&&(!session||e.sessionId===session)&&(!screen||e.screenId===screen)&&(!selected||selected.eventIds.includes(e.id)));
+  const events=all.filter(e=>!invalidSelection && (!task||e.taskId===task)&&(!session||e.sessionId===session)&&(!screen||e.screenId===screen)&&(!selected||selected.eventIds.includes(e.id)));
   const clickScreens=[...new Set(events.filter(e=>e.type==='pointer').map(e=>e.screenId))];
   const [mapScreen,setMapScreen]=useState('');
   const focused=events.find(e=>e.id===selectedId && e.type==='pointer');
   const chosenScreen=clickScreens.includes(mapScreen)?mapScreen:focused?.screenId||clickScreens[0];
   const groups=[...new Set(events.filter(e=>e.screenId===chosenScreen).filter(e=>e.type==='pointer').map(geometryKey))];const chosen=groups.includes(group)?group:focused && groups.includes(geometryKey(focused))?geometryKey(focused):groups[0];
-  const points=events.filter(e=>e.type==='pointer' && geometryKey(e)===chosen);
+  const points=useMemo(()=>events.filter(e=>e.type==='pointer' && geometryKey(e)===chosen),[store.behaviorEvents,version.id,chosen,task,session,screen,query.toString()]);
   const summary=behaviorSummary(events);
   const inspected=points.find(e=>e.id===selectedId);
   const evidence=inspected?{sessionId:inspected.sessionId,taskId:inspected.taskId,kind:'event' as const,eventIds:[inspected.id]}:null;
@@ -105,7 +114,7 @@ export default function BehaviorResults({store,version}:{store:Store;version:Ver
   }
   return <Card asChild appearance="legacy" ><section className={styles.card} aria-label="พฤติกรรมบนเว็บจำลอง">
     <h2>คลิก เส้นทาง และแผนที่ตำแหน่งคลิก</h2><p>พฤติกรรมจริงบนเว็บจำลอง UTP · เวอร์ชัน {version.number} · เก็บเฉพาะเบราว์เซอร์นี้ ไม่ใช่ผลจาก Banrao</p>
-    {invalidSelection && <p role="status">เปิดชุดหลักฐานนี้ไม่ได้: ลิงก์ไม่ถูกต้องหรือข้อมูลไม่ได้อยู่ในเบราว์เซอร์นี้ ด้านล่างแสดงพฤติกรรมทั้งหมดของเวอร์ชันนี้</p>}
+    {invalidSelection && <p role="status">เปิดชุดหลักฐานนี้ไม่ได้: ลิงก์ไม่ถูกต้องหรือข้อมูลไม่ได้อยู่ในเบราว์เซอร์นี้ ไม่แสดงสีหรือเหตุการณ์นอกชุดที่อ้างอิง <a href={`/trial?step=results&p=${query.get('p')||''}&t=${version.testId}&v=${version.id}`}>เปิดพฤติกรรมทั้งหมด</a>แยกต่างหากเพื่อดูข้อมูลอื่น</p>}
     {selected && <p>กำลังแสดงชุดหลักฐาน {evidenceName(selected.kind)} ที่อ้างอิงไว้ ({events.length} เหตุการณ์) <a href={`/trial?step=results&p=${query.get('p')||''}&t=${version.testId}&v=${version.id}`}>ดูพฤติกรรมทั้งหมด</a></p>}
     <div className="tw:grid tw:gap-ah-16 tw:grid-cols-[repeat(auto-fit,minmax(160px,1fr))]">
       <label>โจทย์<select value={task} onChange={e=>setTask(e.target.value)}><option value="">ทุกโจทย์</option>{version.tasks.map((t,i)=><option key={t.id} value={t.id}>โจทย์ {i+1}</option>)}</select></label>
@@ -113,7 +122,7 @@ export default function BehaviorResults({store,version}:{store:Store;version:Ver
       <label>หน้า<select value={screen} onChange={e=>setScreen(e.target.value)}><option value="">ทุกหน้า</option>{[...new Set(all.map(e=>e.screenId))].map(s=><option key={s} value={s}>{screenName(s)}</option>)}</select></label>
     </div>
     {(task || session || screen) && <Button variant="legacy" type="button" onClick={()=>{setTask('');setSession('');setScreen('');setGroup('');}}>ล้างตัวกรอง</Button>}
-    {!summary ? <p role="status">{!all.length ? 'ยังไม่มีการเก็บพฤติกรรม เริ่มเว็บจำลองและยินยอมเก็บพฤติกรรมก่อน' : 'ไม่พบข้อมูลตามตัวกรองนี้ ล้างตัวกรองเพื่อกลับไปดูข้อมูลที่เก็บไว้'}</p> : <>
+    {!summary ? <p role="status">{invalidSelection ? 'เลือกหลักฐานที่ถูกต้องก่อนดูแผนที่' : !all.length ? 'ยังไม่มีการเก็บพฤติกรรม เริ่มเว็บจำลองและยินยอมเก็บพฤติกรรมก่อน' : 'ไม่พบข้อมูลตามตัวกรองนี้ ล้างตัวกรองเพื่อกลับไปดูข้อมูลที่เก็บไว้'}</p> : <>
       <p>คลิก/แตะ {summary.clicks} · การกระทำด้วยคีย์บอร์ด {summary.actions} · ไม่มีการสรุปความสำเร็จหรือ misclick จากจำนวนคลิก</p>
       {summary.paths.length ? <h3>เส้นทางแยกตามรอบและโจทย์</h3> : <p>ชุดข้อมูลที่แสดงไม่มีเหตุการณ์เส้นทาง {selected ? 'เปิดพฤติกรรมทั้งหมดเพื่อดูเส้นทางของรอบทดลอง' : 'ดูการกระทำที่เก็บไว้จากรายการเหตุการณ์'}</p>}
       {store.sessions.filter(s=>s.versionId===version.id && (!session||s.id===session)).map((s,i)=><div key={s.id}>{version.tasks.filter(t=>!task||t.id===task).map((t,j)=>{
@@ -126,6 +135,7 @@ export default function BehaviorResults({store,version}:{store:Store;version:Ver
           <label>ขนาดหน้าจอที่เก็บข้อมูล<select value={chosen} onChange={e=>{setGroup(e.target.value);setSelectedId('');}}>{groups.map(g=><option key={g} value={g}>{geometryName(events.find(e=>geometryKey(e)===g)!)} · {events.filter(e=>e.type==='pointer'&&geometryKey(e)===g).length} คลิก</option>)}</select></label>
         </div>
         <Heatmap key={chosen} points={points} selectedId={selectedId} onSelect={inspect}/>
+        {points.some(p=>!store.sessions.find(s=>s.id===p.sessionId)?.submittedAt) && <p role="status">ชุดนี้มีคลิกจากรอบทดลองที่ยังส่งคำตอบไม่ครบ ดูคลิกได้ แต่ยังใช้รอบนั้นเป็นหลักฐานข้อค้นพบไม่ได้</p>}
         <h4>รายการคลิก ({points.length})</h4><ol className={styles.clickList}>{points.map((e,i)=><li key={e.id}><Button variant="legacy" type="button" aria-pressed={selectedId===e.id} onClick={()=>inspect(e.id)}>คลิก {i+1} · {e.elementId||'บนหน้า'} · โจทย์ {version.tasks.findIndex(t=>t.id===e.taskId)+1}</Button></li>)}</ol>
         {inspected && <section className={styles.clickInspector} aria-label="รายละเอียดคลิก" aria-live="polite"><h4>คลิก {points.indexOf(inspected)+1} · {screenName(inspected.screenId)}</h4><p>องค์ประกอบ: {inspected.elementId||'ไม่มีองค์ประกอบ'} · โจทย์ {version.tasks.findIndex(t=>t.id===inspected.taskId)+1} · รอบ {store.sessions.filter(s=>s.versionId===version.id).findIndex(s=>s.id===inspected.sessionId)+1}</p><p>เวลา {inspected.at} · ตำแหน่ง ({inspected.documentX}, {inspected.documentY})</p><small>เหตุการณ์ {inspected.id}</small><div className="tw:grid tw:gap-ah-16 tw:grid-cols-[repeat(auto-fit,minmax(160px,1fr))]"><Button variant="legacy" type="button" onClick={()=>openEvent(inspected.id)}>ดูเหตุการณ์ต้นทาง</Button>{evidence && behaviorEvidenceValid(store,version.id,evidence)?<a href={`/trial?step=findings&p=${query.get('p')||''}&t=${version.testId}&v=${version.id}&click=${inspected.id}`}>สร้างข้อค้นพบจากคลิกนี้</a>:<><Button variant="legacy" type="button" disabled>สร้างข้อค้นพบจากคลิกนี้</Button><p>รอบทดลองนี้ยังส่งคำตอบไม่ครบ จึงยังใช้คลิกนี้เป็นหลักฐานไม่ได้</p></>}</div></section>}
       </> : <p>ยังไม่มีพิกัดคลิก การกดด้วยคีย์บอร์ดดูได้จากรายการเหตุการณ์</p>}
