@@ -256,3 +256,7 @@
 .clickList button { min-height: 44px; text-align: start; width: 100%; }
 .clickList button[aria-pressed="true"] { border: 2px solid var(--ah-primary); font-weight: 700; }
 .clickInspector { border: 1px solid var(--ah-hairline); padding: var(--ah-space-16); overflow-wrap: anywhere; }
+
+.densityLegend { margin-block: var(--ah-space-16); }
+.densityLegend > div { display:flex; align-items:center; gap:var(--ah-space-8); max-width:280px; }
+.densityScale { height:12px; flex:1; background:linear-gradient(to right,#2563eb,#06b6d4,#facc15,#dc2626); border-radius:6px; }
