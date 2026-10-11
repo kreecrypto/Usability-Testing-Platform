@@ -13,6 +13,7 @@ import {
   publish,
   newRound,
   startSession,
+  startTask,
   answerSession,
   submitSession,
   addFinding,
@@ -25,6 +26,8 @@ import {
 } from "../../lib/trial/model";
 import SimulationRunner from './simulation-runner';
 import BehaviorResults from './behavior-results';
+import TaskResults from './task-results';
+import {outcomeLabels, answerElapsed, elapsedLabel} from '../../lib/trial/task-results';
 import { behaviorEvidenceValid, SIMULATION_LAYOUT, geometryKey, behaviorComparable, behaviorSummary, behaviorIsActive, eventName, screenName, geometryName, evidenceName, type BehaviorEvent } from '../../lib/trial/behavior';
 import type { Evidence } from '../../lib/trial/model';
 import styles from "./trial.module.css";
@@ -44,7 +47,7 @@ const initialLocation: Location = {
   v: "",
   s: "",
 };
-const outcomes = { done: "ทำได้", not_done: "ทำไม่ได้", skipped: "ข้าม" };
+const outcomes = outcomeLabels;
 function readLocation(): Location {
   const q = new URLSearchParams(window.location.search);
   return {
@@ -65,6 +68,7 @@ export default function TrialWorkspace() {
   const [store, setStore] = useState<Store | null>(null);
   const [loc, setLoc] = useState(initialLocation);
   const [error, setError] = useState("");
+  const [answerOutcome,setAnswerOutcome]=useState("");
   const [saved, setSaved] = useState("");
   const rawRef = useRef<string | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -170,6 +174,7 @@ export default function TrialWorkspace() {
     .filter((r) => r.versionId === version?.id)
     .at(-1);
   const runner = loc.step === "participant";
+  useEffect(()=>setAnswerOutcome(""),[session?.id,session?.answers.length]);
   const clickId=typeof window==='undefined'?'':new URLSearchParams(window.location.search).get('click');
   const clickEvent=store?.behaviorEvents?.find(e=>e.id===clickId && e.versionId===version?.id && e.type==='pointer');
   const clickEvidence=clickEvent?{sessionId:clickEvent.sessionId,taskId:clickEvent.taskId,kind:'event' as const,eventIds:[clickEvent.id]}:null;
@@ -184,7 +189,7 @@ export default function TrialWorkspace() {
     } else if (!hash) {
       headingRef.current?.focus();
     }
-  }, [loc.step, loc.v, session?.answers.length, Boolean(store)]);
+  }, [loc.step, loc.v, session?.answers.length, session?.taskStarts?.length, Boolean(store)]);
   const begin = () => {
     if (!version) return;
     let sessionId = "";
@@ -215,6 +220,8 @@ export default function TrialWorkspace() {
                 รายงานว่า: {outcomes[a.outcome]} · ความง่าย:{" "}
                 {a.ease === null ? "ไม่ได้ให้คะแนน" : `${a.ease}/7`}
               </p>
+              {a.technicalReason && <p>ปัญหาทางเทคนิค: {a.technicalReason}</p>}
+              <p>{elapsedLabel(answerElapsed(s,a))}</p>
               <p>{a.feedback || "ไม่มีความคิดเห็นเพิ่มเติม"}</p>
               <small>
                 รอบ {s.id} · เวอร์ชัน {v.number}
@@ -655,6 +662,7 @@ export default function TrialWorkspace() {
                                   ? Number(text(d, "ease"))
                                   : null,
                                 feedback: text(d, "feedback"),
+                                ...(text(d,"outcome")==="technical_blocked"?{technicalReason:text(d,"technicalReason")}:{}),
                               };
                               commit((s) =>
                                 answerSession(s, session.id, answer),
@@ -665,6 +673,12 @@ export default function TrialWorkspace() {
                               โจทย์ {version.tasks.indexOf(task) + 1}
                             </h2>
                             <p>{task.instruction}</p>
+                            <p>เวลาตั้งแต่เริ่มโจทย์ถึงบันทึกคำตอบ รวมเวลาให้คะแนน เขียนความคิดเห็น และเวลาที่ออกจากแท็บหรือปิดเบราว์เซอร์</p>
+                            {!session.taskStarts?.some(t=>t.taskId===task.id) ? <>
+                              <p>เมื่อพร้อม ให้เริ่มโจทย์ก่อนเปิดเว็บไซต์และตอบคำถาม</p>
+                              <Button variant="legacy" type="button" disabled={blocked} onClick={()=>commit(s=>startTask(s,session.id,task.id))}>เริ่มโจทย์</Button>
+                            </> : <>
+                            <p role="status">เริ่มโจทย์แล้ว เวลาเริ่มเดิมจะคงอยู่เมื่อกลับมาทำต่อ</p>
                             {version.target?.kind === 'simulation' ? <SimulationRunner key={`${session.id}-${task.id}`} store={store} session={session} version={version} task={task} commit={commit} blocked={blocked} onPendingChange={(flag,pending)=>{pendingActive.current=flag;pendingEvents.current=pending?[...pending]:[];setTrackingPaused(flag);}}/> : <><a
                               className={styles.primary}
                               href={version.url}
@@ -679,7 +693,7 @@ export default function TrialWorkspace() {
                             </p></>}
                             <label>
                               คุณทำโจทย์นี้ได้หรือไม่
-                              <select name="outcome" defaultValue="" required>
+                              <select name="outcome" defaultValue="" required onChange={e=>setAnswerOutcome(e.target.value)}>
                                 <option value="" disabled>
                                   เลือกคำตอบ
                                 </option>
@@ -690,6 +704,7 @@ export default function TrialWorkspace() {
                                 ))}
                               </select>
                             </label>
+                            {answerOutcome==='technical_blocked' && <label>ปัญหาทางเทคนิคที่ทำให้ทำต่อไม่ได้<textarea name="technicalReason" required maxLength={4000}/></label>}
                             <label>
                               รู้สึกว่าง่ายเพียงใด (ไม่บังคับ)
                               <select name="ease" defaultValue="">
@@ -713,6 +728,7 @@ export default function TrialWorkspace() {
                             <Button variant="legacy" className={styles.primary} disabled={trackingPaused}>
                               บันทึกและไปข้อถัดไป
                             </Button>
+                            </>}
                           </form>
                         ) : (
                           <>
@@ -773,44 +789,7 @@ export default function TrialWorkspace() {
                     {!version.target && <p>คลิก / เส้นทาง / แผนที่ตำแหน่งคลิก: ไม่รองรับสำหรับเว็บไซต์ภายนอกที่ยังไม่ได้ติดตัวเก็บพฤติกรรม</p>}
                   </section></Card>
                   {version.target && <BehaviorResults key={version.id} store={store} version={version}/>}
-                  {version.tasks.map((t, i) => {
-                    const x = taskSummary(store, version.id, t.id);
-                    return (
-                      <Card asChild appearance="legacy" key={t.id}><section key={t.id} className={styles.card}>
-                        <h3>
-                          โจทย์ {i + 1}: {t.instruction}
-                        </h3>
-                        {!x.count ? (
-                          <p>
-                            ยังไม่มีคำตอบที่ส่งครบ
-                            เริ่มทดลองหรือกลับมาส่งรอบที่ค้าง
-                          </p>
-                        ) : (
-                          <>
-                            <p>
-                              จำนวนคำตอบ {x.count} · ทำได้ {x.done} · ทำไม่ได้{" "}
-                              {x.notDone} · ข้าม {x.skipped}
-                            </p>
-                            <p>
-                              คะแนนความง่าย:{" "}
-                              {x.scoreCount
-                                ? `${x.scoreCount} คำตอบ`
-                                : "ยังไม่มีคะแนน"}
-                            </p>
-                            {x.scoreCount > 0 && (
-                              <ul>
-                                {x.scores.map((s) => (
-                                  <li key={s.score}>
-                                    คะแนน {s.score}: {s.count} คำตอบ
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </>
-                        )}
-                      </section></Card>
-                    );
-                  })}
+                  <TaskResults store={store} version={version}/>
                   {evidenceCards(version)}
                   <Button variant="legacy" onClick={begin}>เริ่มหรือทำรอบที่ค้างต่อ</Button>
                   <Button variant="legacy"
@@ -1062,9 +1041,9 @@ export default function TrialWorkspace() {
                                 {a.count && b.count ? (
                                   <p>
                                     ต้นฉบับ {a.count} คำตอบ (ทำได้ {a.done},
-                                    ทำไม่ได้ {a.notDone}, ข้าม {a.skipped}) →
+                                    ทำไม่ได้ {a.notDone}, ข้าม {a.skipped}, ปัญหาทางเทคนิค {a.technicalBlocked}) →
                                     รอบใหม่ {b.count} คำตอบ (ทำได้ {b.done},
-                                    ทำไม่ได้ {b.notDone}, ข้าม {b.skipped})
+                                    ทำไม่ได้ {b.notDone}, ข้าม {b.skipped}, ปัญหาทางเทคนิค {b.technicalBlocked})
                                   </p>
                                 ) : (
                                   <p>

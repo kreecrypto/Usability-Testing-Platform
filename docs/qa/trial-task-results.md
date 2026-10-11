@@ -1,0 +1,11 @@
+# TRIAL-02.P5 — Task Results verification
+
+Feature Tasks198; approved2026-10-11. Dependent on PR155. Trial/browser storage only; no Production deployment, backend, schema migration, Auth/RLS or research-gate changes.
+
+Explicit first start persists before exposing target/questions and remains idempotent across refresh; successful answer save freezes endpoint. Time includes scoring/feedback and all wall-clock gaps/off-tab/closed-browser periods. Missing, invalid, backward, pre-session or after-submit clocks never become fabricated duration0. Legacy sessions decode without new optional fields; no starts imputed from first click. Older builds do not understand the new technical outcome enum; new data must be inspected with this build, not an older Preview.
+
+Submitted self-reported done/(done+not_done+skipped), technical excluded; pending never counted as failure. Median only valid timed submitted done/not_done with sample count. Technical reason required. Started count means start/answer/event evidence, not every session assumed to have reached every task. Score distribution and original evidence retained. Results overview belongs to entire version; raw event links from frozen Finding/Report restricted to referenced IDs. No stored Report or event/session/version IDs changed.
+
+327/327 unit PASS (7 new cases). Full Chromium62/62 PASS after functional/table/frozen-link changes; final cosmetic AH cell spacing/caption adjustment followed by11/11 targeted TaskResults+density PASS. Firefox/WebKit2/2 PASS after functional changes. Final build/typecheck/design-system/high-fi PASS; git diff --check clean. Tests use synthetic Trial data, actual simulated iframe click, native start/answer/Finding/Report controls, 1280/320/390, keyboard/focus/axe, refresh, failed storage starts/endpoints, other-tab conflicts, legacy/partial/technical/No Data, source IDs and all existing Heatmap modes/zooms. No lint script, no lint claim. Local mobile screenshot inspected; table scroll is contained.
+
+Exact remote head CI/Preview results are recorded in PR and Sheet before COMPLETE. Preview credentials are private stdin/in-memory origin-scoped cookies only, never stored/logged/committed. These tests do not certify real researcher accounts, Supabase persistence/RLS, FEAT-13.07 or MAJOR-A/B/C.
