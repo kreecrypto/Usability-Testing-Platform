@@ -1,3 +1,4 @@
+import { sameOrigin } from "../../../../../../lib/auth/lifecycle.ts";
 import { createMethodRunnerStore, MethodRunnerError } from "../../../../../../lib/methods/runner-store.ts";
 import { runnerServerConfig } from "../../../../../../lib/runner/public-session.ts";
 import { verifyRunnerSessionProof } from "../../../../../../lib/runner/session-proof.ts";
@@ -35,6 +36,7 @@ export async function GET(request: Request, route: Context): Promise<Response> {
 }
 
 export async function POST(request: Request, route: Context): Promise<Response> {
+  if (!sameOrigin(request)) return Response.json({ error: "invalid_origin" }, { status: 403, headers: { "cache-control": "private, no-store" } });
   try {
     const { testVersionId } = await route.params;
     const { config, claims } = context(request, testVersionId);
@@ -43,6 +45,10 @@ export async function POST(request: Request, route: Context): Promise<Response> 
     catch { return Response.json({ error: "invalid_json" }, { status: 400 }); }
     if (!body || typeof body !== "object" || Array.isArray(body)) return Response.json({ error: "invalid_body" }, { status: 400 });
     const store = createMethodRunnerStore({ supabaseUrl: config.supabaseUrl, secretKey: config.secretKey });
+    if (body.action !== undefined && body.action !== "recover_completion") return Response.json({ error: "invalid_action" }, { status: 400 });
+    if (body.action === "recover_completion") {
+      return Response.json(await store.recoverCompletion(testVersionId, claims.sessionId), { headers: { "cache-control": "private, no-store" } });
+    }
     const result = await store.submit(testVersionId, claims.sessionId, String(body.blockId ?? ""), body.response);
     return Response.json(result, { status: 201, headers: { "cache-control": "private, no-store" } });
   } catch (error) { return fail(error); }

@@ -92,6 +92,23 @@ export function createMethodRunnerStore(options: { supabaseUrl: string; secretKe
     });
   }
 
+  async function recoverCompletion(testVersionId: string, sessionId: string) {
+    const row = await session(testVersionId, sessionId);
+    const { blocks } = await internalSnapshot(testVersionId);
+    const responses = await loadResponses(row);
+    if (responses.length !== blocks.length || blocks.some((block) => !responses.some((response) => response.block_id === block.id))) {
+      throw new MethodRunnerError("responses_incomplete", 409);
+    }
+    for (const block of blocks) {
+      const saved = responses.find((response) => response.block_id === block.id)!;
+      try { parseMethodResponse(block.kind, parseMethodConfig(block.kind, block.config), saved.response); }
+      catch { throw new MethodRunnerError("saved_response_unavailable", 409); }
+    }
+    if (row.status !== "active" && row.status !== "completed") throw new MethodRunnerError("session_not_active", 409);
+    await completeSession(row);
+    return { completed: true };
+  }
+
   async function submit(testVersionId: string, sessionId: string, blockId: string, rawResponse: unknown) {
     const row = await session(testVersionId, sessionId);
     const { blocks } = await internalSnapshot(testVersionId);
@@ -139,5 +156,5 @@ export function createMethodRunnerStore(options: { supabaseUrl: string; secretKe
     return { responseId: saved[0].id, completed: current.length + 1 === blocks.length };
   }
 
-  return { snapshot, progress, submit };
+  return { snapshot, progress, submit, recoverCompletion };
 }

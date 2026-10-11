@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { prepareTreeSubmission, scaleAnswer, type TreeSubmission } from "../../../lib/methods/runner-recovery.ts";
 import styles from "./method-runner.module.css";
 
 type SurveyQuestion = { id: string; prompt: string; type: "single_choice" | "multi_choice" | "scale" | "text"; required: boolean; options?: { id: string; label: string }[]; min?: number; max?: number; showIf?: { questionId: string; equals: string } };
@@ -27,9 +28,11 @@ function SurveyForm({ config, busy, onSubmit }: { config: SurveyConfig; busy: bo
   const [answers, setAnswers] = useState<Record<string, string | string[] | number>>({});
   const [error, setError] = useState("");
   const visible = useMemo(() => config.questions.filter((question) => !question.showIf || answers[question.showIf.questionId] === question.showIf.equals), [answers, config]);
-  function set(question: SurveyQuestion, value: string | string[] | number) {
+  function set(question: SurveyQuestion, value: string | string[] | number | undefined) {
     setAnswers((current) => {
-      const next = { ...current, [question.id]: value };
+      const next: Record<string, string | string[] | number> = { ...current };
+      if (value === undefined) delete next[question.id];
+      else next[question.id] = value;
       for (const candidate of config.questions) if (candidate.showIf && next[candidate.showIf.questionId] !== candidate.showIf.equals) delete next[candidate.id];
       return next;
     });
@@ -51,7 +54,7 @@ function SurveyForm({ config, busy, onSubmit }: { config: SurveyConfig; busy: bo
               : [...(Array.isArray(answers[question.id]) ? answers[question.id] as string[] : []), option.id])} />
         {option.label}
       </label>) : null}
-      {question.type === "scale" ? <select value={answers[question.id] ?? ""} required={question.required} onChange={(event) => set(question, Number(event.target.value))}>
+      {question.type === "scale" ? <select value={answers[question.id] ?? ""} required={question.required} onChange={(event) => set(question, scaleAnswer(event.target.value))}>
         <option value="">เลือกคะแนน</option>{Array.from({ length: (question.max ?? 7) - (question.min ?? 1) + 1 }, (_, index) => index + (question.min ?? 1)).map((value) => <option key={value} value={value}>{value}</option>)}
       </select> : null}
       {question.type === "text" ? <textarea rows={4} maxLength={5000} required={question.required} value={typeof answers[question.id] === "string" ? answers[question.id] as string : ""} onChange={(event) => set(question, event.target.value)} /> : null}
@@ -88,20 +91,25 @@ function TreeForm({ config, busy, onSubmit }: { config: TreeConfig; busy: boolea
   const [path, setPath] = useState<string[]>(root ? [root.id] : []);
   const [trace, setTrace] = useState<string[]>(root ? [root.id] : []);
   const [startedAt, setStartedAt] = useState(() => Date.now());
+  const [pendingSubmission, setPendingSubmission] = useState<TreeSubmission | null>(null);
   const prompt = config.prompts[attempts.length];
   const currentId = path.at(-1);
   const children = config.nodes.filter((node) => node.parentId === currentId);
   function finish() {
     if (!prompt || !currentId) return;
     const next = [...attempts, { promptId: prompt.id, path, trace, selectedNodeId: currentId, durationMs: Math.max(0, Date.now() - startedAt) }];
-    if (next.length === config.prompts.length) onSubmit({ attempts: next });
+    if (next.length === config.prompts.length) {
+      const pending = prepareTreeSubmission(pendingSubmission, attempts, next[next.length - 1]);
+      setPendingSubmission(pending);
+      onSubmit(pending);
+    }
     else { setAttempts(next); setPath(root ? [root.id] : []); setTrace(root ? [root.id] : []); setStartedAt(Date.now()); }
   }
   return <div>
     <p className={styles.kicker}>ข้อ {attempts.length + 1} จาก {config.prompts.length}</p><h3>{prompt?.title}</h3>
-    <nav aria-label="เส้นทางโครงสร้างข้อมูล"><ol className={styles.breadcrumb}>{path.map((nodeId, index) => <li key={nodeId}><button type="button" onClick={() => { setTrace((current) => [...current, ...path.slice(index, -1).reverse()]); setPath(path.slice(0, index + 1)); }}>{config.nodes.find((node) => node.id === nodeId)?.label}</button></li>)}</ol></nav>
-    {children.length ? <ul className={styles.tree}>{children.map((node) => <li key={node.id}><button type="button" onClick={() => { setPath([...path, node.id]); setTrace((current) => [...current, node.id]); }}>{node.label} →</button></li>)}</ul> : <p>ไม่มีหมวดหมู่ย่อย</p>}
-    <button className={styles.primary} type="button" disabled={busy || !currentId} onClick={finish}>เลือกตำแหน่งนี้</button>
+    <nav aria-label="เส้นทางโครงสร้างข้อมูล"><ol className={styles.breadcrumb}>{path.map((nodeId, index) => <li key={nodeId}><button type="button" disabled={busy || pendingSubmission !== null} onClick={() => { setTrace((current) => [...current, ...path.slice(index, -1).reverse()]); setPath(path.slice(0, index + 1)); }}>{config.nodes.find((node) => node.id === nodeId)?.label}</button></li>)}</ol></nav>
+    {children.length ? <ul className={styles.tree}>{children.map((node) => <li key={node.id}><button type="button" disabled={busy || pendingSubmission !== null} onClick={() => { setPath([...path, node.id]); setTrace((current) => [...current, node.id]); }}>{node.label} →</button></li>)}</ul> : <p>ไม่มีหมวดหมู่ย่อย</p>}
+    <button className={styles.primary} type="button" disabled={busy || !currentId} onClick={finish}>{pendingSubmission ? "ลองส่งคำตอบเดิมอีกครั้ง" : "เลือกตำแหน่งนี้"}</button>
   </div>;
 }
 
@@ -127,6 +135,10 @@ export default function MethodRunnerClient({ testVersionId }: { testVersionId: s
       const progress = await progressResponse.json() as { status: string; completedBlockIds: string[] };
       if (!progressResponse.ok) throw new Error("progress_unavailable");
       setCompleted(progress.completedBlockIds);
+      if (progress.status === "active" && result.test.blocks.every((block) => progress.completedBlockIds.includes(block.id))) {
+        await api(`/api/public/methods/${encodeURIComponent(testVersionId)}/responses`, { method: "POST", body: JSON.stringify({ action: "recover_completion" }) });
+        setStage("complete"); return;
+      }
       setStage(progress.status === "completed" ? "complete" : "running");
     } catch (cause) { setError(cause instanceof Error ? cause.message : "โหลดการทดสอบไม่สำเร็จ"); setStage("error"); }
   }, [testVersionId]);
