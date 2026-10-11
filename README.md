@@ -74,6 +74,7 @@ Vercel is the active production host; Supabase is the data and auth provider. Hi
 
 See:
 - [team roles, workflow and handoff](docs/team-workflow.md)
+- [PM Agent assignments and readiness handoff](docs/pm-delivery.md)
 - [architecture](docs/architecture.md)
 - [Test Target contract](docs/test-target-contract.md)
 - [research evidence/report contract](docs/research-evidence-report-contract.md)

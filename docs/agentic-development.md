@@ -2,6 +2,8 @@
 
 This extends [team workflow](team-workflow.md) from PR #145. The Google Sheet remains planning authority. These agents develop UTP through Codex; no AI is added to the app.
 
+For the user-approved rotating Workspace/Data/Builder/Trial assignments and the manual readiness round, see [PM delivery](pm-delivery.md). Read-only audits may run in parallel without claiming blocked MAJORs; implementation and Sheet task mutations still require the live lease protocol below. No more than PM + two Developers + one independent QA run concurrently.
+
 ## Roles and ownership
 
 The Orchestrator alone reads fresh planning, owns/refreshes/releases the MAJOR lease and writes Sheet status/evidence. Developer works in one Task worktree and supplies an exact commit, branch, PR identity and checks. An independent QA agent reviews that commit after Developer stops editing. QA returns defects to Developer; changed commits require new review. The human owns product scope, accounts/billing and merge/Production deployment.
