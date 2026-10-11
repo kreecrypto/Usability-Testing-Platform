@@ -43,3 +43,23 @@ Missing billing/database availability: BLOCKED_EXTERNAL. Accessible diagnostic/c
 - Document QA checks diff and relative Markdown links. No new app build/typecheck/browser/Production proof is claimed for this documentation-only change.
 
 Independent QA must review the committed PM delivery artifacts after PM stops editing. Reviewer result is reported separately with exact commit; it does not certify Auth, live DB or research release. Sheet task statuses/release gates remain unchanged.
+
+## Round 2 — Builder/Participant and Trial
+
+User approved continuation on 11 October 2026. Fresh Sheet Feature Tasks162–167/197–198 and GitHub #141/#155/#156/#157 read before dispatch. Existing #157 head983c2e060d6732dc862578b2353189d1d9780135 passed all four triggered CI workflows. Scheduler remains PAUSED/read_only.
+
+Developer C inspected full candidate ff6bed238200a97524e609f791060760d47cb1e8 and ran `node --test tests/feat13-study-contract.test.ts tests/feat13-runner-retry.test.ts tests/feat13-entry-route.test.ts tests/feat13-method-results.test.ts`: **9/9 PASS**. Inline mock reproductions revealed two gaps not covered by these tests:
+
+- P1 Tree final retry recalculates duration after accepted response/completion failure; changed retry is correctly rejected with409. Reload with all responses saved but session active can render a blank running panel.
+- P2 Survey scale clearing converts empty string to0, silently adding a valid zero or rejecting an optional answer depending on range.
+
+These are supported FEAT-13.04/.02 defects, BLOCKED_SELF_FIXABLE. PM verified live internal lease definitions and privileges (anon/authenticated denied; internal role allowed), found no active owners, claimed/read back MAJOR-08 under owner codex-pm-round2/run UTP-PM-R2-20261011 and mirrored ownership in Sheet. This is explicit manual repair, not auto-admission of MAJOR-08. Developer C alone owns isolated codex/method-runner-recovery based on #141; lease refresh/release and independent code QA are required. No FEAT-13.07 or MAJOR-A/B/C closure follows from the fix.
+
+Developer D inspected Trial local ec89d84e9b00e8cb9f9e4fbc018daa35c3a637b0; working tree stayed clean:
+
+- `node --test tests/trial-task-results.test.ts tests/trial-density.test.ts tests/trial-behavior.test.ts tests/browser-trial.test.ts tests/trial-target.test.ts`: **33/33 PASS**.
+- `npm run test:trial:e2e -- trial-density.spec.ts trial-task-results.spec.ts trial-results.spec.ts --output=/tmp/utp-round2-trial-audit-rerun --reporter=list`: **23/23 PASS**.
+- Initial browser attempt aborted before launch because Chromium1243 was missing. Matching runtime installed with existing `npx playwright install chromium`, cache only; rerun executed and passed product assertions. No package/config edits.
+- Checked actual simulated clicks, exact frozen event/session/version scopes through Finding/Report, density modes/zooms/geometry, Canvas/background failure, technical/incomplete/No Data/Median semantics, storage/conflict recovery, desktop1280/mobile320/390, keyboard/focus/Escape and scoped axe. Mobile320 screenshot inspected. No actionable Trial defect found.
+
+Trial evidence is fresh local synthetic QA, not fresh Preview or real researcher/Supabase QA. Existing P4/P5 COMPLETE remains scoped to Trial/Preview. Legacy Trial builds still cannot read the new technical outcome enum; no new rollback compatibility claim is made.
