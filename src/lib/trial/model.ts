@@ -21,7 +21,9 @@ export type TrialTest = {
 };
 export type Answer = {
   taskId: string;
-  outcome: "done" | "not_done" | "skipped";
+  outcome: "done" | "not_done" | "skipped" | "technical_blocked";
+  answeredAt?: string;
+  technicalReason?: string;
   ease: number | null;
   feedback: string;
 };
@@ -32,6 +34,7 @@ export type Session = {
   submittedAt?: string;
   answers: Answer[];
   behaviorConsentAt?: string;
+  taskStarts?: { taskId: string; at: string }[];
 };
 export type Evidence = { sessionId: string; taskId: string; eventIds?: string[]; kind?: "event" | "path" | "heatmap" };
 export type Finding = {
@@ -170,10 +173,21 @@ export function startSession(
     session,
   };
 }
+// Explicit wall-clock start: persist before exposing the task target, never restart on refresh.
+export function startTask(store: Store, sessionId: string, taskId: string, at = now()): Store {
+  const session = store.sessions.find(s => s.id === sessionId);
+  const v = store.versions.find(v => v.id === session?.versionId);
+  if (!session || session.submittedAt || v?.tasks.find(t => !session.answers.some(a => a.taskId === t.id))?.id !== taskId)
+    throw new Error("เริ่มได้เฉพาะโจทย์ที่กำลังทำในรอบที่ยังไม่ส่ง");
+  if (session.taskStarts?.some(t => t.taskId === taskId)) return store;
+  if (!Number.isFinite(Date.parse(at))) throw new Error("เวลาเริ่มโจทย์ไม่ถูกต้อง");
+  return {...store, sessions: store.sessions.map(s => s.id === sessionId ? {...s, taskStarts: [...(s.taskStarts || []), {taskId, at}]} : s)};
+}
 export function answerSession(
   store: Store,
   sessionId: string,
   answer: Answer,
+  at = now(),
 ): Store {
   const session = store.sessions.find((s) => s.id === sessionId);
   const version = store.versions.find((v) => v.id === session?.versionId);
@@ -184,11 +198,18 @@ export function answerSession(
   )
     throw new Error("รอบนี้รับคำตอบไม่ได้");
   if (
-    !["done", "not_done", "skipped"].includes(answer.outcome) ||
+    !["done", "not_done", "skipped", "technical_blocked"].includes(answer.outcome) ||
     (answer.ease !== null &&
       (!Number.isInteger(answer.ease) || answer.ease < 1 || answer.ease > 7))
   )
     throw new Error("ตรวจคำตอบและคะแนน 1–7 อีกครั้ง");
+  if (answer.outcome === "technical_blocked" && !answer.technicalReason?.trim())
+    throw new Error("ระบุปัญหาทางเทคนิคที่ทำให้ทำต่อไม่ได้");
+  const started = session.taskStarts?.find(t => t.taskId === answer.taskId);
+  const previous = session.answers.find(a => a.taskId === answer.taskId);
+  const savedAnswer: Answer = {taskId: answer.taskId, outcome: answer.outcome, ease: answer.ease, feedback: answer.feedback,
+    ...(answer.outcome === "technical_blocked" ? {technicalReason: answer.technicalReason!.trim()} : {}),
+    ...(previous?.answeredAt ? {answeredAt: previous.answeredAt} : started ? {answeredAt: at} : {})};
   return {
     ...store,
     sessions: store.sessions.map((s) =>
@@ -197,7 +218,7 @@ export function answerSession(
             ...s,
             answers: [
               ...s.answers.filter((a) => a.taskId !== answer.taskId),
-              structuredClone(answer),
+              structuredClone(savedAnswer),
             ],
           }
         : s,
@@ -259,6 +280,7 @@ export function taskSummary(store: Store, versionId: string, taskId: string) {
     done: answers.filter((a) => a.outcome === "done").length,
     notDone: answers.filter((a) => a.outcome === "not_done").length,
     skipped: answers.filter((a) => a.outcome === "skipped").length,
+    technicalBlocked: answers.filter((a) => a.outcome === "technical_blocked").length,
     scores: Array.from({ length: 7 }, (_, i) => ({
       score: i + 1,
       count: scores.filter((s) => s === i + 1).length,
@@ -344,15 +366,22 @@ export function decodeStore(raw: string | null): Store {
         session.answers.length
       )
         throw Error();
+      if (session.taskStarts !== undefined) {
+        if (!Array.isArray(session.taskStarts) || new Set(session.taskStarts.map(t => t.taskId)).size !== session.taskStarts.length) throw Error();
+        session.taskStarts.forEach(t => {if (!v.tasks.some(x => x.id === t.taskId)) throw Error();str(t.at);});
+      }
       session.answers.forEach((a) => {
         if (
           !v.tasks.some((t) => t.id === a.taskId) ||
-          !["done", "not_done", "skipped"].includes(a.outcome) ||
+          !["done", "not_done", "skipped", "technical_blocked"].includes(a.outcome) ||
           (a.ease !== null &&
             (!Number.isInteger(a.ease) || a.ease < 1 || a.ease > 7))
         )
           throw Error();
         str(a.feedback);
+        if (a.answeredAt !== undefined) str(a.answeredAt);
+        if (a.technicalReason !== undefined) str(a.technicalReason);
+        if (a.outcome === 'technical_blocked' && !a.technicalReason?.trim()) throw Error();
       });
       if (session.submittedAt && session.answers.length !== v.tasks.length)
         throw Error();

@@ -29,6 +29,7 @@ export async function read(page: Page): Promise<Store> {
 export async function start(page: Page, url: string) {
   await page.goto(url);
   await expect(page.getByRole('heading', { name: 'Recovery QA', exact: true })).toBeVisible();
+  if (await page.getByRole('button',{name:'เริ่มโจทย์',exact:true}).count()) await page.getByRole('button',{name:'เริ่มโจทย์',exact:true}).click();
   if (await page.getByRole('checkbox', { name: 'ยินยอมให้เก็บพฤติกรรมบนเว็บจำลอง' }).count()) {
     await page.getByRole('checkbox', { name: 'ยินยอมให้เก็บพฤติกรรมบนเว็บจำลอง' }).check();
     await page.getByRole('button', { name: 'เริ่มเว็บจำลอง', exact: true }).click();

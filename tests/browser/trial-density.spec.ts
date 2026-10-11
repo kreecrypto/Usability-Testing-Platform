@@ -27,7 +27,9 @@ for(const width of [1280,320,390])test(`density ${width}: actual scrolled click,
  await page.keyboard.press('Escape');await expect(page.getByRole('button',{name:'ขยายแผนที่',exact:true})).toBeFocused();await expect(canvas).toHaveCount(1);
  expect(await read(page)).toEqual(store);await page.screenshot({path:info.outputPath(`density-${width}.png`),fullPage:true});
  await page.goto(linked);await expect(view).toHaveValue('points');await view.selectOption('both');await expect(canvas).toHaveCount(1);
- await expect(page.locator('article[id^="event-"]')).toHaveCount(1);expect(await read(page)).toEqual(store);
+ await expect(page.locator('article[id^="event-"]')).toHaveCount(1);
+ await page.getByRole('region',{name:'ผลรายโจทย์',exact:true}).locator('summary').click();const source=page.getByRole('region',{name:'ผลรายโจทย์',exact:true}).getByRole('link',{name:/ดูเหตุการณ์ต้นทางของรอบนี้/});await expect(source).toHaveCount(1);await expect(source).toHaveAttribute('href',`#event-${point.id}`);
+ expect(await read(page)).toEqual(store);
  await page.getByRole('link',{name:'สร้างข้อค้นพบจากคลิกนี้'}).click();const checked=page.locator('input[name="evidence"]:checked');await expect(checked).toHaveCount(1);expect(JSON.parse(await checked.inputValue()).eventIds).toEqual([point.id]);
  await page.getByLabel('ปัญหาที่พบ',{exact:true}).fill('Density QA — ตรวจคลิกต้นทาง');await page.getByLabel('ผลกระทบต่อการใช้งาน',{exact:true}).fill('ข้อมูลสังเคราะห์สำหรับ QA');await page.getByLabel('ข้อเสนอแนะ',{exact:true}).fill('ตรวจหลักฐานก่อนสรุป');
  await page.getByRole('button',{name:'บันทึกข้อค้นพบ',exact:true}).click();await expect.poll(async()=>(await read(page)).findings.at(-1)?.problem).toContain('Density QA');
